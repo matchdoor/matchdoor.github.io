@@ -43,10 +43,11 @@
 }
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet JS ย้ายไปก่อน </body> แล้ว — ลบออกจาก head เพื่อไม่ block rendering -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&family=Kanit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+<!-- รวม 4 font requests เป็น 1 request เดียว -->
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&family=Kanit:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -3407,6 +3408,8 @@ let props=[], agents=[], port=[], services=[], blogs=[], filtered=[];
   if(window.location.search || (window.location.hash && window.location.hash.length > 1)) {
     // Keep SPA redirect but clear any stale filter state
   }
+  // ล้าง filter state ที่อาจค้างอยู่ใน sessionStorage
+  sessionStorage.removeItem('ls_filter_state');
   // Ensure filters start clean - will be applied after data loads
   window._initialLoad = true;
 })();
@@ -4212,10 +4215,13 @@ function _silentShowPage(name, skipScrollTop) {
   if(name === 'listings'){
     const _allProps = (props && props.length) ? props :
                      (typeof MOCK!=='undefined' ? MOCK.props : []);
-    if(_allProps.length && !_listingsBaseData.length){
+    // Reset base data ทุกครั้งเพื่อไม่ให้ filter state เก่าค้าง
+    _listingsBaseData = [];
+    _listingsCurPage = 1;
+    _listingsRetryCount = 0;
+    if(_allProps.length){
       _listingsBaseData = [..._allProps];
       _listingsData = typeof sortListings==='function' ? sortListings([..._listingsBaseData],'default') : [..._listingsBaseData];
-      _listingsCurPage = 1;
     }
   }
   $$('.page').forEach(p => p.classList.remove('active'));
@@ -4305,13 +4311,15 @@ function showPage(name){
   _pushRoute(path, { type: 'page', name });
   // ── เมื่อไปหน้า listings ให้ render cards ────────────────────────
   if(name === 'listings'){
-    // Pre-populate if props already ready
+    // Reset base data ทุกครั้งเพื่อไม่ให้ filter state เก่าค้าง
     const _ap = (typeof props !== 'undefined' && props && props.length) ? props :
                 (typeof MOCK !== 'undefined' && MOCK.props ? MOCK.props : []);
-    if(_ap.length && !_listingsBaseData.length){
+    _listingsBaseData = [];
+    _listingsCurPage = 1;
+    _listingsRetryCount = 0;
+    if(_ap.length){
       _listingsBaseData = [..._ap];
       _listingsData = sortListings([..._ap], 'default');
-      _listingsCurPage = 1;
     }
     // render ทันทีโดยไม่รอ requestAnimationFrame
     if(typeof renderListingsPage === 'function') renderListingsPage();
@@ -4477,6 +4485,7 @@ function propCard(p){
 }
 
 // ===== LISTINGS PAGE =====
+let _listingsRetryCount = 0; // guard สำหรับ retry loop ใน renderListingsPage
 let _listingsData = [];
 let _listingsCurPage = 1;
 const _listingsPerPage = 32;
@@ -4516,14 +4525,21 @@ function renderListingsPage() {
                    (typeof MOCK !== 'undefined' && MOCK.props && MOCK.props.length ? [...MOCK.props] : []);
 
   if(!_allProps.length) {
-    // Props ยังไม่พร้อม — แสดง skeleton แล้ว retry หลัง 300ms
+    // Props ยังไม่พร้อม — แสดง skeleton แล้ว retry หลัง 300ms (จำกัดไว้ที่ 20 ครั้ง)
     const grid = document.getElementById('listings-grid');
     if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
       grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
     }
-    setTimeout(renderListingsPage, 300);
+    if (_listingsRetryCount < 20) {
+      _listingsRetryCount++;
+      setTimeout(renderListingsPage, 300);
+    } else {
+      // หยุด retry — แสดงข้อความ error แทน skeleton ค้าง
+      if(grid) grid.innerHTML = '<div style="padding:40px;text-align:center;color:#888"><i class="fas fa-exclamation-circle" style="font-size:2rem;margin-bottom:12px;display:block"></i>ไม่สามารถโหลดข้อมูลได้ กรุณารีเฟรชหน้าใหม่</div>';
+    }
     return;
   }
+  _listingsRetryCount = 0; // reset เมื่อโหลดสำเร็จ
 
   // ── ใช้ทรัพย์ทั้งหมดเป็น default ถ้าไม่มีการกรองค้างอยู่ ──────────
   if(!_listingsBaseData.length) {
@@ -8221,6 +8237,14 @@ function applyLang(){
     flInnerClone.querySelectorAll('[data-i18n]').forEach(el=>{
       const v=ui(el.getAttribute('data-i18n')); if(v)el.textContent=v;
     });
+    // Also update hardcoded h4/a text (same structure as main flink-inner)
+    const cols=flInnerClone.querySelectorAll('div');
+    if(cols[0]){const h4=cols[0].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.buy');const lk=['fl.sell.house.bkk','fl.sell.town.bkk','fl.sell.condo.bkk','fl.sell.land.bkk'];cols[0].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[1]){const h4=cols[1].querySelector('h4');if(h4)h4.textContent=ui('fl.nnb.buy');const lk=['fl.sell.house.nnb','fl.sell.town.nnb','fl.sell.condo.nnb','fl.sell.land.nnb'];cols[1].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[2]){const h4=cols[2].querySelector('h4');if(h4)h4.textContent=ui('fl.cbl.buy');const lk=['fl.sell.house.cbl','fl.sell.town.cbl','fl.sell.condo.cbl'];cols[2].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[3]){const h4=cols[3].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.rent');const lk=['fl.rent.house.bkk','fl.rent.town.bkk','fl.rent.condo.bkk'];cols[3].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[4]){const h4=cols[4].querySelector('h4');if(h4)h4.textContent=ui('fl.loc');const lk=['fl.loc.sukhumvit','fl.loc.sathorn','fl.loc.rachada','fl.loc.ladprao','fl.loc.asok','fl.loc.rama9'];cols[4].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[5]){const h4=cols[5].querySelector('h4');if(h4)h4.textContent=ui('fl.uni');const lk=['fl.uni.chula','fl.uni.thammasat','fl.uni.kaset','fl.uni.mahidol','fl.uni.rangsit','fl.uni.abac'];cols[5].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
   });
 
   // ── Modal static span labels ──
@@ -8488,6 +8512,12 @@ function applyLang(){
     // Sidebar: transit header
     const seoTransitHd=document.querySelector('#seo-transit-box > div:first-child');
     if(seoTransitHd){const ico=seoTransitHd.querySelector('i'); seoTransitHd.innerHTML=(ico?ico.outerHTML+' ':'')+ui('ls.sidebar.transit');}
+
+    // ── Re-render listings pagination so First/Last/Showing labels follow the selected language ──
+    if(typeof _listingsData!=='undefined' && _listingsData && typeof _listingsPerPage!=='undefined'){
+      const _totalPages = Math.ceil(_listingsData.length / _listingsPerPage);
+      if(typeof renderListingsPagination==='function') renderListingsPagination(_totalPages);
+    }
   })();
 }
 function openApplyModal(type){
@@ -10423,5 +10453,7 @@ function resetAdvFilter(){
   </div>
 </div>
 
+<!-- Leaflet JS โหลดหลัง DOM เสร็จ — ไม่ block rendering -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </body>
 </html>

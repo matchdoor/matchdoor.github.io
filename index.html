@@ -42,14 +42,47 @@
   "sameAs": ["https://facebook.com/matchdoor", "https://lin.ee/matchdoor"]
 }
 </script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<!-- Leaflet JS ย้ายไปก่อน </body> แล้ว — ลบออกจาก head เพื่อไม่ block rendering -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- Leaflet loaded on-demand when map is opened -->
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- รวม 4 font requests เป็น 1 request เดียว -->
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&family=Kanit:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&family=Kanit:wght@500;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&family=Kanit:wght@500;700;800&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500&family=Playfair+Display:wght@700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async></script>
+<style>
+/* ── MOBILE PERFORMANCE PATCH ───────────────────────────────── */
+@media(max-width:768px){
+  /* ปิด backdrop-filter ทั้งหมดบนมือถือ — GPU หนักที่สุด */
+  *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  /* ลด animation ที่ไม่จำเป็น */
+  @media(prefers-reduced-motion:no-preference){
+    .door-left,.door-right{animation-duration:8s!important}
+    .pb-rec,.pb-hot{animation:none!important}
+    #hero-canvas{display:none!important}
+  }
+  /* ป้องกัน layout thrash จาก hover transform */
+  .prop-card:hover,.price-card:hover,.cat-card:hover{transform:none!important}
+  /* contain: ลดพื้นที่ repaint */
+  .prop-card,.blog-card,.agent-card,.gal-card{contain:layout style}
+  /* ป้องกัน text render ช้าบน iOS */
+  body{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+}
+/* ── z-index ให้เป็นระบบ 6 ระดับ (ทุก device) ─────────────────
+   nav=100 | dropdown=200 | modal=300 | overlay=400 | sheet=500 | toast=600 */
+nav{z-index:100!important}
+.dd-panel,.qs-dd-panel{z-index:200!important}
+.ov,.loading-overlay{z-index:300!important}
+.adv-desktop-overlay,.dd-mobile-overlay,
+.seo-drawer-overlay,.adv-sheet-overlay{z-index:400!important}
+.adv-sheet,.seo-drawer,.adv-fp{z-index:500!important}
+.toast{z-index:600!important}
+/* search autocomplete อยู่เหนือ dropdown */
+.ac-list{z-index:250!important}
+/* quick-search panel */
+.qs-group .qs-dd-panel{z-index:210!important}
+</style>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -85,6 +118,11 @@ img{max-width:100%;height:auto}
 ::-webkit-scrollbar-thumb{background:#c5c9d6;border-radius:3px}
 
 .wrap{max-width:1320px;margin:0 auto;padding:35px 20px}
+/* ── content-visibility: auto — ให้ browser skip render sections นอก viewport ── */
+#rec-sec, #blog-sec, #price-sec, #port-sec, #agents-sec, #osrv-sec, #new-sec{
+  content-visibility:auto;
+  contain-intrinsic-size:0 500px;
+}
 .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 
 .sec-title::before{content:'';width:4px;height:20px;background:var(--a);border-radius:2px;display:block}
@@ -95,9 +133,9 @@ img{max-width:100%;height:auto}
 .back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px;border:none}
 .badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
 
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 22px;border-radius:30px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 22px;border-radius:30px;font-size:14px;z-index:490;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:0;pointer-events:none;transition:opacity .3s}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:480;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:0;pointer-events:none;transition:opacity .3s}
 .loading-overlay.show{opacity:1;pointer-events:auto}
 
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -341,11 +379,11 @@ nav{
   .dep-panel{max-height:80vh;overflow-y:auto}
 }
 
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;align-items:center;justify-content:center;padding:16px}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;align-items:center;justify-content:center;padding:16px;contain:layout}
 .ov.open{display:flex}
 #prop-modal.open{z-index:3300}
 #ag-modal.open{z-index:3400}
-.modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;contain:content}
 /* modal wide ยังคงไว้สำหรับ all-modal และอื่นๆ ที่ต้องการกว้าง */
 .modal.wide{max-width:1000px;width:95vw;max-height:92vh}
 .mhd{padding:16px 20px;border-bottom:1.5px solid var(--lt);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10}
@@ -561,8 +599,8 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .hcounter{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:14px 24px;text-align:center;backdrop-filter:blur(12px);min-width:130px;transition:.3s}
 .hcounter:hover{background:rgba(255,255,255,.22);transform:translateY(-2px)}
 .hc-num{font-size:32px;font-weight:800;color:#F0ECE3;line-height:1;font-family:'Kanit',sans-serif}
-.search-box{background:rgba(255,255,255,0.27);backdrop-filter:blur(20px);border-radius:var(--rl);padding:22px 24px;max-width:1100px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,.35);position:relative;z-index:9001;overflow:visible;border:1px solid rgba(200,146,42,.15)}
-.quick-search-bar{max-width:1100px;margin:0 auto;padding:12px 20px 22px;display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;position:relative;z-index:9000;justify-content:center;align-items:center}
+.search-box{background:rgba(255,255,255,0.27);backdrop-filter:blur(20px);border-radius:var(--rl);padding:22px 24px;max-width:1100px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,.35);position:relative;z-index:150;overflow:visible;border:1px solid rgba(200,146,42,.15)}
+.quick-search-bar{max-width:1100px;margin:0 auto;padding:12px 20px 22px;display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;position:relative;z-index:150;justify-content:center;align-items:center}
 
 /* ── Advanced Filter button & panel ── */
 .adv-filter-btn{
@@ -585,14 +623,14 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
   background:#fff;border-radius:18px;
   box-shadow:0 28px 70px rgba(0,0,0,.35),0 2px 12px rgba(0,0,0,.15);
   border:1.5px solid rgba(200,146,42,.3);
-  z-index:2147483640;width:500px;max-width:95vw;
+  z-index:450;width:500px;max-width:95vw;
   padding:0;overflow:hidden;
   animation:advPopupIn .22s cubic-bezier(.34,1.4,.64,1);
   top:50%;left:50%;transform:translate(-50%,-50%);
 }
 @keyframes advPopupIn{from{opacity:0;transform:translate(-50%,-48%) scale(.97)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 /* Desktop overlay behind popup */
-.adv-desktop-overlay{display:none;position:fixed;inset:0;background:rgba(10,22,40,.45);z-index:2147483639;backdrop-filter:blur(3px)}
+.adv-desktop-overlay{display:none;position:fixed;inset:0;background:rgba(10,22,40,.45);z-index:440}
 .adv-desktop-overlay.open{display:block}
 @media(max-width:768px){
   .adv-filter-panel{display:none!important} /* mobile uses sheet instead */
@@ -665,9 +703,9 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .adv-reset-btn:hover{background:var(--lt)}
 
 /* Mobile sheet */
-.adv-sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9997;backdrop-filter:blur(4px)}
+.adv-sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:410}
 .adv-sheet-overlay.open{display:block}
-.adv-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:9998;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.adv-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:420;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
 .adv-sheet.open{transform:translateY(0)}
 .adv-sheet-drag{width:40px;height:4px;background:#ddd;border-radius:4px;margin:10px auto 0}
 .adv-sheet-hd{padding:12px 20px 8px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
@@ -720,7 +758,7 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
   border-radius:16px;
   box-shadow:0 28px 70px rgba(0,0,0,.28),0 2px 12px rgba(0,0,0,.12);
   border:1.5px solid rgba(200,146,42,.25);
-  z-index:2147483647;
+  z-index:210;
   min-width:260px;
   padding:8px;
   overflow-y:auto;
@@ -794,6 +832,10 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .pb-new{background:rgba(0,184,148,.9);color:#fff}
 .pb-rec,.pb-hot{background:linear-gradient(135deg,#ff4d6d,#ff6b35);color:#fff;animation:hotPulse 2s ease-in-out infinite}
 @keyframes hotPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,109,.4)}50%{box-shadow:0 0 0 4px rgba(255,77,109,0)}}
+@media(max-width:768px){
+  .pb-rec,.pb-hot{animation:none}
+  .door-left,.door-right,.logo-shimmer{animation-play-state:paused}
+}
 .pb-rent{background:rgba(139,68,172,.9);color:#fff}
 .pb-buy{background:rgba(15,52,96,.85);color:#fff}
 .prop-fav{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;transition:.2s;color:var(--gr)}
@@ -955,10 +997,6 @@ footer::after{
 .seo-drawer-hd h3{font-size:14px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:7px;margin:0}
 .seo-drawer-close{width:30px;height:30px;border-radius:50%;background:var(--lt);border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gr)}
 .seo-drawer-body{padding:12px 14px 24px}
-.seo-toggle-btn{display:none;position:fixed;bottom:140px;right:14px;z-index:3000;background:linear-gradient(135deg,var(--p),#2a5298);color:#fff;border:none;border-radius:50%;width:46px;height:46px;font-size:16px;cursor:pointer;box-shadow:0 4px 16px rgba(27,58,107,.35);align-items:center;justify-content:center}
-@media(max-width:900px){
-  .seo-toggle-btn{display:flex}
-}
 /* hstat handled above */
 .gal-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .gf{padding:7px 16px;border-radius:20px;border:1.5px solid var(--bd);background:#fff;cursor:pointer;font-size:13px;font-weight:500;transition:.2s}
@@ -993,8 +1031,12 @@ footer::after{
 .fav-actions{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
 .btn-fa{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(255,255,255,.35);color:#fff;cursor:pointer;background:rgba(255,255,255,.12)}
 .float-wrap{position:fixed;bottom:24px;right:14px;z-index:2000;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-.float-top{width:42px;height:42px;border-radius:50%;background:rgba(15,52,96,.85);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.3s;cursor:pointer}
-.float-top.show{opacity:1;pointer-events:auto}
+/* scroll-top sits at top of float-wrap stack — hidden by default, shown on scroll */
+.float-top{width:42px;height:42px;border-radius:50%;background:rgba(15,52,96,.85);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;cursor:pointer;border:none;transform:translateY(6px)}
+.float-top.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+/* seo-toggle-btn: part of float-wrap flow on mobile — override fixed positioning */
+.seo-toggle-btn{display:none;background:linear-gradient(135deg,var(--p),#2a5298);color:#fff;border:none;border-radius:50%;width:46px;height:46px;font-size:16px;cursor:pointer;box-shadow:0 4px 16px rgba(27,58,107,.35);align-items:center;justify-content:center;transition:.2s}
+@media(max-width:900px){.seo-toggle-btn[data-page="listings"]{display:flex}}
 .float-grp{position:relative;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .float-items{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .float-items.hide{display:none}
@@ -1060,7 +1102,7 @@ footer::after{
 .btn-sub.loading .btn-icon{display:none}
 
 /* Cookie Banner */
-#cookie-banner{position:fixed;bottom:0;left:0;right:0;z-index:9500;background:linear-gradient(135deg,#2d2650,#3d3373);color:#fff;padding:16px 20px;box-shadow:0 -4px 20px rgba(0,0,0,.3);transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1)}
+#cookie-banner{position:fixed;bottom:0;left:0;right:0;z-index:430;background:linear-gradient(135deg,#2d2650,#3d3373);color:#fff;padding:16px 20px;box-shadow:0 -4px 20px rgba(0,0,0,.3);transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1)}
 #cookie-banner.show{transform:translateY(0)}
 .cookie-banner-inner{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .cookie-banner-text{flex:1;min-width:200px;font-size:13px;line-height:1.5;opacity:.9}
@@ -1080,7 +1122,7 @@ footer::after{
 .privacy-modal-body li{margin-bottom:4px}
 .privacy-modal-body .highlight-box{background:#faf8ff;border-left:3px solid var(--p);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:12px}
 .ac-wrap{position:relative;z-index:300}
-.ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--bd);border-top:none;border-radius:0 0 10px 10px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(27,58,107,.18)}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--bd);border-top:none;border-radius:0 0 10px 10px;z-index:230;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(27,58,107,.18)}
 .ac-item{padding:9px 13px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--lt);color:#1A1A2E !important;background:#fff}
 .ac-item *{color:#1A1A2E}
 .ac-item:last-child{border-bottom:none}
@@ -1941,7 +1983,7 @@ footer::after{
   box-shadow:0 20px 50px rgba(0,0,0,.22),0 2px 10px rgba(0,0,0,.1);
   border:1.5px solid rgba(200,146,42,.2);
   overflow:hidden;
-  z-index:99999;
+  z-index:220;
   max-height:calc(100vh - 80px);
   overflow-y:auto;
   animation:langPanelIn .18s ease;
@@ -2285,7 +2327,8 @@ footer::after{
 </nav>
 
 <div class="float-wrap">
- <button class="float-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fas fa-arrow-up"></i></button>
+ <button class="float-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="เลื่อนขึ้นบนสุด"><i class="fas fa-arrow-up"></i></button>
+ <button class="seo-toggle-btn" id="seo-toggle-btn" onclick="openSeoDrawer()" title="ค้นหาด้วย SEO"><i class="fas fa-list-alt"></i></button>
  <div class="float-grp">
   <div class="float-items hide" id="float-items">
    <a class="float-btn" href="javascript:void(0)" onclick="navigator.clipboard?.writeText('matchdoor').then(()=>toast('คัดลอก WeChat ID: matchdoor แล้ว ✅'))"><span class="fb-lbl">WeChat</span><span class="fb-ico" style="background:#07c160;color:#fff"><i class="fab fa-weixin"></i></span></a>
@@ -2304,7 +2347,7 @@ footer::after{
 </div>
 
 <!-- ===== HOME PAGE ===== -->
-<div class="page active" id="page-home">
+<div class="page" id="page-home">
  <section class="hero">
     <img class="hero-banner-img" src="" alt="" aria-hidden="true" style="display:none">
   <div class="hero-bg-clip"><canvas id="hero-canvas"></canvas></div>
@@ -3408,8 +3451,6 @@ let props=[], agents=[], port=[], services=[], blogs=[], filtered=[];
   if(window.location.search || (window.location.hash && window.location.hash.length > 1)) {
     // Keep SPA redirect but clear any stale filter state
   }
-  // ล้าง filter state ที่อาจค้างอยู่ใน sessionStorage
-  sessionStorage.removeItem('ls_filter_state');
   // Ensure filters start clean - will be applied after data loads
   window._initialLoad = true;
 })();
@@ -3425,9 +3466,41 @@ const $$=sel=>document.querySelectorAll(sel);
 function toast(msg,err=false){ const t=$('toast'); t.textContent=msg; t.style.background=err?'rgba(200,50,50,.9)':'rgba(0,0,0,.85)'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 function loading(s){$('loading').classList.toggle('show',s)}
 function scrollToEl(id){$(id)?.scrollIntoView({behavior:'smooth'})}
-function fmtPrice(p,t){ if(t==='RENT')return '฿'+p.toLocaleString()+' /เดือน'; if(p>=1e6) return '฿'+(p/1e6).toFixed(2).replace(/\.?0+$/,'')+' ล้าน'; return '฿'+p.toLocaleString(); }
+function fmtPrice(p,t){
+  const lang=(typeof _lang!=='undefined'&&_lang)||'th';
+  const perMonth = lang==='en'?'/mo':lang==='cn'?'/月':lang==='ja'?'/月':'/เดือน';
+  const million = lang==='en'?'M':lang==='cn'?'百万':lang==='ja'?'M':' ล้าน';
+  if(t==='RENT') return '฿'+p.toLocaleString()+perMonth;
+  if(p>=1e6) return '฿'+(p/1e6).toFixed(2).replace(/\.?0+$/,'')+million;
+  return '฿'+p.toLocaleString();
+}
 function typeIcon(t){ const map={'บ้านเดี่ยว':'🏡','ทาวน์โฮม':'🏘️','คอนโด':'🏢','ที่ดิน':'🗺️','อาคารพาณิชย์':'🏪','วิลล่า':'🌅','รีสอร์ท':'🌙','โรงแรม':'⭐'}; return map[t]||'🏠'; }
-function daysAgo(d){if(!d)return''; const n=Math.floor((new Date()-new Date(d))/864e5); if(n===0)return'วันนี้'; if(n===1)return'เมื่อวาน'; return n<7?n+' วันที่แล้ว':n<30?Math.floor(n/7)+' สัปดาห์ที่แล้ว':Math.floor(n/30)+' เดือนที่แล้ว';}
+function daysAgo(d){
+  if(!d)return'';
+  const n=Math.floor((new Date()-new Date(d))/864e5);
+  const lang=(typeof _lang!=='undefined'&&_lang)||'th';
+  if(lang==='en'){
+    if(n===0)return'Today';
+    if(n===1)return'Yesterday';
+    if(n<7)return n+' days ago';
+    if(n<30)return Math.floor(n/7)+' weeks ago';
+    return Math.floor(n/30)+' months ago';
+  } else if(lang==='cn'){
+    if(n===0)return'今天';
+    if(n===1)return'昨天';
+    if(n<7)return n+' 天前';
+    if(n<30)return Math.floor(n/7)+' 周前';
+    return Math.floor(n/30)+' 个月前';
+  } else if(lang==='ja'){
+    if(n===0)return '今日';
+    if(n===1)return '昨日';
+    if(n<7)return n+' 日前';
+    if(n<30)return Math.floor(n/7)+' 週間前';
+    return Math.floor(n/30)+' ヶ月前';
+  }
+  if(n===0)return'วันนี้'; if(n===1)return'เมื่อวาน';
+  return n<7?n+' วันที่แล้ว':n<30?Math.floor(n/7)+' สัปดาห์ที่แล้ว':Math.floor(n/30)+' เดือนที่แล้ว';
+}
 function lineUrl(id){ return 'https://line.me/ti/p/' + (id || C.LINE).replace(/^~/, ''); }
 function _initApplyFilters(){
   // เรียก _renderHomeGrids แทน — แสดง ALL props โดยตรง
@@ -3784,58 +3857,77 @@ async function loadData(){
   loading(true);
   // Show skeleton placeholders
   ['all-grid','rec-grid','new-grid'].forEach(gid=>renderGrid(gid,[],true));
+
+  // ── รอให้ Supabase JS โหลดเสร็จก่อน (async script) ──────────────
+  if(typeof window.supabase === 'undefined'){
+    await new Promise(resolve=>{
+      const t = setInterval(()=>{ if(typeof window.supabase!=='undefined'){ clearInterval(t); resolve(); } }, 50);
+      setTimeout(()=>{ clearInterval(t); resolve(); }, 3000); // timeout 3s
+    });
+  }
+
   const hasSB = initSB();
   let useMock = false;
+
   if(hasSB){
     try{
-      const [p, a, po, s, b] = await Promise.all([
-        sb.from('properties').select('*').order('created_at',{ascending:false}),
-        sb.from('agents').select('*').eq('is_active',true),
-        sb.from('portfolio').select('*').order('created_at',{ascending:false}),
-        sb.from('services').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
-        sb.from('blogs').select('*').eq('is_published',true).order('sort_order',{ascending:true})
-      ]);
-      if(p.data){ props = p.data.map(mapProp); console.log(`✅ Properties loaded: ${props.length}`); } else { if(p.error) console.error('[properties]',p.error); }
-      if(a.data){ agents = a.data.map(mapAgent); console.log(`✅ Agents loaded: ${agents.length}`); } else { if(a.error) console.error('[agents]',a.error); }
-      if(po.data){ port = po.data.map(mapPort); } else { if(po.error) console.error('[portfolio]',po.error); }
-      if(s.data){ services = s.data; } else { if(s.error) console.error('[services]',s.error); }
-      if(b.data){
-        // 🖼️ [IMG-BLOG] แปลง photos/cover_image ของบทความ → Supabase Storage URL
-        // DB เก็บเป็น path เช่น "blogs/b1/cover.webp" หรือ URL เต็มก็ได้
-        blogs = b.data.map(blog => {
-          const rawPhotos = Array.isArray(blog.photos) ? blog.photos : (blog.photos ? [blog.photos] : []);
-          const coverPath = blog.cover_image || blog.cover || '';
-          const allPhotos = coverPath ? [coverPath, ...rawPhotos] : rawPhotos;
-          return {
-            ...blog,
-            photos: [...new Set(allPhotos)].filter(Boolean).map(p => sbImg(p))
-          };
-        });
-      } else { if(b.error) console.error('[blogs]',b.error); }
-      // Load legal pages from DB
-      await loadLegalPages();
-      // ใช้ mock เสริมถ้า Supabase ไม่มีข้อมูล
-      if(!props.length && !agents.length){
-        console.warn('No data from Supabase, using mock data');
-        useMock=true;
-      } else {
-        useMock=false;
-        // เสริม mock agents/services/blogs ถ้า DB ว่าง
-        if(!agents.length){ agents = MOCK.agents; agents.forEach(a=>{a.propIds=props.filter(p=>p.agentId===a.id).map(p=>p.id);}); }
-        if(!port.length){ port = MOCK.port; }
-        if(!services.length){ services = MOCK.services; }
-        if(!blogs.length){ blogs = MOCK.blogs; }
-        const buyCount = props.filter(p=>p.tx==='BUY').length;
-        const rentCount = props.filter(p=>p.tx==='RENT').length;
-        console.log(`✅ tx breakdown: BUY=${buyCount}, RENT=${rentCount}`);
-        if(!buyCount && !rentCount){
-          console.warn('⚠️ tx field ว่างทั้งหมด — map เป็น BUY และแสดงข้อมูลต่อ (ไม่ useMock)');
-          // ไม่ useMock เพื่อรักษาข้อมูลจาก Supabase ไว้ใช้งาน
-        }
+      // ── PHASE 1: โหลด properties ก่อน — แสดงหน้าทันที ──────────
+      const p = await sb.from('properties').select('*').order('created_at',{ascending:false});
+      if(p.data){ props = p.data.map(mapProp); console.log(`✅ Properties loaded: ${props.length}`); }
+      else { if(p.error) console.error('[properties]',p.error); }
+
+      if(!props.length){
+        console.warn('No properties from Supabase, using mock');
+        useMock = true;
       }
-      console.log(`✅ Supabase loaded: ${props.length} props, ${agents.length} agents`);
+
+      if(!useMock){
+        // แสดงหน้าทันทีด้วย properties ที่ได้มา
+        agents = MOCK.agents; port = MOCK.port; services = MOCK.services; blogs = MOCK.blogs;
+        agents.forEach(a=>{a.propIds=props.filter(p=>p.agentId===a.id).map(p=>p.id);});
+        afterLoad();
+        loading(false);
+
+        // ── PHASE 2: โหลดข้อมูลที่เหลือ background (ไม่บล็อก UI) ─
+        setTimeout(async ()=>{
+          try{
+            const [a, po, s, b] = await Promise.all([
+              sb.from('agents').select('*').eq('is_active',true),
+              sb.from('portfolio').select('*').order('created_at',{ascending:false}),
+              sb.from('services').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
+              sb.from('blogs').select('*').eq('is_published',true).order('sort_order',{ascending:true})
+            ]);
+            let updated = false;
+            if(a.data && a.data.length){ agents = a.data.map(mapAgent); agents.forEach(ag=>{ag.propIds=props.filter(p=>p.agentId===ag.id).map(p=>p.id);}); updated=true; console.log(`✅ Agents loaded: ${agents.length}`); }
+            if(po.data && po.data.length){ port = po.data.map(mapPort); updated=true; }
+            if(s.data && s.data.length){ services = s.data; updated=true; }
+            if(b.data && b.data.length){
+              blogs = b.data.map(blog => {
+                const rawPhotos = Array.isArray(blog.photos) ? blog.photos : (blog.photos ? [blog.photos] : []);
+                const coverPath = blog.cover_image || blog.cover || '';
+                const allPhotos = coverPath ? [coverPath, ...rawPhotos] : rawPhotos;
+                return { ...blog, photos: [...new Set(allPhotos)].filter(Boolean).map(p => sbImg(p)) };
+              });
+              updated=true;
+            }
+            // re-render sections ที่เกี่ยวข้องในหน้าหลัก
+            if(updated){
+              if(typeof renderServices==='function') renderServices();
+              if(typeof renderBlogs==='function') renderBlogs();
+              if(typeof renderHomePortfolio==='function') renderHomePortfolio();
+              if(typeof renderFavDropdown==='function') renderFavDropdown();
+              renderRecCarousel && renderRecCarousel();
+            }
+            // โหลด legal pages แบบ background
+            loadLegalPages().catch(e=>console.warn('[loadLegalPages]',e));
+            console.log('✅ Background data loaded');
+          } catch(e){ console.warn('[background load]',e); }
+        }, 100); // เริ่ม background load หลัง 100ms (ให้ main thread หายใจได้)
+        return; // ออกจาก loadData — afterLoad ถูกเรียกแล้ว
+      }
     } catch(e){ console.error('[loadData error]',e); useMock=true; }
   } else { useMock=true; }
+
   if(useMock){
     console.warn('⚠️ Using mock data — ตั้งค่า SUPABASE_URL และ SUPABASE_KEY ใน CONFIG');
     props = MOCK.props; agents = MOCK.agents; port = MOCK.port; services = MOCK.services; blogs = MOCK.blogs;
@@ -4078,9 +4170,17 @@ async function applyFilters(){
   const rc=$('res-count');
   const resText=_lang==='en'?`Found ${filtered.length} listings`:_lang==='cn'?`找到 ${filtered.length} 个房源`:_lang==='ja'?`${filtered.length} 件見つかりました`:`พบ ${filtered.length} รายการ`;
   if(rc) rc.textContent=resText;
-  renderGrid('all-grid',filtered.slice(0,8));
+
+  // ── all-grid: แสดงผลตาม filter ────────────────────────────────
+  _renderHomeAllGrid(filtered.slice(0,8));
+
+  // ── rec-grid: กรองตาม filter ──────────────────────────────────
   renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8));
-  renderGrid('new-grid',filtered.filter(p=>p.isNew));
+
+  // ── new-track: "มาใหม่ล่าสุด" — แสดงทั้งหมดเสมอ ไม่กรองตาม filter ──
+  // (section นี้เป็น editorial/showcase ไม่ใช่ search result)
+  const _allNew = props.filter(p=>p.isNew);
+  renderNewGallery(_allNew.length ? _allNew : props.slice(0,10));
 
   // ── Server-side filter (sync หลัง client) ──────────────────────
   if(sb && props.length && props[0]?.id !== 'p1'){
@@ -4094,14 +4194,75 @@ async function applyFilters(){
           filtered = serverFiltered;
           allFiltered = filtered;
           if(rc) rc.textContent=_lang==='en'?`Found ${filtered.length} listings`:_lang==='cn'?`找到 ${filtered.length} 个房源`:_lang==='ja'?`${filtered.length} 件見つかりました`:`พบ ${filtered.length} รายการ`;
-          renderGrid('all-grid',filtered.slice(0,8));
+          _renderHomeAllGrid(filtered.slice(0,8));
           renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8));
-          renderGrid('new-grid',filtered.filter(p=>p.isNew));
+          // new-track ไม่อัปเดต — คงค่าเดิม (แสดงทั้งหมด)
         }
         // ถ้า server คืน [] → เก็บ client-side ที่แสดงอยู่แล้ว (ไม่ต้อง override)
       }
     } catch(e){ console.error('[applyFilters server]',e); }
   }
+}
+
+// ── helper: render all-grid พร้อม empty state แบบ professional ──
+function _renderHomeAllGrid(list) {
+  const el = $('all-grid');
+  if(!el) return;
+  if(list && list.length) {
+    el.innerHTML = list.map(propCard).join('');
+    setTimeout(initAllCardSwipes, 50);
+    return;
+  }
+  // Empty state — สวยงาม มีปุ่ม LINE และ Reset
+  const lang = (typeof _lang !== 'undefined' && _lang) ? _lang : 'th';
+  const lineHref = (typeof C !== 'undefined' && C && C.LINE)
+    ? 'https://line.me/R/ti/p/' + C.LINE
+    : 'https://line.me/ti/p/@matchdoor';
+  const t = {
+    th:{ ico:'🔍', h:'ไม่พบทรัพย์ที่ตรงกับเงื่อนไข',
+         sub:'ลองปรับเงื่อนไขการค้นหา หรือให้ทีมงานของเราช่วยหาทรัพย์ที่ใช่ให้คุณโดยตรง',
+         cta:'📩 ฝากความต้องการซื้อ-เช่า ให้ทีมงานหาให้',
+         reset:'🔄 ล้างการค้นหา' },
+    en:{ ico:'🔍', h:'No listings match your criteria',
+         sub:"Try adjusting your filters, or let our team find the perfect property for you.",
+         cta:"📩 Leave your requirements — we'll find it for you",
+         reset:'🔄 Reset search' },
+    cn:{ ico:'🔍', h:'没有找到符合条件的房源',
+         sub:'请尝试调整筛选条件，或让我们的团队为您寻找合适的房产。',
+         cta:'📩 留下需求，让我们为您寻找',
+         reset:'🔄 重置搜索' },
+    ja:{ ico:'🔍', h:'条件に合う物件が見つかりません',
+         sub:'検索条件を調整するか、担当チームに理想の物件を探してもらいましょう。',
+         cta:'📩 ご要望を送る — スタッフが探します',
+         reset:'🔄 検索をリセット' },
+  };
+  const m = t[lang] || t.th;
+  el.innerHTML = `<div style="grid-column:1/-1;display:flex;justify-content:center;padding:20px 12px 40px">
+    <div style="text-align:center;max-width:420px;width:100%">
+      <div style="font-size:56px;margin-bottom:16px;line-height:1">${m.ico}</div>
+      <p style="font-size:17px;font-weight:700;color:var(--tx);margin-bottom:10px">${m.h}</p>
+      <p style="font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:28px">${m.sub}</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a href="${lineHref}" target="_blank" rel="noopener"
+           style="display:flex;align-items:center;justify-content:center;gap:10px;
+                  background:#06C755;color:#fff;text-decoration:none;
+                  border-radius:12px;padding:14px 20px;font-size:14px;font-weight:700;
+                  box-shadow:0 4px 18px rgba(6,199,85,.38);transition:.2s"
+           onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter=''">
+          <i class="fab fa-line" style="font-size:20px"></i> ${m.cta}
+        </a>
+        <button onclick="resetSearch()"
+           style="display:flex;align-items:center;justify-content:center;gap:8px;
+                  background:var(--lt);color:var(--tx);
+                  border:1.5px solid var(--bd);border-radius:12px;
+                  padding:13px 20px;font-size:13px;font-weight:600;cursor:pointer;
+                  transition:.2s"
+           onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--bd)'">
+          ${m.reset}
+        </button>
+      </div>
+    </div>
+  </div>`;
 }
 function gotoNew(){ _closeHamburger(); closeAllDD(); _silentShowPage('home', true); setTimeout(()=>scrollToEl('new-sec'),50); }
 function gotoRec(){ _closeHamburger(); closeAllDD(); _silentShowPage('home', true); setTimeout(()=>scrollToEl('rec-sec'),50); }
@@ -4215,13 +4376,10 @@ function _silentShowPage(name, skipScrollTop) {
   if(name === 'listings'){
     const _allProps = (props && props.length) ? props :
                      (typeof MOCK!=='undefined' ? MOCK.props : []);
-    // Reset base data ทุกครั้งเพื่อไม่ให้ filter state เก่าค้าง
-    _listingsBaseData = [];
-    _listingsCurPage = 1;
-    _listingsRetryCount = 0;
-    if(_allProps.length){
+    if(_allProps.length && !_listingsBaseData.length){
       _listingsBaseData = [..._allProps];
       _listingsData = typeof sortListings==='function' ? sortListings([..._listingsBaseData],'default') : [..._listingsBaseData];
+      _listingsCurPage = 1;
     }
   }
   $$('.page').forEach(p => p.classList.remove('active'));
@@ -4252,7 +4410,12 @@ function _silentShowPage(name, skipScrollTop) {
 
 // Read URL on page load and navigate to correct section
 function _initRouteFromUrl() {
-  const path = location.pathname;
+  // GitHub Pages SPA redirect: __spaRedirectPath is the real intended path
+  // Use it as the authoritative source (replaceState may not have synced yet in all browsers)
+  const path = (window.__spaRedirectPath && window.__spaRedirectPath !== '/') 
+    ? window.__spaRedirectPath.replace(/\?.*$/,'').replace(/#.*$/,'')  // strip qs/hash for section lookup
+    : location.pathname;
+  delete window.__spaRedirectPath; // consume once
   const match = path.match(/^\/property\/([^\/\-]+)/);
   if (match) {
     const propId = match[1];
@@ -4303,23 +4466,22 @@ function _addShareButtonToModal() { /* disabled */ }
 // Original showPage — now also pushes history
 function showPage(name){ 
   _silentShowPage(name);
-  // Hide SEO toggle btn when leaving listings page
+  // seo-toggle-btn: show only on listings page (CSS handles mobile-only via media query)
+  // Using data-attr so CSS @media(max-width:900px) still controls actual visibility
   const seoBtn = document.getElementById('seo-toggle-btn');
-  if(seoBtn) seoBtn.style.display = name === 'listings' && window.innerWidth <= 900 ? 'flex' : 'none';
+  if(seoBtn) seoBtn.setAttribute('data-page', name === 'listings' ? 'listings' : 'other');
   const route = PAGE_ROUTES[name];
   const path = route ? route.path : '/';
   _pushRoute(path, { type: 'page', name });
   // ── เมื่อไปหน้า listings ให้ render cards ────────────────────────
   if(name === 'listings'){
-    // Reset base data ทุกครั้งเพื่อไม่ให้ filter state เก่าค้าง
+    // Pre-populate if props already ready
     const _ap = (typeof props !== 'undefined' && props && props.length) ? props :
                 (typeof MOCK !== 'undefined' && MOCK.props ? MOCK.props : []);
-    _listingsBaseData = [];
-    _listingsCurPage = 1;
-    _listingsRetryCount = 0;
-    if(_ap.length){
+    if(_ap.length && !_listingsBaseData.length){
       _listingsBaseData = [..._ap];
       _listingsData = sortListings([..._ap], 'default');
+      _listingsCurPage = 1;
     }
     // render ทันทีโดยไม่รอ requestAnimationFrame
     if(typeof renderListingsPage === 'function') renderListingsPage();
@@ -4384,7 +4546,7 @@ function propCard(p){
   let thumbInner='';
   if(photos.length>1){
     thumbInner=`<div class="card-slides" id="${uid}-slides">${
-      photos.map(u=>`<img src="${u}">`).join('')
+      photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}">`).join('')
     }</div><button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button><button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button><div class="card-sdots" id="${uid}-dots">${
       photos.map((_,i)=>`<div class="card-dot${i===0?' active':''}"></div>`).join('')
     }</div>`;
@@ -4485,7 +4647,6 @@ function propCard(p){
 }
 
 // ===== LISTINGS PAGE =====
-let _listingsRetryCount = 0; // guard สำหรับ retry loop ใน renderListingsPage
 let _listingsData = [];
 let _listingsCurPage = 1;
 const _listingsPerPage = 32;
@@ -4525,33 +4686,23 @@ function renderListingsPage() {
                    (typeof MOCK !== 'undefined' && MOCK.props && MOCK.props.length ? [...MOCK.props] : []);
 
   if(!_allProps.length) {
-    // Props ยังไม่พร้อม — แสดง skeleton แล้ว retry หลัง 300ms (จำกัดไว้ที่ 20 ครั้ง)
+    // Props ยังไม่พร้อม — แสดง skeleton แล้ว retry หลัง 300ms
     const grid = document.getElementById('listings-grid');
     if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
       grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
     }
-    if (_listingsRetryCount < 20) {
-      _listingsRetryCount++;
-      setTimeout(renderListingsPage, 300);
-    } else {
-      // หยุด retry — แสดงข้อความ error แทน skeleton ค้าง
-      if(grid) grid.innerHTML = '<div style="padding:40px;text-align:center;color:#888"><i class="fas fa-exclamation-circle" style="font-size:2rem;margin-bottom:12px;display:block"></i>ไม่สามารถโหลดข้อมูลได้ กรุณารีเฟรชหน้าใหม่</div>';
-    }
+    setTimeout(renderListingsPage, 300);
     return;
   }
-  _listingsRetryCount = 0; // reset เมื่อโหลดสำเร็จ
 
-  // ── ใช้ทรัพย์ทั้งหมดเป็น default ถ้าไม่มีการกรองค้างอยู่ ──────────
+  // ── ใช้ทรัพย์ทั้งหมดเป็น base เฉพาะตอนที่ base ยังว่างอยู่ครั้งแรก ─
   if(!_listingsBaseData.length) {
     _listingsBaseData = _allProps;
     _listingsData = sortListings([..._allProps], 'default');
     _listingsCurPage = 1;
   }
-
-  if(!_listingsData.length) {
-    _listingsData = sortListings([...(_listingsBaseData.length ? _listingsBaseData : _allProps)], 'default');
-    _listingsCurPage = 1;
-  }
+  // ❌ ลบ fallback ที่ reset _listingsData กลับเป็นทั้งหมดเมื่อว่าง
+  //    (เพราะทำให้ filter ไม่มีผล → แสดงทรัพย์ทั้งหมดแทน empty state)
 
   const total = _listingsData.length;
   const totalPages = Math.max(1, Math.ceil(total / _listingsPerPage));
@@ -4564,23 +4715,68 @@ function renderListingsPage() {
   // Update count
   const countEl = document.getElementById('listings-total-count');
   if(countEl) countEl.textContent = total.toLocaleString();
-  // Update surrounding count text (i18n)
   const lsCountWrap = document.querySelector('#page-listings .listings-count');
   if(lsCountWrap){
     const countTpl = (typeof ui==='function') ? ui('ls.count') : 'พบ {n} รายการ';
     lsCountWrap.innerHTML = countTpl.replace('{n}','<strong id="listings-total-count">'+total.toLocaleString()+'</strong>');
   }
 
-  // Render cards
+  // Render cards or empty state
   const grid = document.getElementById('listings-grid');
   if(grid) {
-    const emptyMsg = (typeof _lang!=='undefined' && _lang==='en') ? 'No listings found'
-      : (typeof _lang!=='undefined' && _lang==='cn') ? '没有找到符合条件的房源'
-      : (typeof _lang!=='undefined' && _lang==='ja') ? '条件に合う物件が見つかりませんでした'
-      : 'ไม่พบรายการที่ตรงกับเงื่อนไข';
-    grid.innerHTML = pageData.length
-      ? pageData.map(propCard).join('')
-      : `<div class="empty" style="grid-column:1/-1"><i class="fas fa-search"></i><p>${emptyMsg}</p></div>`;
+    if(pageData.length) {
+      grid.innerHTML = pageData.map(propCard).join('');
+    } else {
+      // ── Empty state: แสดง CTA ให้ฝากความต้องการแทนการ reset ─────
+      const lang = (typeof _lang!=='undefined' && _lang) ? _lang : 'th';
+      const lineHref = (typeof C!=='undefined' && C && C.LINE) ? 'https://line.me/R/ti/p/'+C.LINE : 'https://line.me/ti/p/matchdoor';
+      const t = {
+        th:{ ico:'🔍', h:'ไม่พบทรัพย์ที่ตรงกับเงื่อนไข',
+             sub:'ลองปรับเงื่อนไขการค้นหา หรือ<br>ให้ทีมงานของเราช่วยหาทรัพย์ที่ใช่ให้คุณโดยตรง',
+             cta:'📩 ฝากความต้องการซื้อ-เช่า ให้ทีมงานหาให้',
+             reset:'🔄 ล้างการค้นหา' },
+        en:{ ico:'🔍', h:'No listings match your criteria',
+             sub:"Try adjusting your filters, or let our team find<br>the perfect property for you.",
+             cta:'📩 Leave your requirements — we\'ll find it for you',
+             reset:'🔄 Reset search' },
+        cn:{ ico:'🔍', h:'没有找到符合条件的房源',
+             sub:'请尝试调整筛选条件，<br>或让我们的团队为您寻找合适的房产。',
+             cta:'📩 留下需求，让我们为您寻找',
+             reset:'🔄 重置搜索' },
+        ja:{ ico:'🔍', h:'条件に合う物件が見つかりません',
+             sub:'検索条件を調整するか、<br>担当チームに理想の物件を探してもらいましょう。',
+             cta:'📩 ご要望を送る — スタッフが探します',
+             reset:'🔄 検索をリセット' },
+      };
+      const m = t[lang] || t.th;
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;display:flex;justify-content:center;padding:20px 12px 40px">
+          <div style="text-align:center;max-width:420px;width:100%">
+            <div style="font-size:56px;margin-bottom:16px;line-height:1">${m.ico}</div>
+            <p style="font-size:17px;font-weight:700;color:var(--tx);margin-bottom:10px">${m.h}</p>
+            <p style="font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:28px">${m.sub}</p>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <a href="${lineHref}" target="_blank" rel="noopener"
+                 style="display:flex;align-items:center;justify-content:center;gap:10px;
+                        background:#06C755;color:#fff;text-decoration:none;
+                        border-radius:12px;padding:14px 20px;font-size:14px;font-weight:700;
+                        box-shadow:0 4px 18px rgba(6,199,85,.38);transition:.2s"
+                 onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter=''">
+                <i class="fab fa-line" style="font-size:20px"></i> ${m.cta}
+              </a>
+              <button onclick="listingsResetSearch()"
+                 style="display:flex;align-items:center;justify-content:center;gap:8px;
+                        background:var(--lt);color:var(--tx);
+                        border:1.5px solid var(--bd);border-radius:12px;
+                        padding:13px 20px;font-size:13px;font-weight:600;cursor:pointer;
+                        transition:.2s"
+                 onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--bd)'">
+                ${m.reset}
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }
     setTimeout(initAllCardSwipes, 50);
   }
 
@@ -4682,7 +4878,7 @@ function showListingsPage(title, data) {
 
   // UI resets
   const seoBtn = document.getElementById('seo-toggle-btn');
-  if(seoBtn) seoBtn.style.display = window.innerWidth <= 900 ? 'flex' : 'none';
+  if(seoBtn) seoBtn.setAttribute('data-page', 'listings');
   const titleEl = document.getElementById('listings-page-title');
   if(titleEl) titleEl.textContent = (typeof ui==='function') ? ui('ls.title') : (title || 'ประกาศทั้งหมด');
   const sortEl = document.getElementById('listings-sort');
@@ -4717,8 +4913,9 @@ function showListingsPage(title, data) {
 function _populateListingsProvince() {
   const sel = document.getElementById('ls-prov');
   if(!sel) return;
+  const allLabel = (typeof ui==='function') ? ui('sf.prov.all') : 'ทุกทำเล';
   const provs = [...new Set(_listingsBaseData.map(p=>p.province).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'th'));
-  sel.innerHTML = '<option value="">'+(typeof ui==='function'?ui('sf.prov.all'):'ทุกทำเล')+'</option>' + provs.map(p=>`<option value="${p}">${p}</option>`).join('');
+  sel.innerHTML = `<option value="">${allLabel}</option>` + provs.map(p=>`<option value="${p}">${p}</option>`).join('');
 }
 
 function _updateListingsTxTabs(tx) {
@@ -4735,6 +4932,13 @@ function _updateListingsTxTabs(tx) {
 
 function listingsFilterTx(tx) {
   _updateListingsTxTabs(tx);
+  // Sync the ls-tx select dropdown
+  const lsTxSel = document.getElementById('ls-tx');
+  if(lsTxSel) {
+    if(tx === 'BUY') lsTxSel.value = 'BUY';
+    else if(tx === 'RENT') lsTxSel.value = 'RENT';
+    else lsTxSel.value = '';
+  }
   let base = [..._listingsBaseData];
   if(tx === 'BUY') base = base.filter(p=>p.tx==='BUY');
   else if(tx === 'RENT') base = base.filter(p=>p.tx==='RENT');
@@ -4745,8 +4949,7 @@ function listingsFilterTx(tx) {
 
 function listingsFilterHot() {
   _updateListingsTxTabs('HOT');
-  let base = _listingsBaseData.filter(p=>p.isRec);
-  if(!base.length) base = [..._listingsBaseData];
+  const base = _listingsBaseData.filter(p=>p.isRec);
   _listingsData = sortListings(base, 'default');
   _listingsCurPage = 1;
   renderListingsPage();
@@ -4754,8 +4957,7 @@ function listingsFilterHot() {
 
 function listingsFilterNew() {
   _updateListingsTxTabs('NEW_ONLY');
-  let base = _listingsBaseData.filter(p=>p.isNew);
-  if(!base.length) base = [..._listingsBaseData];
+  const base = _listingsBaseData.filter(p=>p.isNew);
   _listingsData = sortListings(base, 'newest');
   _listingsCurPage = 1;
   renderListingsPage();
@@ -4774,31 +4976,53 @@ function listingsResetSearch() {
   const lsProv = document.getElementById('ls-prov'); if(lsProv) lsProv.value = '';
   const lsMin = document.getElementById('ls-min'); if(lsMin) lsMin.value = '0';
   const lsMax = document.getElementById('ls-max'); if(lsMax) lsMax.value = '999000000';
+  const lsTransit = document.getElementById('ls-transit'); if(lsTransit) lsTransit.value = '';
   _listingsTxFilter = 'ALL';
   _updateListingsTxTabs('ALL');
   _listingsData = sortListings([..._listingsBaseData], 'default');
   _listingsCurPage = 1;
+  // Reset sort dropdown
+  const sortEl = document.getElementById('listings-sort'); if(sortEl) sortEl.value = 'default';
   renderListingsPage();
 }
 
 function listingsInlineSearch() {
-  const kw = (document.getElementById('ls-kw')?.value||'').toLowerCase();
+  const kwRaw = (document.getElementById('ls-kw')?.value||'').trim();
+  const kw = kwRaw.toLowerCase();
+  const kwTrans = (typeof translateKeyword==='function' && kw) ? translateKeyword(kw).toLowerCase() : kw;
   const txVal = document.getElementById('ls-tx')?.value||'';
   const type = document.getElementById('ls-type')?.value||'';
   const prov = document.getElementById('ls-prov')?.value||'';
   const pMin = parseInt(document.getElementById('ls-min')?.value||'0')||0;
   const pMax = parseInt(document.getElementById('ls-max')?.value||'999000000')||999000000;
   const transit = document.getElementById('ls-transit')?.value||'';
+  // Sync tab buttons with tx dropdown selection
+  if(txVal === 'BUY') _updateListingsTxTabs('BUY');
+  else if(txVal === 'RENT') _updateListingsTxTabs('RENT');
+  else _updateListingsTxTabs('ALL');
   let base = [..._listingsBaseData];
-  if(kw) base = base.filter(p=>((p.title||'')+(p.location||'')+(p.province||'')+(p.desc||'')+(p.bts||'')+(p.mrt||'')+(p.transit||'')).toLowerCase().includes(kw));
+  if(kw) {
+    base = base.filter(p=>{
+      const hay = ((p.title||'')+(p.location||'')+(p.province||'')+(p.desc||'')+(p.bts||'')+(p.mrt||'')+(p.transit||'')).toLowerCase();
+      return hay.includes(kw) || (kwTrans !== kw && hay.includes(kwTrans));
+    });
+  }
   if(txVal) base = base.filter(p=>p.tx===txVal);
-  if(type) base = base.filter(p=>p.type===type);
+  if(type) {
+    // Normalize spelling variants so filter always matches data correctly
+    const _typeAliases = {
+      'ทาวน์เฮ้าส์': ['ทาวน์เฮ้าส์','ทาวน์เฮาส์'],
+      'ทาวน์เฮาส์':  ['ทาวน์เฮาส์','ทาวน์เฮ้าส์'],
+      'ทาวน์โฮม':    ['ทาวน์โฮม','ทาวน์โฮ','townhome','townhouse'],
+    };
+    const acceptedTypes = _typeAliases[type] || [type];
+    base = base.filter(p => acceptedTypes.includes(p.type));
+  }
   if(prov) base = base.filter(p=>p.province===prov||p.location===prov);
   if(transit) { const tk=transit.toLowerCase(); base = base.filter(p=>((p.bts||'')+(p.mrt||'')+(p.transit||'')+(p.location||'')+(p.desc||'')).toLowerCase().includes(tk)); }
   if(pMin>0) base = base.filter(p=>p.price>=pMin);
   if(pMax>0 && pMax<999000000) base = base.filter(p=>p.price<=pMax);
-  _listingsTxFilter = 'ALL';
-  _updateListingsTxTabs('ALL');
+  _listingsTxFilter = txVal || 'ALL';
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
   renderListingsPage();
@@ -4808,6 +5032,31 @@ function listingsQuickSearch(kw) {
   const inp = document.getElementById('ls-kw');
   if(inp) inp.value = kw;
   listingsInlineSearch();
+}
+
+// ฟิลเตอร์ประเภทอสังหาโดยตรงจาก SEO sidebar
+// (ไม่ผ่าน ls-type select เพราะ select มี option จำกัด)
+function listingsFilterByType(typeVal) {
+  // sync ls-type select ถ้ามี option ตรงกัน (เพื่อให้ UI แสดงถูก)
+  const sel = document.getElementById('ls-type');
+  if(sel) {
+    let matched = false;
+    for(const opt of sel.options) { if(opt.value === typeVal) { sel.value = typeVal; matched = true; break; } }
+    if(!matched) sel.value = ''; // option ไม่มี → ล้างค่าใน select
+  }
+  // filter _listingsBaseData โดยตรง รองรับ spelling variants
+  const typeAliases = {
+    'ทาวน์เฮ้าส์': ['ทาวน์เฮ้าส์','ทาวน์เฮาส์'],
+    'ทาวน์เฮาส์':  ['ทาวน์เฮาส์','ทาวน์เฮ้าส์'],
+    'ทาวน์โฮม':    ['ทาวน์โฮม','ทาวน์โฮ'],
+  };
+  const accepted = typeAliases[typeVal] || [typeVal];
+  const base = _listingsBaseData.filter(p => accepted.includes(p.type));
+  _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
+  _listingsTxFilter = 'ALL';
+  _updateListingsTxTabs('ALL');
+  _listingsCurPage = 1;
+  renderListingsPage();
 }
 
 function openListingsAdvFilter() {
@@ -4826,6 +5075,13 @@ function toggleListingsMapPanel() {
     btn.innerHTML = isShown
       ? '<i class="fas fa-map-marked-alt"></i> ค้นหาด้วยแผนที่'
       : '<i class="fas fa-times"></i> ปิดแผนที่';
+  }
+  // Lazy load iframe เฉพาะครั้งแรกที่เปิด
+  if(!isShown){
+    const iframe = document.getElementById('listings-google-map');
+    if(iframe && !iframe.src){
+      iframe.src = iframe.dataset.src || '';
+    }
   }
 }
 
@@ -4850,15 +5106,15 @@ function renderListingsSeoSidebar() {
   if(typeEl) {
     const types = [
       {v:'บ้านเดี่ยว',i:'fa-house-user',c:'#C8922A'},{v:'ทาวน์โฮม',i:'fa-building',c:'#1B3A6B'},
-      {v:'คอนโด',i:'fa-city',c:'#3D7A55'},{v:'ทาวน์เฮ้าส์',i:'fa-home',c:'#7B4FBF'},
+      {v:'คอนโด',i:'fa-city',c:'#3D7A55'},{v:'ทาวน์เฮาส์',i:'fa-home',c:'#7B4FBF'},
       {v:'อาคารพาณิชย์',i:'fa-store',c:'#C0392B'},{v:'ที่ดิน',i:'fa-map',c:'#E67E22'},
       {v:'วิลล่า',i:'fa-umbrella-beach',c:'#16A085'},{v:'บ้านแฝด',i:'fa-house-damage',c:'#8E44AD'}
     ];
     const typeLabels = {
       'บ้านเดี่ยว':{en:'House',cn:'独栋别墅',ja:'一戸建て'},
-      'ทาวน์โฮม':{en:'Townhouse',cn:'联排别墅',ja:'タウンハウス'},
+      'ทาวน์โฮม':{en:'Townhome',cn:'联排别墅',ja:'タウンハウス'},
       'คอนโด':{en:'Condo',cn:'公寓',ja:'コンドミニアム'},
-      'ทาวน์เฮ้าส์':{en:'Town House',cn:'市政住宅',ja:'タウンハウス'},
+      'ทาวน์เฮาส์':{en:'Townhouse',cn:'市政住宅',ja:'タウンハウス'},
       'อาคารพาณิชย์':{en:'Commercial',cn:'商业地产',ja:'商業施設'},
       'ที่ดิน':{en:'Land',cn:'土地',ja:'土地'},
       'วิลล่า':{en:'Villa',cn:'豪华别墅',ja:'ヴィラ'},
@@ -4866,7 +5122,9 @@ function renderListingsSeoSidebar() {
     };
     typeEl.innerHTML = types.map(t=>{
       const lbl = (typeof _lang!=='undefined' && typeLabels[t.v] && typeLabels[t.v][_lang]) ? typeLabels[t.v][_lang] : t.v;
-      return `<button onclick="(()=>{const sel=document.getElementById('ls-type');if(sel)sel.value='${t.v}';listingsInlineSearch();})()" style="${btnBase}" onmouseover="this.style.borderColor='var(--a)';this.style.color='var(--p)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'"><i class="fas ${t.i}" style="color:${t.c};font-size:11px;width:14px"></i> ${lbl}</button>`;
+      // ใช้ listingsFilterByType() โดยตรง ไม่ผ่าน ls-type select
+      // (ls-type select มี option จำกัด ทำให้ .value ไม่ถูก set และ filter ไม่ทำงาน)
+      return `<button onclick="listingsFilterByType('${t.v}')" style="${btnBase}" onmouseover="this.style.borderColor='var(--a)';this.style.color='var(--p)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx)'"><i class="fas ${t.i}" style="color:${t.c};font-size:11px;width:14px"></i> ${lbl}</button>`;
     }).join('');
   }
   // BTS/MRT transit — comprehensive list
@@ -4909,6 +5167,8 @@ function renderListingsSeoSidebar() {
 function renderGrid(id,list,loading_sk=false){
   // Alias new-grid → new-track (new-grid was replaced by horizontal gallery)
   if(id==='new-grid'){ const nt=$('new-track'); if(nt){ renderNewGallery(list); return; } }
+  // all-grid on home page uses professional empty state with LINE button
+  if(id==='all-grid' && !loading_sk){ _renderHomeAllGrid(list); return; }
   const el=$(id); if(!el)return;
   if(loading_sk){
     el.innerHTML=Array(4).fill(0).map(()=>`<div class="prop-card loading-sk">
@@ -5029,7 +5289,9 @@ function openModal(id){
   }
 
   // Deposit
-  const depositVal = p.deposit!=null ? (p.deposit > 0 ? `<b>${p.deposit.toLocaleString()}</b> บาท` : 'ไม่มี') : '—';
+  const _bahtLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB':(_lang==='cn'?'铢':_lang==='ja'?'バーツ':'บาท');
+  const _noneLabel = (typeof _lang!=='undefined'&&_lang==='en')?'None':(_lang==='cn'?'无':_lang==='ja'?'なし':'ไม่มี');
+  const depositVal = p.deposit!=null ? (p.deposit > 0 ? `<b>${p.deposit.toLocaleString()}</b> ${_bahtLabel}` : _noneLabel) : '—';
   extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fef3c7;color:#b45309"><i class="fas fa-shield-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.deposit2')}</div><div class="modal-extra-val">${depositVal}</div></div></div>`;
 
   // Rent duration (for RENT properties)
@@ -5040,26 +5302,32 @@ function openModal(id){
     if(leaseTerms.length){
       rentDurVal = leaseTerms.map(t=>`<span class="app-chip" style="--ac:#0369a1">${t}</span>`).join('');
     } else if(minLease){
-      rentDurVal = `ขั้นต่ำ <b>${minLease}</b> เดือน`;
+      const _minLabel = (typeof _lang!=='undefined'&&_lang==='en')?'Min':(_lang==='cn'?'最少':_lang==='ja'?'最低':'ขั้นต่ำ');
+      const _monthLabel = (typeof _lang!=='undefined'&&_lang==='en')?'months':(_lang==='cn'?'个月':_lang==='ja'?'ヶ月':'เดือน');
+      rentDurVal = `${_minLabel} <b>${minLease}</b> ${_monthLabel}`;
     } else if(p.rent_duration||p.rentDuration){
       rentDurVal = `<b>${p.rent_duration||p.rentDuration}</b>`;
     }
-    extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0f2fe;color:#0369a1"><i class="fas fa-calendar-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">ระยะเวลาเช่า</div><div class="modal-extra-val">${rentDurVal}</div></div></div>`;
+    const _rentDurLabel = (typeof _lang!=='undefined'&&_lang==='en')?'Lease Duration':(_lang==='cn'?'租期':_lang==='ja'?'賃貸期間':'ระยะเวลาเช่า');
+    extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0f2fe;color:#0369a1"><i class="fas fa-calendar-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${_rentDurLabel}</div><div class="modal-extra-val">${rentDurVal}</div></div></div>`;
   }
   // Advance payment
-  const advanceVal = p.advance_payment!=null ? (p.advance_payment > 0 ? `<b>${p.advance_payment.toLocaleString()}</b> บาท` : 'ไม่มี') : '—';
+  const advanceVal = p.advance_payment!=null ? (p.advance_payment > 0 ? `<b>${p.advance_payment.toLocaleString()}</b> ${_bahtLabel}` : _noneLabel) : '—';
   extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-calendar-check"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.advance')}</div><div class="modal-extra-val">${advanceVal}</div></div></div>`;
 
   // Electric rate
-  const elecVal = p.electric_rate!=null ? (p.electric_rate > 0 ? `<b>${p.electric_rate}</b> บาท/หน่วย` : 'ตามมิเตอร์') : '—';
+  const _perUnitLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB/unit':(_lang==='cn'?'铢/度':_lang==='ja'?'バーツ/単位':'บาท/หน่วย');
+  const _meterLabel = (typeof _lang!=='undefined'&&_lang==='en')?'By meter':(_lang==='cn'?'按表计':_lang==='ja'?'メーター通り':'ตามมิเตอร์');
+  const elecVal = p.electric_rate!=null ? (p.electric_rate > 0 ? `<b>${p.electric_rate}</b> ${_perUnitLabel}` : _meterLabel) : '—';
   extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fff7ed;color:#ea580c"><i class="fas fa-bolt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.elec')}</div><div class="modal-extra-val">${elecVal}</div></div></div>`;
 
   // Water rate
-  const waterVal = p.water_rate!=null ? (p.water_rate > 0 ? `<b>${p.water_rate}</b> บาท/หน่วย` : 'ตามมิเตอร์') : '—';
+  const waterVal = p.water_rate!=null ? (p.water_rate > 0 ? `<b>${p.water_rate}</b> ${_perUnitLabel}` : _meterLabel) : '—';
   extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#eff6ff;color:#2563eb"><i class="fas fa-tint"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.water')}</div><div class="modal-extra-val">${waterVal}</div></div></div>`;
 
   // Service fee / other charges
-  const svcVal = p.service_fee!=null ? (p.service_fee > 0 ? `<b>${p.service_fee.toLocaleString()}</b> บาท/เดือน` : 'ไม่มี') : '—';
+  const _perMonthLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB/mo':(_lang==='cn'?'铢/月':_lang==='ja'?'バーツ/月':'บาท/เดือน');
+  const svcVal = p.service_fee!=null ? (p.service_fee > 0 ? `<b>${p.service_fee.toLocaleString()}</b> ${_perMonthLabel}` : _noneLabel) : '—';
   extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-receipt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.svcfee')}</div><div class="modal-extra-val">${svcVal}</div></div></div>`;
 
   extraHtml+='</div>';
@@ -5214,12 +5482,12 @@ function blogCardFull(b){
   const uid = 'bc'+Math.random().toString(36).slice(2,7);
   let thumbHtml;
   if(photos.length > 1){
-    thumbHtml = `<div class="card-slides" id="${uid}-slides">${photos.map(u=>`<img src="${u}">`).join('')}</div>
+    thumbHtml = `<div class="card-slides" id="${uid}-slides">${photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}">`).join('')}</div>
     <button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button>
     <button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button>
     <div class="card-sdots" id="${uid}-dots">${photos.map((_,i)=>`<div class="card-dot${i===0?' active':''}"></div>`).join('')}</div>`;
   } else if(photos.length === 1){
-    thumbHtml = `<img src="${photos[0]}" style="width:100%;height:100%;object-fit:cover">`;
+    thumbHtml = `<img src="${photos[0]}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`;
   } else {
     thumbHtml = `<div style="font-size:44px;display:flex;align-items:center;justify-content:center;height:100%">${b.icon||'📄'}</div>`;
   }
@@ -5285,9 +5553,9 @@ function renderPortfolio(filter){ let list=port; if(filter!=='all'){if(filter===
   let imgHtml;
   if(photos.length>1){
     const uid='pt'+Math.random().toString(36).slice(2,7);
-    imgHtml=`<div class="card-slides" id="${uid}-slides">${photos.map(u=>`<img src="${u}">`).join('')}</div><button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button><button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button><div class="card-sdots" id="${uid}-dots">${photos.map((_,i)=>`<div class="card-dot${i===0?' active':''}"></div>`).join('')}</div>`;
+    imgHtml=`<div class="card-slides" id="${uid}-slides">${photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}">`).join('')}</div><button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button><button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button><div class="card-sdots" id="${uid}-dots">${photos.map((_,i)=>`<div class="card-dot${i===0?' active':''}"></div>`).join('')}</div>`;
   } else if(photos.length===1){
-    imgHtml=`<img src="${photos[0]}" style="width:100%;height:100%;object-fit:cover">`;
+    imgHtml=`<img src="${photos[0]}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`;
   } else {
     imgHtml=p.icon||typeIcon(p.type);
   }
@@ -5609,7 +5877,7 @@ function _showDDOverlay(){ let ov=document.getElementById('dd-mobile-overlay'); 
 function _hideDDOverlay(){ const ov=document.getElementById('dd-mobile-overlay'); if(ov) ov.style.display='none'; }
 document.addEventListener('click',e=>{ if(!e.target.closest('.nav-dd')&&!e.target.closest('.nav-right')&&!e.target.closest('#lang-dd')) closeAllDD(); });
 function toggleFloat(){ const i=$('float-items'); i.classList.toggle('hide'); $('float-main').innerHTML=i.classList.contains('hide')?'<i class="fas fa-comment-dots"></i>':'<i class="fas fa-times"></i>'; }
-window.addEventListener('scroll',()=>$('scroll-top').classList.toggle('show',scrollY>400));
+window.addEventListener('scroll',()=>$('scroll-top').classList.toggle('show',scrollY>400),{passive:true});
 window.addEventListener('resize', () => {
   // Re-apply carousel translate on resize
   if(typeof recCarouselIdx !== 'undefined') _applyRecTranslate(false);
@@ -5786,12 +6054,12 @@ function openQsSheet(panelId, btn){
   if(!sheet){
     const overlay = document.createElement('div');
     overlay.id = 'qs-mob-overlay';
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9996;display:none;backdrop-filter:blur(4px)';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:410;display:none';
     overlay.onclick = closeQsSheet;
     document.body.appendChild(overlay);
     sheet = document.createElement('div');
     sheet.id = 'qs-mob-sheet';
-    sheet.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:9997;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden';
+    sheet.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:420;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden';
     sheet.innerHTML='<div style="width:40px;height:4px;background:#ddd;border-radius:4px;margin:10px auto 0"></div><div id="qs-mob-sheet-hd" style="padding:12px 20px 8px;border-bottom:1px solid #e8e0d4;display:flex;align-items:center;justify-content:space-between;flex-shrink:0"><h3 style="font-size:15px;font-weight:700;font-family:Kanit,sans-serif"></h3><button onclick="closeQsSheet()" style="background:none;border:none;font-size:18px;color:#888;cursor:pointer">×</button></div><div id="qs-mob-sheet-body" style="flex:1;overflow-y:auto;padding:10px 12px"></div>';
     document.body.appendChild(sheet);
   }
@@ -5833,6 +6101,11 @@ window.addEventListener('scroll', closeQsDDs, {passive:true});
   function makeCanvas(canvasId, colors) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+    // บนมือถือ: ข้ามการสร้าง canvas animation ทั้งหมด — ประหยัด CPU
+    if(window.innerWidth <= 768 || navigator.maxTouchPoints > 0){
+      canvas.style.display = 'none';
+      return;
+    }
     const ctx = canvas.getContext('2d');
 
     function resize() {
@@ -6508,6 +6781,12 @@ async function renderNearbyProps(prop, container) {
     requestAnimationFrame(drawFrame);
   }
 
+  // บนมือถือ: ไม่รัน animation — ใช้ CSS background แทน ประหยัด CPU มาก
+  if(window.innerWidth <= 768 || navigator.maxTouchPoints > 0){
+    canvas.style.display = 'none';
+    return;
+  }
+
   // Start when image is ready (or immediately if already loaded)
   if(bgImg.complete) {
     drawFrame();
@@ -7011,12 +7290,25 @@ function hGalleryMoveByTrack(track, dir, wrapWidth) {
   };
 })();
 
-async function init(){ applyConfig(); renderPriceOpts(); renderCats(); setupUpload(); await loadData(); initCookieConsent(); triggerPageCounters('home'); setTimeout(initCounterObserver, 300); setTimeout(applyLang,50);
-  // Auto-show speech bubble after 2s, hide after 8s
-  setTimeout(()=>{
-    const b=$('float-bubble');
-    if(b){b.style.display='block'; setTimeout(()=>{if(b)b.style.display='none';},6000);}
-  },2000);
+async function init(){
+  applyConfig();
+  renderPriceOpts();
+  renderCats();
+  setupUpload();
+  await loadData();
+  initCookieConsent();
+  triggerPageCounters('home');
+  // ── defer non-critical init to idle time ──────────────────────
+  const idle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
+  idle(() => {
+    initCounterObserver();
+    applyLang();
+    // Float bubble — show after 2s, hide after 8s
+    setTimeout(()=>{
+      const b=$('float-bubble');
+      if(b){b.style.display='block'; setTimeout(()=>{if(b)b.style.display='none';},6000);}
+    },2000);
+  });
 }
 function toggleHamburger(){
   const nav=document.getElementById('nav-links');
@@ -7323,7 +7615,7 @@ const UI_TEXT = {
   },
   en: {
     'dd.prop.sec':'Property Types',
-    'dd.all':'All','dd.house':'House','dd.town':'Townhouse','dd.condo':'Condo',
+    'dd.all':'All','dd.house':'House','dd.town':'Townhome','dd.condo':'Condo',
     'dd.comm':'Commercial','dd.land':'Land','dd.villa':'Villa','dd.resort':'Resort','dd.hotel':'Hotel','dd.apt':'Apartment',
     'dd.price.sec':'Price Range',
     'dd.price.all':'All Prices','dd.price.unlim':'No Limit',
@@ -7372,7 +7664,7 @@ const UI_TEXT = {
     /* card badges */
     'card.new':'New','card.rent':'Rent','card.buy':'For Sale',
     /* property types */
-    'type.บ้านเดี่ยว':'House','type.ทาวน์โฮม':'Townhouse','type.คอนโด':'Condo',
+    'type.บ้านเดี่ยว':'House','type.ทาวน์โฮม':'Townhome','type.คอนโด':'Condo',
     'type.อาคารพาณิชย์':'Commercial','type.ที่ดิน':'Land','type.วิลล่า':'Villa',
     'type.รีสอร์ท':'Resort','type.โรงแรม':'Hotel','type.อพาร์ตเมนต์':'Apartment',
     /* page heroes */
@@ -7393,7 +7685,7 @@ const UI_TEXT = {
     'ft.col.main':'Main Menu','ft.col.home':'Home','ft.col.new':'New',
     'ft.col.portfolio':'Portfolio','ft.col.blog':'Blog','ft.col.agents':'Agents','ft.col.srv':'Other Services',
     'ft.col.type':'Property Types','ft.col.area':'Areas','ft.col.province':'Province',
-    'ft.type.house':'House','ft.type.town':'Townhouse','ft.type.condo':'Condo',
+    'ft.type.house':'House','ft.type.town':'Townhome','ft.type.condo':'Condo',
     'ft.type.comm':'Commercial','ft.type.land':'Land','ft.type.buy':'Buy / Sell','ft.type.rent':'Rent',
     /* modal extras */
     'modal.nearby':'Nearby Properties','modal.elec':'Electricity Rate','modal.water':'Water Rate',
@@ -7417,12 +7709,12 @@ const UI_TEXT = {
     'srv.i5':'End-to-end transfer & closing service',
     'fl.bkk.buy':'Buy/Sell in Bangkok','fl.nnb.buy':'Buy/Sell in Nonthaburi','fl.cbl.buy':'Buy/Sell in Chonburi',
     'fl.bkk.rent':'Rent in Bangkok','fl.loc':'Popular Areas','fl.uni':'Near Universities',
-    'fl.sell.house.bkk':'Houses for Sale Bangkok','fl.sell.town.bkk':'Townhouses for Sale Bangkok',
+    'fl.sell.house.bkk':'Houses for Sale Bangkok','fl.sell.town.bkk':'Townhomes for Sale Bangkok',
     'fl.sell.condo.bkk':'Condos for Sale Bangkok','fl.sell.land.bkk':'Land for Sale Bangkok',
-    'fl.sell.house.nnb':'Houses for Sale Nonthaburi','fl.sell.town.nnb':'Townhouses for Sale Nonthaburi',
+    'fl.sell.house.nnb':'Houses for Sale Nonthaburi','fl.sell.town.nnb':'Townhomes for Sale Nonthaburi',
     'fl.sell.condo.nnb':'Condos for Sale Nonthaburi','fl.sell.land.nnb':'Land for Sale Nonthaburi',
-    'fl.sell.house.cbl':'Houses for Sale Chonburi','fl.sell.town.cbl':'Townhouses for Sale Chonburi','fl.sell.condo.cbl':'Condos for Sale Chonburi',
-    'fl.rent.house.bkk':'Houses for Rent Bangkok','fl.rent.town.bkk':'Townhouses for Rent Bangkok','fl.rent.condo.bkk':'Condos for Rent Bangkok',
+    'fl.sell.house.cbl':'Houses for Sale Chonburi','fl.sell.town.cbl':'Townhomes for Sale Chonburi','fl.sell.condo.cbl':'Condos for Sale Chonburi',
+    'fl.rent.house.bkk':'Houses for Rent Bangkok','fl.rent.town.bkk':'Townhomes for Rent Bangkok','fl.rent.condo.bkk':'Condos for Rent Bangkok',
     'fl.loc.sukhumvit':'Condos near Sukhumvit','fl.loc.sathorn':'Properties in Sathorn',
     'fl.loc.rachada':'Homes near Rachada','fl.loc.ladprao':'Properties in Lat Phrao',
     'fl.loc.asok':'Condos near Asok','fl.loc.rama9':'Properties near Rama 9',
@@ -8461,6 +8753,11 @@ function applyLang(){
     // Keyword placeholder
     const lsKwInput = document.getElementById('ls-kw');
     if(lsKwInput) lsKwInput.placeholder = ui('sf.kw.ph');
+    // Update ls-prov first option text
+    const lsProvSel = document.getElementById('ls-prov');
+    if(lsProvSel && lsProvSel.options[0] && lsProvSel.options[0].value === '') {
+      lsProvSel.options[0].textContent = ui('sf.prov.all');
+    }
     // ls-tx options
     const lsTx = document.getElementById('ls-tx');
     if(lsTx){
@@ -8468,6 +8765,12 @@ function applyLang(){
       if(txOpts[0]) txOpts[0].textContent = ui('hero.all.label');
       if(txOpts[1]) txOpts[1].textContent = ui('hero.buy.label');
       if(txOpts[2]) txOpts[2].textContent = ui('hero.rent.label');
+    }
+    // ls-type options
+    const lsTypeEl = document.getElementById('ls-type');
+    if(lsTypeEl) {
+      const typeKeys = ['sf.type.all','dd.house','dd.town','dd.condo','dd.comm','dd.land','dd.villa'];
+      Array.from(lsTypeEl.options).forEach((opt,i)=>{ if(typeKeys[i]) opt.textContent=ui(typeKeys[i]); });
     }
     // Search & Reset buttons in filter bar
     const lsSearchBtn = document.querySelector('#page-listings button[onclick*="listingsInlineSearch"]');
@@ -8518,6 +8821,14 @@ function applyLang(){
       const _totalPages = Math.ceil(_listingsData.length / _listingsPerPage);
       if(typeof renderListingsPagination==='function') renderListingsPagination(_totalPages);
     }
+    // ── Re-render grid if showing empty state (so empty state message language updates) ──
+    const _lsGrid = document.getElementById('listings-grid');
+    if(_lsGrid && _lsGrid.querySelector('a[href*="line.me"]')) {
+      // Currently showing empty state — re-render to update language
+      if(typeof renderListingsPage==='function') renderListingsPage();
+    }
+    // ── Re-render SEO sidebar type buttons so language updates (House/Townhome/Condo etc.) ──
+    if(typeof renderListingsSeoSidebar==='function') renderListingsSeoSidebar();
   })();
 }
 function openApplyModal(type){
@@ -8670,10 +8981,23 @@ function submitApply(type){
   }
 })();
 
-// Defensive: ensure at least page-home is visible before init completes
+// Defensive: ensure at least one page is visible before init completes
+// Checks URL (and GitHub Pages SPA redirect path) so /listings won't flash page-home while JS initialises
 (function ensureHomeVisible(){
-  const ph = document.getElementById('page-home');
-  if(ph && !document.querySelector('.page.active')) ph.classList.add('active');
+  const sectionMap = {
+    '/agents': 'agents', '/portfolio': 'portfolio',
+    '/favorites': 'favorites', '/listings': 'listings',
+    '/buy': 'home', '/rent': 'home',
+  };
+  // Prefer __spaRedirectPath (set before replaceState) as authoritative source
+  const effectivePath = (window.__spaRedirectPath && window.__spaRedirectPath !== '/')
+    ? window.__spaRedirectPath.replace(/\?.*$/,'').replace(/#.*$/,'')
+    : location.pathname;
+  const targetName = sectionMap[effectivePath] || 'home';
+  if(!document.querySelector('.page.active')) {
+    const pg = document.getElementById('page-' + targetName);
+    if(pg) pg.classList.add('active');
+  }
 })();
 init();
 
@@ -10309,7 +10633,7 @@ function resetAdvFilter(){
           <div>
             <label id="ls-label-prov" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-map-marker-alt"></i> จังหวัด</label>
             <select id="ls-prov" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:13px;color:#fff;background:rgba(20,40,80,.85);font-family:inherit" onchange="listingsInlineSearch()">
-              <option value="">ทุกทำเล</option>
+              <option value="" id="ls-prov-all-opt">ทุกทำเล</option>
             </select>
           </div>
           <div>
@@ -10366,7 +10690,7 @@ function resetAdvFilter(){
         <button onclick="toggleListingsMapPanel()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer"><i class="fas fa-times"></i> ปิด</button>
       </div>
       <div style="border-radius:14px;overflow:hidden;border:2px solid rgba(200,146,42,.3);height:420px;position:relative">
-        <iframe id="listings-google-map" src="https://www.google.com/maps/d/u/0/embed?mid=1z39rekBQwIHBp5BneTY-wZmJGQcIEVk&ehbc=2E312F" width="100%" height="100%" style="border:0;display:block" allowfullscreen loading="lazy"></iframe>
+        <iframe id="listings-google-map" data-src="https://www.google.com/maps/d/u/0/embed?mid=1z39rekBQwIHBp5BneTY-wZmJGQcIEVk&ehbc=2E312F" width="100%" height="100%" style="border:0;display:block" allowfullscreen loading="lazy"></iframe>
         <div style="position:absolute;bottom:12px;right:12px;background:rgba(10,22,40,.85);color:#fff;font-size:11px;padding:6px 12px;border-radius:8px;backdrop-filter:blur(8px)">
           <i class="fas fa-info-circle" style="color:var(--a)"></i> กดที่ปักหมุดในแผนที่เพื่อกรองข้อมูล
         </div>
@@ -10395,7 +10719,7 @@ function resetAdvFilter(){
         </div>
       </div>
       <!-- Cards Grid — 4 columns -->
-      <div class="listings-grid-4" id="listings-grid"></div>
+      <div class="listings-grid-4" id="listings-grid"><div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)"><i class="fas fa-spinner fa-spin" style="font-size:32px;display:block;margin-bottom:14px;color:var(--a)"></i><div style="font-size:14px">กำลังโหลดประกาศ...</div></div></div>
       <!-- Pagination -->
       <div class="pagination" id="listings-pagination"></div>
     </div>
@@ -10433,10 +10757,6 @@ function resetAdvFilter(){
   </div>
   <div class="seo-drawer-body" id="seo-drawer-body"><!-- filled by JS --></div>
 </div>
-<!-- SEO Drawer toggle button (mobile only, listings page only) -->
-<button class="seo-toggle-btn" id="seo-toggle-btn" onclick="openSeoDrawer()" title="ข้อมูล SEO" style="display:none">
-  <i class="fas fa-chart-bar"></i>
-</button>
 
 <!-- ===== ADVANCED FILTER SHEET (Mobile) ===== -->
 <div class="adv-sheet-overlay" id="adv-sheet-overlay" onclick="closeAdvFilter()"></div>
@@ -10453,7 +10773,5 @@ function resetAdvFilter(){
   </div>
 </div>
 
-<!-- Leaflet JS โหลดหลัง DOM เสร็จ — ไม่ block rendering -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </body>
 </html>

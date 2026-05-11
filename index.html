@@ -266,10 +266,11 @@ a,button,input,select,textarea,
   .page,.wrap{overflow-x:hidden}
   /* listings grid: contain เพื่อลด repaint scope */
   #listings-grid .prop-card{contain:layout style paint}
-  /* listings grid: isolate layer เพื่อลด repaint scope */
+  /* listings grid: contain เพื่อลด repaint scope — ลบ will-change:contents ออก
+     เพราะ will-change:contents สร้าง composite layer ขนาดใหญ่ ทำให้ browser ค้างเมื่อ
+     body ถูก remove position:fixed (modal close) และต้อง recalculate layers ใหม่ทั้งหมด */
   #listings-grid{
     contain:layout style;
-    will-change:contents;
   }
   /* listings search bar: ลด GPU load บน mobile */
   #page-listings .listings-search-sf{
@@ -4748,9 +4749,13 @@ window.addEventListener('popstate', function(e) {
       document.body.style.width = '';
       document.body.style.left = '';
       document.body._savedScrollY = 0;
-      window.scrollTo(0, savedY);
-      if (typeof close360 === 'function') close360();
-      window._currentModalId = null;
+      window._listingsRenderAbort = true;
+      setTimeout(() => { window._listingsRenderAbort = false; }, 400);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedY);
+        window._currentModalId = null;
+        if (typeof close360 === 'function') close360();
+      });
       // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
       _silentShowPage(state.name, true);
     } else {
@@ -5203,6 +5208,9 @@ function renderListingsPage() {
 
       if(secondBatch.length){
         idle(()=>{
+          // ── FIX: ถ้า modal เพิ่งปิดไป ให้ยกเลิก batch render ─────────
+          // ป้องกัน idle callback จาก fire พร้อมกับ modal-close scroll restore
+          if(window._listingsRenderAbort) { window._listingsRenderAbort = false; return; }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
@@ -5212,6 +5220,7 @@ function renderListingsPage() {
 
           if(restBatch.length){
             idle(()=>{
+              if(window._listingsRenderAbort) { window._listingsRenderAbort = false; return; }
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
@@ -5437,6 +5446,30 @@ function _updateListingsTxTabs(tx) {
   });
 }
 
+// ── FIX: scroll ไปที่ส่วนแสดงผลลัพธ์การ์ดอสังหา ──────────────────────────
+// เรียกหลัง filter/search ทุกครั้ง — บน mobile scroll ไปที่ listings-results-top
+// บน desktop ไม่ต้อง scroll เพราะ grid มองเห็นอยู่แล้ว
+function _scrollToListingsResults() {
+  // ทำงานทุก device — รอ render เสร็จ 1 frame แล้วค่อย scroll
+  requestAnimationFrame(() => {
+    const target = document.getElementById('listings-results-top');
+    if (target) {
+      // offset 72px = ความสูง navbar (sticky) เพื่อให้ไม่ถูก navbar บัง
+      const navH = 72;
+      const rect = target.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const targetY = rect.top + scrollY - navH;
+      // บน mobile เท่านั้น — desktop ไม่ต้อง scroll เพราะ UX ต่างกัน
+      if (window.innerWidth <= 900 && rect.top > navH + 40) {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+      } else if (window.innerWidth <= 900 && rect.top < 0) {
+        // กรณี scroll ขึ้นมาแล้ว grid อยู่เหนือ viewport
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+      }
+    }
+  });
+}
+
 function listingsFilterTx(tx) {
   _updateListingsTxTabs(tx);
   // Sync the ls-tx select dropdown
@@ -5452,6 +5485,8 @@ function listingsFilterTx(tx) {
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
   renderListingsPage();
+  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter บนมือถือ ──
+  _scrollToListingsResults();
 }
 
 function listingsFilterHot() {
@@ -5460,6 +5495,7 @@ function listingsFilterHot() {
   _listingsData = sortListings(base, 'default');
   _listingsCurPage = 1;
   renderListingsPage();
+  _scrollToListingsResults();
 }
 
 function listingsFilterNew() {
@@ -5468,6 +5504,7 @@ function listingsFilterNew() {
   _listingsData = sortListings(base, 'newest');
   _listingsCurPage = 1;
   renderListingsPage();
+  _scrollToListingsResults();
 }
 
 function listingsTransitFilter(val) {
@@ -5532,6 +5569,8 @@ function listingsInlineSearch() {
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
   renderListingsPage();
+  // ── FIX: scroll ไปที่ผลลัพธ์บนมือถือ (ไม่ scroll บน desktop เพราะ grid ชัดเจนอยู่แล้ว) ──
+  _scrollToListingsResults();
   // SEO sidebar: render ครั้งแรกเท่านั้น (ไม่ต้อง re-render ทุก search)
   if(!window._lsSeoSidebarRendered && typeof renderListingsSeoSidebar==='function'){
     window._lsSeoSidebarRendered = true;
@@ -5544,6 +5583,7 @@ function listingsQuickSearch(kw) {
   const inp = document.getElementById('ls-kw');
   if(inp) inp.value = kw;
   listingsInlineSearch();
+  // _scrollToListingsResults เรียกแล้วใน listingsInlineSearch
 }
 // debounced version สำหรับ keyboard input (oninput) — ลด render ซ้ำ
 const listingsInlineSearchDebounced = (function(){
@@ -5574,6 +5614,8 @@ function listingsFilterByType(typeVal) {
   _updateListingsTxTabs('ALL');
   _listingsCurPage = 1;
   renderListingsPage();
+  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter ──
+  _scrollToListingsResults();
 }
 
 function openListingsAdvFilter() {
@@ -5920,10 +5962,16 @@ function closeModal(e){
   if(!e||e.target.id==='prop-modal') { 
     $('prop-modal').classList.remove('open'); 
     // ══ iOS scroll-lock restore: คืน scroll position โดยไม่ jump ══
-    // ── FIX: แก้อาการค้างบนมือถือ ──
+    // ── FIX ROOT CAUSE: ยกเลิก pending render tasks ก่อนปิด modal ──
+    // เพื่อป้องกัน renderListingsPage batch (requestIdleCallback) ที่ค้างอยู่
+    // จาก fire พร้อมกับ modal-close flow ทำให้ main thread อัดแน่นบน mobile
+    if(window._listingsRenderAbort) window._listingsRenderAbort = true;
+    window._listingsRenderAbort = true;
+    // reset หลัง 400ms — ให้ close animation + scroll เสร็จก่อนค่อย render ต่อ
+    setTimeout(() => { window._listingsRenderAbort = false; }, 400);
     // 1. อ่าน savedY ก่อนลบ class (ไม่งั้นค่าหาย)
     const savedY = document.body._savedScrollY || 0;
-    // 2. ลบ styles ทั้งหมดที่ทำให้เกิด position:fixed ก่อน
+    // 2. ลบ styles ทั้งหมดที่ทำให้เกิด position:fixed ก่อน — synchronous
     document.body.classList.remove('modal-open');
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5931,16 +5979,26 @@ function closeModal(e){
     document.body.style.width = '';
     document.body.style.left = '';
     document.body._savedScrollY = 0;
-    // 3. รอ 1 frame ให้ browser คำนวณ layout ใหม่ก่อน แล้วค่อย scroll
-    // วิธีนี้ป้องกัน forced reflow ที่ทำให้มือถือแสดงผลค้าง
-    requestAnimationFrame(() => {
-      window.scrollTo(0, savedY);
-      // 4. อีก 1 frame เพื่อให้ scroll settle ก่อน ค่อย trigger render ใดๆ
+    // 3. scrollTo แบบ instant (ไม่ smooth) บน mobile เพื่อลด frame budget
+    // smooth scroll บน iOS บน background paint ทำให้หน้าค้างนานขึ้น
+    const isMob = window.innerWidth <= 900;
+    if(isMob) {
+      // instant scroll ก่อน ใช้ rAF เดียวเพื่อให้ browser repaint ก่อน
       requestAnimationFrame(() => {
-        if(typeof close360==='function') close360();
+        window.scrollTo(0, savedY);
         window._currentModalId = null;
+        if(typeof close360==='function') close360();
       });
-    });
+    } else {
+      // desktop: smooth เพื่อ UX ที่ดีกว่า
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedY);
+        requestAnimationFrame(() => {
+          if(typeof close360==='function') close360();
+          window._currentModalId = null;
+        });
+      });
+    }
   } 
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -11283,7 +11341,7 @@ function resetAdvFilter(){
   <div style="max-width:1320px;margin:0 auto;padding:20px;display:grid;gap:24px" class="listings-main-wrap">
     <div>
       <!-- Toolbar -->
-      <div class="listings-toolbar" style="margin-bottom:16px">
+      <div class="listings-toolbar" id="listings-results-top" style="margin-bottom:16px">
         <div class="listings-count">พบ <strong id="listings-total-count">0</strong> รายการ</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <label style="font-size:12px;font-weight:600;color:var(--tx2)">เรียงโดย:</label>

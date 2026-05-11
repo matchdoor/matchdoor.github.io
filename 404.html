@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Matchdoor — กำลังโหลด...</title>
+  <script>
+    // GitHub Pages SPA Redirect — วิธีมาตรฐาน
+    // แปลง path เป็น query string เพื่อส่งไปให้ index.html
+    // เช่น /listings?q=foo → /?/listings?q=foo
+    // index.html จะแปลงกลับด้วย history.replaceState
+    (function() {
+      var l = window.location;
+      var origin = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '');
+      var path = l.pathname.slice(1); // ตัด / นำออก
+      var search = l.search ? '~and~' + l.search.slice(1) : '';
+      var hash = l.hash ? l.hash : '';
+      var redirectUrl = origin + '/?/' + path + search + hash;
+      l.replace(redirectUrl);
+    })();
+  </script>
+</head>
+<body>
+  <p style="font-family:sans-serif;text-align:center;margin-top:80px;color:#666">กำลังโหลดหน้าที่ร้องขอ...</p>
+</body>
+</html>

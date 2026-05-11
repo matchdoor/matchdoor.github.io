@@ -5,11 +5,20 @@
 <base href="/">
 <script>
   // GitHub Pages SPA — รับค่า redirect จาก 404.html
+  // เมื่อ user refresh ที่ /listings หรือ path อื่นๆ
+  // 404.html จะเก็บ full path ใน sessionStorage แล้ว redirect มาที่ /
+  // ที่นี่เราอ่านค่ากลับมาและ replaceState เพื่อให้ URL ถูกต้อง
   (function(){
     var redirect = sessionStorage.getItem('spa_redirect');
     if(redirect && redirect !== '/'){
       sessionStorage.removeItem('spa_redirect');
+      // เก็บ full path (รวม query string) ไว้ให้ router ใช้
       window.__spaRedirectPath = redirect;
+      // ดึง query string ออกมาแยก เพื่อให้ listings filter ทำงานได้
+      var qIndex = redirect.indexOf('?');
+      if(qIndex !== -1){
+        window.__spaRedirectSearch = redirect.slice(qIndex);
+      }
       history.replaceState(null, '', redirect);
     }
   })();
@@ -4791,7 +4800,13 @@ function _initRouteFromUrl() {
     if (path === '/buy') { _syncTxTabs && _syncTxTabs('BUY'); }
     if (path === '/rent') { _syncTxTabs && _syncTxTabs('RENT'); }
     // listings page: mark for init after data loads
-    if (path === '/listings') { window._pendingListingsInit = true; }
+    if (path === '/listings') {
+      window._pendingListingsInit = true;
+      // ถ้ามี query string (เช่น /listings?q=สุขุมวิท) ให้เก็บไว้ apply หลังข้อมูลโหลด
+      var qs = window.__spaRedirectSearch || location.search;
+      if (qs) { window._pendingListingsSearch = qs; }
+      delete window.__spaRedirectSearch;
+    }
   } else {
     _silentShowPage('home');
   }
@@ -5046,6 +5061,36 @@ function renderListingsPage() {
   if(!_listingsBaseData.length) {
     _listingsBaseData = _allProps;
     _listingsData = sortListings([..._allProps], 'default');
+    _listingsCurPage = 1;
+  }
+
+  // ── apply query string filter จาก URL เมื่อ refresh หน้า /listings ──
+  if(window._pendingListingsSearch) {
+    var qs = window._pendingListingsSearch;
+    delete window._pendingListingsSearch;
+    var params = new URLSearchParams(qs);
+    var qVal = params.get('q');
+    var typeVal = params.get('type');
+    var txVal = params.get('tx');
+    if(qVal) {
+      // apply keyword search
+      var qInput = document.getElementById('ls-q');
+      if(qInput) qInput.value = qVal;
+      _listingsData = _listingsBaseData.filter(function(p){
+        return JSON.stringify(p).toLowerCase().indexOf(qVal.toLowerCase()) !== -1;
+      });
+    }
+    if(typeVal) {
+      _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){
+        return p.type === typeVal;
+      });
+    }
+    if(txVal) {
+      _listingsTxFilter = txVal;
+      _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){
+        return txVal === 'ALL' || p.tx === txVal;
+      });
+    }
     _listingsCurPage = 1;
   }
 

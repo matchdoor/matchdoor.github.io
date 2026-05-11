@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Matchdoor — กำลังโหลด...</title>
+  <script>
+    // GitHub Pages SPA — redirect กลับ index.html พร้อมเก็บ path เดิมใน sessionStorage
+    // เมื่อ user refresh ที่ /listings หรือ path อื่นๆ GitHub Pages จะส่งมาที่ 404.html
+    // แล้วเราจะ redirect กลับ / พร้อมส่ง path เดิมไปด้วย
+    (function() {
+      var fullPath = window.location.pathname + window.location.search + window.location.hash;
+      // เก็บ full path (รวม query string และ hash) เพื่อให้ index.html กู้คืนได้ครบ
+      sessionStorage.setItem('spa_redirect', fullPath);
+      // Redirect กลับไปที่ root
+      window.location.replace('/');
+    })();
+  </script>
+</head>
+<body>
+  <p style="font-family:sans-serif;text-align:center;margin-top:80px;color:#666">กำลังโหลดหน้าที่ร้องขอ...</p>
+</body>
+</html>

@@ -1,15 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="utf-8">
-  <title>Matchdoor</title>
-  <script>
-    // GitHub Pages SPA redirect trick
-    // เก็บ path ไว้ใน sessionStorage แล้ว redirect ไป root
-    var path = window.location.pathname + window.location.search;
+<meta charset="UTF-8">
+<title>Matchdoor</title>
+<script>
+// GitHub Pages SPA Redirect — ไม่แสดงหน้า 404 ให้ user เห็น
+// บันทึก path จริงไว้ใน sessionStorage แล้ว redirect กลับ index.html ทันที
+(function(){
+  var path = window.location.pathname + window.location.search + window.location.hash;
+  // ถ้าเป็น path ที่รองรับ → redirect ไป index.html โดยไม่แสดงอะไร
+  var knownPaths = ['/listings','/agents','/portfolio','/favorites','/careers','/buy','/rent'];
+  var base = path.split('?')[0].split('#')[0];
+  var isKnown = knownPaths.some(function(p){ return base === p || base.startsWith('/property/'); });
+  if(isKnown || base === '/'){
     sessionStorage.setItem('spa_redirect', path);
+    // redirect ไป root ทันที — ไม่แสดงหน้า 404 เลย
     window.location.replace('/');
-  </script>
+  } else {
+    // path ไม่รู้จักจริงๆ → แสดงหน้า 404 ปกติ แต่มีลิงก์กลับบ้าน
+    document.write('<meta name="robots" content="noindex"><style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F5F0E8;flex-direction:column;gap:16px}</style><h2 style="color:#1B3A6B">ไม่พบหน้าที่ต้องการ</h2><a href="/" style="background:#C8922A;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700">กลับหน้าหลัก</a>');
+  }
+})();
+</script>
 </head>
 <body></body>
 </html>

@@ -231,14 +231,10 @@ a,button,input,select,textarea,
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* ══ FIX: body.modal-open — lock scroll position แบบ iOS-safe ══
-     ใช้ position:fixed + top เพื่อป้องกัน scroll jump — JS save/restore scrollY */
+  /* ══ FIX: body.modal-open — ใช้ overflow:hidden แทน position:fixed ══
+     position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
   body.modal-open{
-    position:fixed!important;
-    left:0;right:0;
-    overflow-y:scroll!important;
-    /* FIX: ป้องกัน width collapse เมื่อ position:fixed ทำให้กว้างหดลง */
-    width:100%!important;
+    overflow:hidden!important;
   }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
@@ -249,15 +245,12 @@ a,button,input,select,textarea,
     -webkit-overflow-scrolling:touch!important;
     overscroll-behavior:contain!important
   }
-  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile */
-  *{transition-duration:.12s!important}
+  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
+  *:not(.ov){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* GPU optimization — will-change เฉพาะ element ที่เคลื่อนไหวจริง */
-  .slides,.card-slides{will-change:transform}
-  /* ลบ will-change จาก .modal บน mobile — สร้าง permanent GPU layer ขนาดใหญ่
-     แม้ modal ปิดอยู่ก็ยังกิน memory → ทำให้หน้าค้างเมื่อ scroll หรือ render cards */
-  .modal{will-change:auto}
-  /* ลด font-size เล็กน้อยบน mobile เพื่อ readability */
+  /* modal overlay: ปิดทันทีบน mobile ไม่มี fade */
+  .ov{transition:none!important}
+  #prop-modal .modal{transition:none!important}
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
   .prop-thumb img,.blog-thumb img{
@@ -266,9 +259,6 @@ a,button,input,select,textarea,
   }
   /* ป้องกัน horizontal scroll leaking */
   .page,.wrap{overflow-x:hidden}
-  /* modal: ปิดทันทีบน mobile ไม่มี animation delay */
-  #prop-modal{transition:none!important}
-  #prop-modal .modal{transition:none!important}
   /* listings grid: contain เพื่อลด repaint scope */
   #listings-grid .prop-card{contain:layout style paint}
   /* listings grid: contain เพื่อลด repaint scope — ลบ will-change:contents ออก
@@ -605,11 +595,18 @@ nav{
   .dep-panel{max-height:80vh;overflow-y:auto}
 }
 
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;align-items:center;justify-content:center;padding:16px;contain:layout;-webkit-tap-highlight-color:transparent}
-.ov.open{display:flex}
+.ov{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  -webkit-tap-highlight-color:transparent;
+  /* ใช้ visibility+opacity แทน display:none/flex เพื่อหลีกเลี่ยง layout recalc บน iOS */
+  visibility:hidden;opacity:0;pointer-events:none;
+  transition:opacity .15s,visibility .15s;
+}
+.ov.open{visibility:visible;opacity:1;pointer-events:auto}
 #prop-modal.open{z-index:3300}
 #ag-modal.open{z-index:3400}
-.modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;contain:content;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 /* modal wide ยังคงไว้สำหรับ all-modal และอื่นๆ ที่ต้องการกว้าง */
 .modal.wide{max-width:1000px;width:95vw;max-height:92vh}
 .mhd{padding:16px 20px;border-bottom:1.5px solid var(--lt);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10}
@@ -4748,25 +4745,17 @@ window.addEventListener('popstate', function(e) {
       propModal.classList.remove('open');
       const savedY = document.body._savedScrollY || 0;
       document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
-      document.body.style.overflow = '';
       document.body.style.width = '';
       document.body.style.left = '';
       document.body._savedScrollY = 0;
       window._listingsRenderAbort = true;
       setTimeout(() => { window._listingsRenderAbort = false; }, 300);
-      if (window.innerWidth <= 900) {
-        window.scrollTo(0, savedY);
-        window._currentModalId = null;
-        if (typeof close360 === 'function') close360();
-      } else {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, savedY);
-          window._currentModalId = null;
-          if (typeof close360 === 'function') close360();
-        });
-      }
+      window.scrollTo(0, savedY);
+      window._currentModalId = null;
+      if (typeof close360 === 'function') close360();
       // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
       _silentShowPage(state.name, true);
     } else {
@@ -4778,9 +4767,7 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // คืน body scroll เสมอ — ป้องกันค้างหลังปิด modal แล้วเปลี่ยนหน้า
-  // รองรับทั้ง iOS-safe lock (position:fixed) และ overflow:hidden
-  const savedY = document.body._savedScrollY || 0;
+  // คืน body scroll เสมอ — ไม่ว่าจะ lock ด้วย overflow:hidden หรือ position:fixed
   document.body.style.overflow = '';
   document.body.style.position = '';
   document.body.style.top = '';
@@ -5792,209 +5779,202 @@ function openModal(id){
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
+
+  // ── แสดง modal ทันทีก่อน เพื่อให้ user เห็น response ไว ──
+  // clear content เก่าก่อน
   $('m-title').textContent=p.title;
-  // ---- Price + Loan Calculator ----
-  const priceEl = $('m-price');
-  priceEl.innerHTML = `${fmtPrice(p.price,p.tx)}
-    ${p.tx==='BUY'?`<button onclick="toggleLoanCalc(${p.price})" style="vertical-align:middle;margin-left:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:none;cursor:pointer;transition:.2s" title="คำนวณสินเชื่อ"><i class="fas fa-calculator"></i> คำนวณสินเชื่อ</button>`:''}`;
-  // Loan calc container (injected after price if not exists)
-  let lc = document.getElementById('modal-loan-calc');
-  if(!lc){
-    lc = document.createElement('div');
-    lc.id = 'modal-loan-calc';
-    lc.style.cssText = 'max-height:0;overflow:hidden;transition:max-height .4s ease;margin-bottom:0';
-    priceEl.parentNode.insertBefore(lc, priceEl.nextSibling);
-  } else { lc.style.maxHeight='0'; lc.innerHTML=''; }
-  $('m-loc').innerHTML='<i class="fas fa-map-marker-alt"></i> '+p.location+(p.province?` · ${p.province}`:'');
-  $('m-desc').textContent=p.desc||p.description||'ติดต่อสอบถามรายละเอียดเพิ่มเติมกับทีมงาน Matchdoor';
-  $('m-tags').innerHTML=`<span class="ptag pt-type">${ui('type.'+p.type)||p.type}</span><span class="ptag ${p.tx==='RENT'?'pt-rent':'pt-buy'}">${p.tx==='RENT'?`<i class="fas fa-key"></i> ${ui('card.rent')}`:`<i class="fas fa-tag"></i> ${ui('card.buy')}`}</span>${p.province?`<span class="ptag">${p.province}</span>`:''}${p.isNew?`<span class="ptag" style="background:#e8fdf5;border-color:#a7f3d0;color:#065f46"><i class="fas fa-star"></i> ${ui('card.new')}</span>`:''}${p.isRec?'<span class="ptag pb-hot" style="color:#fff;border-color:transparent">🔥 Hot</span>':''}`;
+  $('m-price').innerHTML='';
+  $('m-loc').innerHTML='';
+  $('m-tags').innerHTML='';
+  $('m-specs').innerHTML='';
+  $('m-extras').innerHTML='';
+  $('m-desc').textContent='';
+  $('m-chips').innerHTML='';
+  $('m-nearby').innerHTML='';
+  const mapC=$('m-map'); if(mapC) mapC.innerHTML='';
+  const slEl=$('slides'); if(slEl) slEl.innerHTML='';
+  const dotsEl=$('sdots'); if(dotsEl) dotsEl.innerHTML='';
 
-    const specs=[];
-  if(p.area>0)      specs.push({val:p.area,       lab:ui('spec.area'),      icon:'fa-ruler-combined',col:'#7c6fcd'});
-  // Always show land_area (show — if 0/null)
-  specs.push({val:p.land_area>0?p.land_area:'—',  lab:ui('spec.land'), icon:'fa-map', col:'#059669'});
-  if(p.bed>0)       specs.push({val:p.bed,         lab:ui('spec.bed'),    icon:'fa-bed',           col:'#0369a1'});
-  if(p.bath>0)      specs.push({val:p.bath,        lab:ui('spec.bath'),    icon:'fa-shower',        col:'#0891b2'});
-  if(p.parking>0)   specs.push({val:p.parking,     lab:ui('spec.park'),   icon:'fa-car',           col:'#059669'});
-  // Always show floors
-  {const fl=p.floor_no>0&&p.floors>0?`${p.floor_no}/${p.floors}`:(p.floors>0?String(p.floors):'—'); specs.push({val:fl,lab:ui('spec.floor'),icon:'fa-building',col:'#4f46e5'});}
-  const furnLabelS={'full':ui('spec.furn.full'),'partial':ui('spec.furn.partial'),'none':ui('spec.furn.none')};
-  if(p.furniture)   specs.push({val:furnLabelS[p.furniture]||p.furniture, lab:ui('spec.furn'), icon:'fa-couch', col:p.furniture==='full'?'#00895e':p.furniture==='partial'?'#c97b00':'#999'});
-  specs.push({val:p.pets_allowed?'✔':'✖',lab:ui('spec.pets'),icon:'fa-paw',col:p.pets_allowed?'#be185d':'#aaa'});
-  if(!specs.length) specs.push({val:(p.price/1e6).toFixed(1),lab:'ล้านบาท',icon:'fa-tag',col:'var(--a)'});
-  $('m-specs').className='specs-grid-8';
-  $('m-specs').innerHTML=specs.map(s=>`<div class="spec-8"><div class="spec-8-val" style="color:${s.col}"><i class="fas ${s.icon}" style="font-size:11px;margin-right:3px"></i>${s.val}</div><div class="spec-8-lab">${s.lab}</div></div>`).join('');
-
-    const appIconMap={'แอร์':'fa-snowflake','ตู้เย็น':'fa-temperature-low','เครื่องซักผ้า':'fa-tshirt','ไมโครเวฟ':'fa-microwave','เตาไฟฟ้า':'fa-fire-burner','โทรทัศน์':'fa-tv','เครื่องทำน้ำอุ่น':'fa-hot-tub','ระบบรักษาความปลอดภัย':'fa-shield-alt'};
-  const appColorMap={'แอร์':'#0ea5e9','ตู้เย็น':'#06b6d4','เครื่องซักผ้า':'#8b5cf6','ไมโครเวฟ':'#f59e0b','เตาไฟฟ้า':'#ef4444','โทรทัศน์':'#3b82f6','เครื่องทำน้ำอุ่น':'#f97316','ระบบรักษาความปลอดภัย':'#10b981'};
-  const appList=Array.isArray(p.appliances)?p.appliances.filter(Boolean):[];
-  const furnitureLabel={'full':'เฟอร์นิเจอร์ครบชุด','partial':'เฟอร์นิเจอร์บางส่วน','none':'ไม่มีเฟอร์นิเจอร์'};
-  const furnitureColor={'full':'#00895e','partial':'#c97b00','none':'#999'};
-  const furnitureBg={'full':'#e8fdf5','partial':'#fff8e8','none':'#f5f5f5'};
-
-  let extraHtml='<div class="modal-extras">';
-
-  // Appliances — FIRST
-  if(appList.length){
-    const appChips=appList.map(app=>{
-      const ic=appIconMap[app]||'fa-plug';
-      const col=appColorMap[app]||'#555';
-      return `<span class="app-chip" style="--ac:${col}"><i class="fas ${ic}"></i> ${app}</span>`;
-    }).join('');
-    extraHtml+=`<div class="modal-extra-row modal-extra-apps"><div class="modal-extra-icon" style="background:#f0f7ff;color:#0369a1"><i class="fas fa-plug"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.appliances')} (${appList.length})</div><div class="modal-extra-val">${appChips}</div></div></div>`;
-  }
-
-  // Nearby Places
-  const nearbyPlaces = Array.isArray(p.nearby_places) ? p.nearby_places.filter(Boolean) : (p.nearby_places ? [p.nearby_places] : []);
-  if(nearbyPlaces.length){
-    const placeChips = nearbyPlaces.map(pl=>`<span class="app-chip" style="--ac:#0369a1"><i class="fas fa-map-marker-alt"></i> ${pl}</span>`).join('');
-    extraHtml+=`<div class="modal-extra-row modal-extra-apps"><div class="modal-extra-icon" style="background:#e0eaf7;color:#0369a1"><i class="fas fa-map-marker-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.nearby.places')}</div><div class="modal-extra-val">${placeChips}</div></div></div>`;
-  } else {
-    extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0eaf7;color:#0369a1"><i class="fas fa-map-marker-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.nearby.places')}</div><div class="modal-extra-val" style="color:#aaa">—</div></div></div>`;
-  }
-
-  // Deposit
-  const _bahtLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB':(_lang==='cn'?'铢':_lang==='ja'?'バーツ':'บาท');
-  const _noneLabel = (typeof _lang!=='undefined'&&_lang==='en')?'None':(_lang==='cn'?'无':_lang==='ja'?'なし':'ไม่มี');
-  const depositVal = p.deposit!=null ? (p.deposit > 0 ? `<b>${p.deposit.toLocaleString()}</b> ${_bahtLabel}` : _noneLabel) : '—';
-  extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fef3c7;color:#b45309"><i class="fas fa-shield-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.deposit2')}</div><div class="modal-extra-val">${depositVal}</div></div></div>`;
-
-  // Rent duration (for RENT properties)
-  if(p.tx==='RENT'){
-    const leaseTerms = Array.isArray(p.lease_terms) ? p.lease_terms : (p.lease_terms ? [p.lease_terms] : []);
-    const minLease = p.min_lease_months||p.min_lease||null;
-    let rentDurVal = '—';
-    if(leaseTerms.length){
-      rentDurVal = leaseTerms.map(t=>`<span class="app-chip" style="--ac:#0369a1">${t}</span>`).join('');
-    } else if(minLease){
-      const _minLabel = (typeof _lang!=='undefined'&&_lang==='en')?'Min':(_lang==='cn'?'最少':_lang==='ja'?'最低':'ขั้นต่ำ');
-      const _monthLabel = (typeof _lang!=='undefined'&&_lang==='en')?'months':(_lang==='cn'?'个月':_lang==='ja'?'ヶ月':'เดือน');
-      rentDurVal = `${_minLabel} <b>${minLease}</b> ${_monthLabel}`;
-    } else if(p.rent_duration||p.rentDuration){
-      rentDurVal = `<b>${p.rent_duration||p.rentDuration}</b>`;
-    }
-    const _rentDurLabel = (typeof _lang!=='undefined'&&_lang==='en')?'Lease Duration':(_lang==='cn'?'租期':_lang==='ja'?'賃貸期間':'ระยะเวลาเช่า');
-    extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0f2fe;color:#0369a1"><i class="fas fa-calendar-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${_rentDurLabel}</div><div class="modal-extra-val">${rentDurVal}</div></div></div>`;
-  }
-  // Advance payment
-  const advanceVal = p.advance_payment!=null ? (p.advance_payment > 0 ? `<b>${p.advance_payment.toLocaleString()}</b> ${_bahtLabel}` : _noneLabel) : '—';
-  extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-calendar-check"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.advance')}</div><div class="modal-extra-val">${advanceVal}</div></div></div>`;
-
-  // Electric rate
-  const _perUnitLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB/unit':(_lang==='cn'?'铢/度':_lang==='ja'?'バーツ/単位':'บาท/หน่วย');
-  const _meterLabel = (typeof _lang!=='undefined'&&_lang==='en')?'By meter':(_lang==='cn'?'按表计':_lang==='ja'?'メーター通り':'ตามมิเตอร์');
-  const elecVal = p.electric_rate!=null ? (p.electric_rate > 0 ? `<b>${p.electric_rate}</b> ${_perUnitLabel}` : _meterLabel) : '—';
-  extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fff7ed;color:#ea580c"><i class="fas fa-bolt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.elec')}</div><div class="modal-extra-val">${elecVal}</div></div></div>`;
-
-  // Water rate
-  const waterVal = p.water_rate!=null ? (p.water_rate > 0 ? `<b>${p.water_rate}</b> ${_perUnitLabel}` : _meterLabel) : '—';
-  extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#eff6ff;color:#2563eb"><i class="fas fa-tint"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.water')}</div><div class="modal-extra-val">${waterVal}</div></div></div>`;
-
-  // Service fee / other charges
-  const _perMonthLabel = (typeof _lang!=='undefined'&&_lang==='en')?'THB/mo':(_lang==='cn'?'铢/月':_lang==='ja'?'バーツ/月':'บาท/เดือน');
-  const svcVal = p.service_fee!=null ? (p.service_fee > 0 ? `<b>${p.service_fee.toLocaleString()}</b> ${_perMonthLabel}` : _noneLabel) : '—';
-  extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-receipt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.svcfee')}</div><div class="modal-extra-val">${svcVal}</div></div></div>`;
-
-  extraHtml+='</div>';
-  $('m-extras').innerHTML=extraHtml;
-
-  // Agent
-  const ab=$('m-agent');
-  if(a){ab.style.display='flex';ab.style.cursor='pointer';ab.onclick=()=>showAgentDetail(a);ab.title='ดูข้อมูลตัวแทน';$('m-ag-av').textContent=a.initials||a.name[0];$('m-ag-av').style.background=a.color||'#0f3460';$('m-ag-name').textContent=a.name;$('m-ag-name').style.textDecoration='underline dotted';$('m-ag-name').style.color='var(--a)';$('m-ag-role').textContent=a.title;}
-  else ab.style.display='none';
-  slide_photos=(p.photos?.length)?p.photos:[`https://picsum.photos/id/${(p.id+'').charCodeAt(1)||101}/800/600`];
-  slide_icon=p.icon||typeIcon(p.type);
-  slide_cur=0;
-  renderSlider();
-  // Defer map load — only inject src after modal is visible (avoids main-thread block on mobile)
-  const mapContainer = $('m-map');
-  const _mapLoc = encodeURIComponent(p.location);
-  mapContainer.innerHTML = `<div id="m-map-btn-wrap" style="margin-bottom:0"><button onclick="document.getElementById('m-map-btn-wrap').innerHTML='<iframe src=\\'https://maps.google.com/maps?q=${_mapLoc}&z=13&output=embed\\' width=\\'100%\\' height=\\'220\\' style=\\'border:0;border-radius:12px;display:block\\' allowfullscreen loading=\\'lazy\\'></iframe>'" style="display:flex;align-items:center;gap:8px;width:100%;background:var(--lt);color:var(--tx2);border:1.5px solid var(--bd);border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:.2s" onmouseover="this.style.borderColor='var(--a)';this.style.color='var(--p)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx2)'"><i class="fas fa-map-marked-alt" style="font-size:18px;color:var(--a);opacity:.9"></i><span>แตะเพื่อดูแผนที่</span><i class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.5"></i></button></div>`;
-  // 360° tour — store URL, don't auto-open; wait for user click
-  // 🖼️ [IMG-360] panorama_url ถูก map ผ่าน sbImg() แล้วใน mapProp()
-  const panoramaUrl = p.panorama_url || (slide_photos.length ? slide_photos[0] : null);
-  window._current360Url = panoramaUrl;
-  // Reset 360 toggle state when opening a new modal
-  const vw = document.getElementById('m-360-viewer-wrap');
-  const chevron = document.getElementById('m-360-chevron');
-  if(vw) vw.style.display = 'none';
-  if(chevron) { chevron.style.transform = ''; }
-  if(typeof close360 === 'function') close360();
-    const chipContainer = document.getElementById('m-chips');
-  if(chipContainer) {
-    const appList2=Array.isArray(p.appliances)?p.appliances.filter(Boolean):[];
-    const furnList=Array.isArray(p.furniture_items)?p.furniture_items.filter(Boolean):[];
-    const amenList=Array.isArray(p.amenities)?p.amenities.filter(Boolean):[];
-    const appIconMap2={'แอร์':'❄️','ตู้เย็น':'🧊','เครื่องซักผ้า':'👕','ไมโครเวฟ':'📦','เตาไฟฟ้า':'🍳','โทรทัศน์':'📺','เครื่องทำน้ำอุ่น':'🚿','ระบบรักษาความปลอดภัย':'🔒'};
-    let chipHtml='';
-    if(appList2.length){chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-plug"></i> ${ui('chip.appliances')}</div><div class="chip-scroll">${appList2.map(a=>`<span class="chip-item chip-app">${appIconMap2[a]||'⚡'} ${a}</span>`).join('')}</div></div>`;}
-    if(furnList.length){chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-couch"></i> ${ui('chip.furniture')}</div><div class="chip-scroll">${furnList.map(f=>`<span class="chip-item chip-furn">🪑 ${f}</span>`).join('')}</div></div>`;}
-    if(amenList.length){chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-swimming-pool"></i> ${ui('chip.amenities')}</div><div class="chip-scroll">${amenList.map(am=>`<span class="chip-item chip-amen">✨ ${am}</span>`).join('')}</div></div>`;}
-    chipContainer.innerHTML=chipHtml;
-  }
-    const nearbyContainer = document.getElementById('m-nearby');
-  if(nearbyContainer){ renderNearbyProps(p, nearbyContainer); }
-  const lid=a?.lineId||C.LINE, ph=a?.phone||C.PHONE;
-  $('m-ln').href=lineUrl(lid);
-  $('m-tel').href='tel:'+ph;
+  // เปิด modal ก่อน — ทำให้ user เห็นทันที
   $('prop-modal').classList.add('open');
-  // ══ iOS scroll-lock: save position → position:fixed → restore on close ══
-  // ── FIX: ใช้ requestAnimationFrame ป้องกัน layout thrash บน iOS ──
-  // บันทึก scrollY ก่อน แล้วค่อย apply position:fixed ใน rAF ถัดไป
+
+  // ── iOS scroll-lock: ใช้ overflow:hidden บน body แทน position:fixed ──
+  // position:fixed สร้าง layout recalc ขนาดใหญ่บน iOS
   const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
-  // ใช้ rAF เพื่อให้ modal render ก่อน แล้วค่อย lock scroll
-  // วิธีนี้ป้องกัน forced reflow ที่ทำให้มือถือค้าง
-  requestAnimationFrame(() => {
-    document.body.classList.add('modal-open');
-    document.body.style.top = '-' + _scrollY + 'px';
-    document.body.style.overflow = 'hidden';
-  });
-  // Update fav buttons
-  const _isFaved = favs.includes(String(p.id));
-  const _favBtn = $('m-fav-btn');
-  const _favLabel = $('m-fav-label');
-  if(_favBtn){ _favBtn.className='modal-fav-btn'+(_isFaved?' favorited':''); _favBtn.innerHTML=_isFaved?'<i class="fas fa-heart"></i>':'<i class="far fa-heart"></i>'; }
-  if(_favLabel){ _favLabel.textContent=_isFaved?ui('modal.fav.added'):ui('modal.fav.add'); }
-  window._currentModalId = String(p.id);
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
+
+  // scroll modal กลับบนสุด
   const modalEl = $('prop-modal').querySelector('.modal');
-  if(modalEl) requestAnimationFrame(()=>{ modalEl.scrollTop=0; });
-  initModalSwipe();
+  if(modalEl) modalEl.scrollTop=0;
+
+  // ── Fill content ใน rAF ถัดไป — หลัง modal paint แล้ว ──
+  requestAnimationFrame(() => {
+    // Price
+    const priceEl = $('m-price');
+    priceEl.innerHTML = `${fmtPrice(p.price,p.tx)}
+      ${p.tx==='BUY'?`<button onclick="toggleLoanCalc(${p.price})" style="vertical-align:middle;margin-left:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:none;cursor:pointer" title="คำนวณสินเชื่อ"><i class="fas fa-calculator"></i> คำนวณสินเชื่อ</button>`:''}`;
+    let lc = document.getElementById('modal-loan-calc');
+    if(!lc){
+      lc = document.createElement('div');
+      lc.id = 'modal-loan-calc';
+      lc.style.cssText = 'max-height:0;overflow:hidden;transition:max-height .4s ease;margin-bottom:0';
+      priceEl.parentNode.insertBefore(lc, priceEl.nextSibling);
+    } else { lc.style.maxHeight='0'; lc.innerHTML=''; }
+
+    // Location + Tags
+    $('m-loc').innerHTML='<i class="fas fa-map-marker-alt"></i> '+p.location+(p.province?` · ${p.province}`:'');
+    $('m-desc').textContent=p.desc||p.description||'ติดต่อสอบถามรายละเอียดเพิ่มเติมกับทีมงาน Matchdoor';
+    $('m-tags').innerHTML=`<span class="ptag pt-type">${ui('type.'+p.type)||p.type}</span><span class="ptag ${p.tx==='RENT'?'pt-rent':'pt-buy'}">${p.tx==='RENT'?`<i class="fas fa-key"></i> ${ui('card.rent')}`:`<i class="fas fa-tag"></i> ${ui('card.buy')}`}</span>${p.province?`<span class="ptag">${p.province}</span>`:''}${p.isNew?`<span class="ptag" style="background:#e8fdf5;border-color:#a7f3d0;color:#065f46"><i class="fas fa-star"></i> ${ui('card.new')}</span>`:''}${p.isRec?'<span class="ptag pb-hot" style="color:#fff;border-color:transparent">🔥 Hot</span>':''}`;
+
+    // Specs
+    const specs=[];
+    if(p.area>0) specs.push({val:p.area,lab:ui('spec.area'),icon:'fa-ruler-combined',col:'#7c6fcd'});
+    specs.push({val:p.land_area>0?p.land_area:'—',lab:ui('spec.land'),icon:'fa-map',col:'#059669'});
+    if(p.bed>0) specs.push({val:p.bed,lab:ui('spec.bed'),icon:'fa-bed',col:'#0369a1'});
+    if(p.bath>0) specs.push({val:p.bath,lab:ui('spec.bath'),icon:'fa-shower',col:'#0891b2'});
+    if(p.parking>0) specs.push({val:p.parking,lab:ui('spec.park'),icon:'fa-car',col:'#059669'});
+    {const fl=p.floor_no>0&&p.floors>0?`${p.floor_no}/${p.floors}`:(p.floors>0?String(p.floors):'—'); specs.push({val:fl,lab:ui('spec.floor'),icon:'fa-building',col:'#4f46e5'});}
+    const furnLabelS={'full':ui('spec.furn.full'),'partial':ui('spec.furn.partial'),'none':ui('spec.furn.none')};
+    if(p.furniture) specs.push({val:furnLabelS[p.furniture]||p.furniture,lab:ui('spec.furn'),icon:'fa-couch',col:p.furniture==='full'?'#00895e':p.furniture==='partial'?'#c97b00':'#999'});
+    specs.push({val:p.pets_allowed?'✔':'✖',lab:ui('spec.pets'),icon:'fa-paw',col:p.pets_allowed?'#be185d':'#aaa'});
+    if(!specs.length) specs.push({val:(p.price/1e6).toFixed(1),lab:'ล้านบาท',icon:'fa-tag',col:'var(--a)'});
+    $('m-specs').className='specs-grid-8';
+    $('m-specs').innerHTML=specs.map(s=>`<div class="spec-8"><div class="spec-8-val" style="color:${s.col}"><i class="fas ${s.icon}" style="font-size:11px;margin-right:3px"></i>${s.val}</div><div class="spec-8-lab">${s.lab}</div></div>`).join('');
+
+    // Slider
+    slide_photos=(p.photos?.length)?p.photos:[`https://picsum.photos/id/${(p.id+'').charCodeAt(1)||101}/800/600`];
+    slide_icon=p.icon||typeIcon(p.type);
+    slide_cur=0;
+    renderSlider();
+
+    // Agent
+    const ab=$('m-agent');
+    if(a){ab.style.display='flex';ab.style.cursor='pointer';ab.onclick=()=>showAgentDetail(a);ab.title='ดูข้อมูลตัวแทน';$('m-ag-av').textContent=a.initials||a.name[0];$('m-ag-av').style.background=a.color||'#0f3460';$('m-ag-name').textContent=a.name;$('m-ag-name').style.textDecoration='underline dotted';$('m-ag-name').style.color='var(--a)';$('m-ag-role').textContent=a.title;}
+    else ab.style.display='none';
+
+    // CTA buttons
+    const lid=a?.lineId||C.LINE, ph=a?.phone||C.PHONE;
+    $('m-ln').href=lineUrl(lid);
+    $('m-tel').href='tel:'+ph;
+
+    // Fav buttons
+    const _isFaved = favs.includes(String(p.id));
+    const _favBtn = $('m-fav-btn');
+    const _favLabel = $('m-fav-label');
+    if(_favBtn){ _favBtn.className='modal-fav-btn'+(_isFaved?' favorited':''); _favBtn.innerHTML=_isFaved?'<i class="fas fa-heart"></i>':'<i class="far fa-heart"></i>'; }
+    if(_favLabel){ _favLabel.textContent=_isFaved?ui('modal.fav.added'):ui('modal.fav.add'); }
+
+    window._currentModalId = String(p.id);
+    initModalSwipe();
+
+    // ── Defer heavy content ไปยัง idle — extras/nearby/map ไม่ต้องการสำหรับ first paint ──
+    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
+    idle(() => {
+      // Extras (appliances, deposit, electric etc.)
+      const appIconMap={'แอร์':'fa-snowflake','ตู้เย็น':'fa-temperature-low','เครื่องซักผ้า':'fa-tshirt','ไมโครเวฟ':'fa-microwave','เตาไฟฟ้า':'fa-fire-burner','โทรทัศน์':'fa-tv','เครื่องทำน้ำอุ่น':'fa-hot-tub','ระบบรักษาความปลอดภัย':'fa-shield-alt'};
+      const appColorMap={'แอร์':'#0ea5e9','ตู้เย็น':'#06b6d4','เครื่องซักผ้า':'#8b5cf6','ไมโครเวฟ':'#f59e0b','เตาไฟฟ้า':'#ef4444','โทรทัศน์':'#3b82f6','เครื่องทำน้ำอุ่น':'#f97316','ระบบรักษาความปลอดภัย':'#10b981'};
+      const appList=Array.isArray(p.appliances)?p.appliances.filter(Boolean):[];
+      const nearbyPlaces = Array.isArray(p.nearby_places)?p.nearby_places.filter(Boolean):(p.nearby_places?[p.nearby_places]:[]);
+      const _bahtLabel=(typeof _lang!=='undefined'&&_lang==='en')?'THB':(_lang==='cn'?'铢':_lang==='ja'?'バーツ':'บาท');
+      const _noneLabel=(typeof _lang!=='undefined'&&_lang==='en')?'None':(_lang==='cn'?'无':_lang==='ja'?'なし':'ไม่มี');
+      const _perUnitLabel=(typeof _lang!=='undefined'&&_lang==='en')?'THB/unit':(_lang==='cn'?'铢/度':_lang==='ja'?'バーツ/単位':'บาท/หน่วย');
+      const _meterLabel=(typeof _lang!=='undefined'&&_lang==='en')?'By meter':(_lang==='cn'?'按表计':_lang==='ja'?'メーター通り':'ตามมิเตอร์');
+      const _perMonthLabel=(typeof _lang!=='undefined'&&_lang==='en')?'THB/mo':(_lang==='cn'?'铢/月':_lang==='ja'?'バーツ/月':'บาท/เดือน');
+
+      let extraHtml='<div class="modal-extras">';
+      if(appList.length){
+        const appChips=appList.map(app=>`<span class="app-chip" style="--ac:${appColorMap[app]||'#555'}"><i class="fas ${appIconMap[app]||'fa-plug'}"></i> ${app}</span>`).join('');
+        extraHtml+=`<div class="modal-extra-row modal-extra-apps"><div class="modal-extra-icon" style="background:#f0f7ff;color:#0369a1"><i class="fas fa-plug"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.appliances')} (${appList.length})</div><div class="modal-extra-val">${appChips}</div></div></div>`;
+      }
+      if(nearbyPlaces.length){
+        extraHtml+=`<div class="modal-extra-row modal-extra-apps"><div class="modal-extra-icon" style="background:#e0eaf7;color:#0369a1"><i class="fas fa-map-marker-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.nearby.places')}</div><div class="modal-extra-val">${nearbyPlaces.map(pl=>`<span class="app-chip" style="--ac:#0369a1"><i class="fas fa-map-marker-alt"></i> ${pl}</span>`).join('')}</div></div></div>`;
+      } else {
+        extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0eaf7;color:#0369a1"><i class="fas fa-map-marker-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.nearby.places')}</div><div class="modal-extra-val" style="color:#aaa">—</div></div></div>`;
+      }
+      const depositVal=p.deposit!=null?(p.deposit>0?`<b>${p.deposit.toLocaleString()}</b> ${_bahtLabel}`:_noneLabel):'—';
+      extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fef3c7;color:#b45309"><i class="fas fa-shield-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.deposit2')}</div><div class="modal-extra-val">${depositVal}</div></div></div>`;
+      if(p.tx==='RENT'){
+        const leaseTerms=Array.isArray(p.lease_terms)?p.lease_terms:(p.lease_terms?[p.lease_terms]:[]);
+        const minLease=p.min_lease_months||p.min_lease||null;
+        let rentDurVal='—';
+        if(leaseTerms.length) rentDurVal=leaseTerms.map(t=>`<span class="app-chip" style="--ac:#0369a1">${t}</span>`).join('');
+        else if(minLease){ const _minL=(typeof _lang!=='undefined'&&_lang==='en')?'Min':(_lang==='cn'?'最少':_lang==='ja'?'最低':'ขั้นต่ำ'); const _monL=(typeof _lang!=='undefined'&&_lang==='en')?'months':(_lang==='cn'?'个月':_lang==='ja'?'ヶ月':'เดือน'); rentDurVal=`${_minL} <b>${minLease}</b> ${_monL}`; }
+        else if(p.rent_duration||p.rentDuration) rentDurVal=`<b>${p.rent_duration||p.rentDuration}</b>`;
+        const _rdL=(typeof _lang!=='undefined'&&_lang==='en')?'Lease Duration':(_lang==='cn'?'租期':_lang==='ja'?'賃貸期間':'ระยะเวลาเช่า');
+        extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#e0f2fe;color:#0369a1"><i class="fas fa-calendar-alt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${_rdL}</div><div class="modal-extra-val">${rentDurVal}</div></div></div>`;
+      }
+      const advanceVal=p.advance_payment!=null?(p.advance_payment>0?`<b>${p.advance_payment.toLocaleString()}</b> ${_bahtLabel}`:_noneLabel):'—';
+      extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-calendar-check"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.advance')}</div><div class="modal-extra-val">${advanceVal}</div></div></div>`;
+      const elecVal=p.electric_rate!=null?(p.electric_rate>0?`<b>${p.electric_rate}</b> ${_perUnitLabel}`:_meterLabel):'—';
+      extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#fff7ed;color:#ea580c"><i class="fas fa-bolt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.elec')}</div><div class="modal-extra-val">${elecVal}</div></div></div>`;
+      const waterVal=p.water_rate!=null?(p.water_rate>0?`<b>${p.water_rate}</b> ${_perUnitLabel}`:_meterLabel):'—';
+      extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#eff6ff;color:#2563eb"><i class="fas fa-tint"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.water')}</div><div class="modal-extra-val">${waterVal}</div></div></div>`;
+      const svcVal=p.service_fee!=null?(p.service_fee>0?`<b>${p.service_fee.toLocaleString()}</b> ${_perMonthLabel}`:_noneLabel):'—';
+      extraHtml+=`<div class="modal-extra-row"><div class="modal-extra-icon" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-receipt"></i></div><div class="modal-extra-info"><div class="modal-extra-label">${ui('modal.svcfee')}</div><div class="modal-extra-val">${svcVal}</div></div></div>`;
+      extraHtml+='</div>';
+      $('m-extras').innerHTML=extraHtml;
+
+      // Chips
+      const chipContainer=document.getElementById('m-chips');
+      if(chipContainer){
+        const appList2=Array.isArray(p.appliances)?p.appliances.filter(Boolean):[];
+        const furnList=Array.isArray(p.furniture_items)?p.furniture_items.filter(Boolean):[];
+        const amenList=Array.isArray(p.amenities)?p.amenities.filter(Boolean):[];
+        const appIconMap2={'แอร์':'❄️','ตู้เย็น':'🧊','เครื่องซักผ้า':'👕','ไมโครเวฟ':'📦','เตาไฟฟ้า':'🍳','โทรทัศน์':'📺','เครื่องทำน้ำอุ่น':'🚿','ระบบรักษาความปลอดภัย':'🔒'};
+        let chipHtml='';
+        if(appList2.length) chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-plug"></i> ${ui('chip.appliances')}</div><div class="chip-scroll">${appList2.map(a=>`<span class="chip-item chip-app">${appIconMap2[a]||'⚡'} ${a}</span>`).join('')}</div></div>`;
+        if(furnList.length) chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-couch"></i> ${ui('chip.furniture')}</div><div class="chip-scroll">${furnList.map(f=>`<span class="chip-item chip-furn">🪑 ${f}</span>`).join('')}</div></div>`;
+        if(amenList.length) chipHtml+=`<div class="chip-list-wrap"><div class="chip-list-label"><i class="fas fa-swimming-pool"></i> ${ui('chip.amenities')}</div><div class="chip-scroll">${amenList.map(am=>`<span class="chip-item chip-amen">✨ ${am}</span>`).join('')}</div></div>`;
+        chipContainer.innerHTML=chipHtml;
+      }
+
+      // Map button (lazy)
+      const mapContainer=$('m-map');
+      if(mapContainer){
+        const _mapLoc=encodeURIComponent(p.location);
+        mapContainer.innerHTML=`<div id="m-map-btn-wrap" style="margin-bottom:0"><button onclick="document.getElementById('m-map-btn-wrap').innerHTML='<iframe src=\\'https://maps.google.com/maps?q=${_mapLoc}&z=13&output=embed\\' width=\\'100%\\' height=\\'220\\' style=\\'border:0;border-radius:12px;display:block\\' allowfullscreen loading=\\'lazy\\'></iframe>'" style="display:flex;align-items:center;gap:8px;width:100%;background:var(--lt);color:var(--tx2);border:1.5px solid var(--bd);border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit" onmouseover="this.style.borderColor='var(--a)';this.style.color='var(--p)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--tx2)'"><i class="fas fa-map-marked-alt" style="font-size:18px;color:var(--a);opacity:.9"></i><span>แตะเพื่อดูแผนที่</span><i class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.5"></i></button></div>`;
+      }
+
+      // 360
+      const panoramaUrl=p.panorama_url||(slide_photos.length?slide_photos[0]:null);
+      window._current360Url=panoramaUrl;
+      const vw=document.getElementById('m-360-viewer-wrap');
+      const chevron=document.getElementById('m-360-chevron');
+      if(vw) vw.style.display='none';
+      if(chevron) chevron.style.transform='';
+      if(typeof close360==='function') close360();
+
+      // Nearby (most expensive — last)
+      const nearbyContainer=document.getElementById('m-nearby');
+      if(nearbyContainer) renderNearbyProps(p, nearbyContainer);
+    });
+  });
 }
 function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transform=`translateX(-${slide_cur*100}%)`; }
 function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; renderSlider(); }
 function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
-    $('prop-modal').classList.remove('open'); 
-    // set abort flag — idle batch renders ที่ค้างอยู่จะ skip
+    $('prop-modal').classList.remove('open');
+    // abort pending idle batch renders
     window._listingsRenderAbort = true;
-    // reset หลัง 300ms > 2 idle cycles (idle fallback = setTimeout 80ms)
-    // ป้องกันการไม่ลบ flag ในกรณี idle callbacks ยังไม่ได้ fire
     setTimeout(() => { window._listingsRenderAbort = false; }, 300);
-    const savedY = document.body._savedScrollY || 0;
+    // restore scroll-lock (ใช้ overflow:hidden แทน position:fixed)
     document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    // position/top/width/left ไม่ได้ set แล้ว แต่ clear ไว้ป้องกัน residual state
     document.body.style.position = '';
     document.body.style.top = '';
-    document.body.style.overflow = '';
     document.body.style.width = '';
     document.body.style.left = '';
+    const savedY = document.body._savedScrollY || 0;
     document.body._savedScrollY = 0;
-    const isMob = window.innerWidth <= 900;
-    if(isMob) {
-      // mobile: ปิดทันทีไม่มี delay — scroll instant
-      window.scrollTo(0, savedY);
-      window._currentModalId = null;
-      if(typeof close360==='function') close360();
-    } else {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedY);
-        requestAnimationFrame(() => {
-          if(typeof close360==='function') close360();
-          window._currentModalId = null;
-        });
-      });
-    }
+    // scroll กลับ — instant ทั้ง mobile และ desktop
+    window.scrollTo(0, savedY);
+    window._currentModalId = null;
+    if(typeof close360==='function') close360();
   } 
 }
 // Helper: build SEO-friendly property URL from prop object

@@ -198,8 +198,8 @@
 <noscript><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"></noscript>
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
-<!-- Supabase: async แต่ critical — priority high เพื่อให้ browser ดึงเร็วขึ้น -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async fetchpriority="high"></script>
+<!-- Supabase: defer เพื่อให้โหลดตามลำดับ ป้องกัน race condition กับ router -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <style>
 /* ══ MOBILE PERFORMANCE PATCH v3 ══════════════════════════════ */
 /* ป้องกัน text render ช้าบน iOS — ทุก device */
@@ -4498,6 +4498,15 @@ function afterLoad(){
   }
   // ── schedule re-render เผื่อ listings page ถูกเปิดระหว่างโหลด ────
   window._listingsDataReady = true;
+  // ── Safety fallback: ถ้า listings page active แต่ grid ยังว่างอยู่ → force render ──
+  // ป้องกันกรณี refresh หน้า /listings แล้วหน้าว่าง (race condition ระหว่าง Supabase กับ router)
+  setTimeout(function(){
+    var lsPage = document.getElementById('page-listings');
+    var grid = document.getElementById('listings-grid');
+    if(lsPage && lsPage.classList.contains('active') && grid && !grid.children.length){
+      if(typeof renderListingsPage === 'function') renderListingsPage();
+    }
+  }, 800);
 }
 
 // ── แสดงการ์ดหน้าแรก โดยตรงจาก props ไม่ผ่าน filter ─────────────
@@ -5027,7 +5036,14 @@ function _initRouteFromUrl() {
     if (path === '/buy') { _syncTxTabs && _syncTxTabs('BUY'); }
     if (path === '/rent') { _syncTxTabs && _syncTxTabs('RENT'); }
     // listings page: mark for init after data loads
-    if (path === '/listings') { window._pendingListingsInit = true; }
+    if (path === '/listings') {
+      window._pendingListingsInit = true;
+      // ถ้า data โหลดเสร็จแล้วก่อนที่ router จะทำงาน (rare แต่เกิดได้) → render เลย
+      if(window._listingsDataReady && typeof renderListingsPage === 'function'){
+        window._pendingListingsInit = false;
+        requestAnimationFrame(function(){ renderListingsPage(); });
+      }
+    }
   } else {
     _silentShowPage('home');
   }

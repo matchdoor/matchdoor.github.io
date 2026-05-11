@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matchdoor — ไม่พบหน้าที่ต้องการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;700;800&family=Noto+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--p:#1B3A6B;--p2:#0F2548;--a:#C8922A;--a2:#E8B84B;--bg:#F5F0E8;--w:#fff;--tx:#1A1A2E;--tx2:#4A4438;--bd:#D8D0C4}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden}
+.blob{position:fixed;border-radius:50%;filter:blur(80px);opacity:0.12;pointer-events:none;animation:blobFloat 8s ease-in-out infinite}
+.blob-1{width:500px;height:500px;background:var(--p);top:-100px;left:-150px;animation-delay:0s}
+.blob-2{width:400px;height:400px;background:var(--a);bottom:-100px;right:-100px;animation-delay:3s}
+.blob-3{width:300px;height:300px;background:#3D7A55;top:50%;left:60%;animation-delay:5s}
+@keyframes blobFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+.card{background:var(--w);border-radius:24px;border:1.5px solid var(--bd);box-shadow:0 20px 60px rgba(27,58,107,0.12);padding:48px 40px 40px;max-width:480px;width:100%;text-align:center;position:relative;z-index:1;animation:cardIn .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(32px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.door-wrap{width:88px;height:88px;background:linear-gradient(135deg,#0A1628,var(--p));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 28px;box-shadow:0 8px 28px rgba(27,58,107,0.35);position:relative;animation:doorPulse 3s ease-in-out infinite}
+@keyframes doorPulse{0%,100%{box-shadow:0 8px 28px rgba(27,58,107,0.35)}50%{box-shadow:0 12px 40px rgba(27,58,107,0.55)}}
+.door-wrap .door-icon{font-size:42px;line-height:1}
+.badge-404{position:absolute;top:-10px;right:-10px;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;font-size:11px;font-weight:800;padding:4px 9px;border-radius:20px;font-family:'Kanit',sans-serif;box-shadow:0 3px 10px rgba(200,146,42,0.45)}
+h1{font-family:'Kanit',sans-serif;font-size:26px;font-weight:800;color:var(--p);margin-bottom:10px;line-height:1.25}
+.subtitle{font-size:14px;color:var(--tx2);line-height:1.7;margin-bottom:28px}
+.url-box{background:#f5f0e8;border:1.5px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--tx2);font-family:monospace;margin-bottom:24px;word-break:break-all;text-align:left}
+.url-box b{color:var(--p)}
+.btn-home{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 20px;background:linear-gradient(135deg,#0A1628,var(--p));color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;font-family:'Kanit','Noto Sans Thai',sans-serif;cursor:pointer;text-decoration:none;box-shadow:0 6px 22px rgba(27,58,107,0.38);transition:.2s;margin-bottom:12px;display:flex}
+.btn-home:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(27,58,107,0.48)}
+.btn-listings{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:14px;font-size:14px;font-weight:700;font-family:'Kanit','Noto Sans Thai',sans-serif;cursor:pointer;text-decoration:none;box-shadow:0 5px 18px rgba(200,146,42,0.35);transition:.2s;margin-bottom:24px;display:flex}
+.btn-listings:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,146,42,0.48)}
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:12px;color:#aaa}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--bd)}
+.quick-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px}
+.ql{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--bd);border-radius:10px;font-size:12px;font-weight:600;color:var(--p);cursor:pointer;text-decoration:none;transition:.15s}
+.ql:hover{background:var(--p);color:#fff;border-color:var(--p)}
+.ql i{font-size:13px;width:14px;text-align:center}
+.footer-note{font-size:11px;color:#aaa;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.footer-note i{color:var(--a);font-size:10px}
+#countdown{display:inline-block;background:var(--p);color:#fff;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;margin:0 2px;font-family:'Kanit',sans-serif}
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="card">
+  <div class="door-wrap">
+    <span class="door-icon">🚪</span>
+    <span class="badge-404">404</span>
+  </div>
+
+  <h1>ไม่พบหน้าที่คุณต้องการ</h1>
+  <p class="subtitle">
+    หน้านี้อาจถูกย้าย ลบออก หรือลิงก์ไม่ถูกต้อง<br>
+    ลองกลับไปยังหน้าหลักหรือดูประกาศทั้งหมดแทนครับ
+  </p>
+
+  <div class="url-box" id="url-box" style="display:none">
+    <b>URL ที่ขอ:</b><br><span id="req-url"></span>
+  </div>
+
+  <a href="/" class="btn-home">
+    <i class="fas fa-home"></i> กลับหน้าหลัก
+  </a>
+
+  <a href="/" class="btn-listings" id="btn-ls">
+    <i class="fas fa-search"></i> ดูประกาศทั้งหมด
+  </a>
+
+  <div class="divider">หรือไปที่</div>
+
+  <div class="quick-links">
+    <a class="ql" href="/" id="ql-home"><i class="fas fa-house-user"></i> หน้าแรก</a>
+    <a class="ql" href="/" id="ql-listings"><i class="fas fa-building"></i> ประกาศทั้งหมด</a>
+    <a class="ql" href="/" id="ql-agents"><i class="fas fa-user-tie"></i> ทีมตัวแทน</a>
+    <a class="ql" href="/" id="ql-portfolio"><i class="fas fa-trophy"></i> ผลงาน</a>
+  </div>
+
+  <div class="footer-note">
+    <i class="fas fa-door-open"></i>
+    Matchdoor Real Estate
+    <span id="auto-redirect" style="display:none">
+      · กลับหน้าหลักใน <span id="countdown">5</span> วิ
+    </span>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Known SPA routes → redirect ไป index.html แบบ SPA
+  var KNOWN = ['/listings','/agents','/portfolio','/favorites','/buy','/rent','/careers'];
+  var path = window.location.pathname;
+
+  var isKnown = KNOWN.indexOf(path) !== -1
+    || KNOWN.some(function(p){ return path.indexOf(p+'/') === 0; })
+    || /^\/property\//.test(path);
+
+  if(isKnown){
+    // encode path → ส่งไป index.html via /?/path
+    var search = window.location.search
+      ? '&' + window.location.search.slice(1).replace(/&/g,'~and~') : '';
+    var hash = window.location.hash || '';
+    var encoded = path.slice(1).replace(/&/g,'~and~');
+    window.location.replace('/?/' + encoded + search + hash);
+    return;
+  }
+
+  // ---- Path ไม่รู้จัก: แสดงหน้า 404 จริงๆ ----
+
+  // กำหนด href ปลายทางของทุก link
+  function spaUrl(p){ return '/?/' + p.slice(1); }
+  document.getElementById('btn-ls').href = spaUrl('/listings');
+  document.getElementById('ql-home').href = '/';
+  document.getElementById('ql-listings').href = spaUrl('/listings');
+  document.getElementById('ql-agents').href = spaUrl('/agents');
+  document.getElementById('ql-portfolio').href = spaUrl('/portfolio');
+
+  // แสดง URL ที่ขอ
+  var urlBox = document.getElementById('url-box');
+  var reqUrl = document.getElementById('req-url');
+  if(reqUrl){ reqUrl.textContent = window.location.href; urlBox.style.display='block'; }
+
+  // Countdown 5 วินาทีแล้วกลับหน้าหลัก
+  var autoEl = document.getElementById('auto-redirect');
+  var countEl = document.getElementById('countdown');
+  if(autoEl){ autoEl.style.display='inline'; }
+  var n = 5;
+  var timer = setInterval(function(){
+    n--;
+    if(countEl) countEl.textContent = n;
+    if(n <= 0){ clearInterval(timer); window.location.href = '/'; }
+  }, 1000);
+
+  // ถ้า user คลิกปุ่มใดก็ cancel countdown
+  document.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){ clearInterval(timer); if(autoEl) autoEl.style.display='none'; });
+  });
+})();
+</script>
+
+</body>
+</html>

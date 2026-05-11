@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Matchdoor — กำลังโหลด...</title>
+  <script>
+    // GitHub Pages SPA Redirect
+    // เมื่อ user refresh ที่ /listings หรือ path ใดๆ GitHub Pages จะมาที่ 404.html
+    // เราแปลง path เป็น query string แล้ว redirect ไป index.html ที่ root
+    // เช่น /listings?q=foo  →  /?/listings~and~q=foo
+    // index.html จะอ่านค่านี้และ replaceState กลับไปยัง /listings?q=foo
+    (function() {
+      var l = window.location;
+      var path = l.pathname.slice(1); // ตัด "/" นำออก เช่น "listings"
+      var qs   = l.search  ? l.search.slice(1)  : ''; // ตัด "?" ออก
+      var hash = l.hash || '';
+
+      // สร้าง redirect URL: /?/listings หรือ /?/listings~and~q=foo
+      var newUrl = l.protocol + '//' + l.host + '/?/' + path
+                   + (qs ? '~and~' + qs : '')
+                   + hash;
+      l.replace(newUrl);
+    })();
+  </script>
+</head>
+<body>
+  <p style="font-family:sans-serif;text-align:center;margin-top:80px;color:#666">กำลังโหลดหน้าที่ร้องขอ...</p>
+</body>
+</html>

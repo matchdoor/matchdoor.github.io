@@ -5446,26 +5446,22 @@ function _updateListingsTxTabs(tx) {
   });
 }
 
-// ── FIX: scroll ไปที่ส่วนแสดงผลลัพธ์การ์ดอสังหา ──────────────────────────
-// เรียกหลัง filter/search ทุกครั้ง — บน mobile scroll ไปที่ listings-results-top
-// บน desktop ไม่ต้อง scroll เพราะ grid มองเห็นอยู่แล้ว
+// ── scroll ไปที่ส่วนแสดงผลลัพธ์การ์ดอสังหา ──────────────────────────────
+// เรียกหลัง filter/search ทุกครั้ง — ทุก device ทุกขนาดหน้าจอ
 function _scrollToListingsResults() {
-  // ทำงานทุก device — รอ render เสร็จ 1 frame แล้วค่อย scroll
+  // รอ 1 frame ให้ render เสร็จก่อนค่อย scroll
   requestAnimationFrame(() => {
     const target = document.getElementById('listings-results-top');
-    if (target) {
-      // offset 72px = ความสูง navbar (sticky) เพื่อให้ไม่ถูก navbar บัง
-      const navH = 72;
-      const rect = target.getBoundingClientRect();
-      const scrollY = window.scrollY || window.pageYOffset;
-      const targetY = rect.top + scrollY - navH;
-      // บน mobile เท่านั้น — desktop ไม่ต้อง scroll เพราะ UX ต่างกัน
-      if (window.innerWidth <= 900 && rect.top > navH + 40) {
-        window.scrollTo({ top: targetY, behavior: 'smooth' });
-      } else if (window.innerWidth <= 900 && rect.top < 0) {
-        // กรณี scroll ขึ้นมาแล้ว grid อยู่เหนือ viewport
-        window.scrollTo({ top: targetY, behavior: 'smooth' });
-      }
+    if (!target) return;
+    // offset = ความสูง navbar sticky (64px) + เผื่อ padding เล็กน้อย
+    const navH = 72;
+    const rect = target.getBoundingClientRect();
+    const scrollY = window.scrollY || window.pageYOffset;
+    const targetY = rect.top + scrollY - navH;
+    // scroll ทุกครั้งที่ target ไม่ได้อยู่ใน viewport บนสุด
+    // (ป้องกัน scroll กระโดดเมื่อ toolbar อยู่ในตำแหน่งที่ถูกต้องอยู่แล้ว)
+    if (rect.top > navH + 20 || rect.top < 0) {
+      window.scrollTo({ top: targetY, behavior: 'smooth' });
     }
   });
 }

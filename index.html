@@ -254,7 +254,9 @@ a,button,input,select,textarea,
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   /* GPU optimization — will-change เฉพาะ element ที่เคลื่อนไหวจริง */
   .slides,.card-slides{will-change:transform}
-  .modal{will-change:transform,opacity}
+  /* ลบ will-change จาก .modal บน mobile — สร้าง permanent GPU layer ขนาดใหญ่
+     แม้ modal ปิดอยู่ก็ยังกิน memory → ทำให้หน้าค้างเมื่อ scroll หรือ render cards */
+  .modal{will-change:auto}
   /* ลด font-size เล็กน้อยบน mobile เพื่อ readability */
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
@@ -4753,7 +4755,7 @@ window.addEventListener('popstate', function(e) {
       document.body.style.left = '';
       document.body._savedScrollY = 0;
       window._listingsRenderAbort = true;
-      setTimeout(() => { window._listingsRenderAbort = false; }, 100);
+      setTimeout(() => { window._listingsRenderAbort = false; }, 300);
       if (window.innerWidth <= 900) {
         window.scrollTo(0, savedY);
         window._currentModalId = null;
@@ -5217,9 +5219,8 @@ function renderListingsPage() {
 
       if(secondBatch.length){
         idle(()=>{
-          // ── FIX: ถ้า modal เพิ่งปิดไป ให้ยกเลิก batch render ─────────
-          // ป้องกัน idle callback จาก fire พร้อมกับ modal-close scroll restore
-          if(window._listingsRenderAbort) { window._listingsRenderAbort = false; return; }
+          // ถ้า modal เพิ่งปิด หรือมีการสั่ง abort → skip batch นี้ทิ้ง ไม่ลบ flag
+          if(window._listingsRenderAbort) return;
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
@@ -5229,7 +5230,7 @@ function renderListingsPage() {
 
           if(restBatch.length){
             idle(()=>{
-              if(window._listingsRenderAbort) { window._listingsRenderAbort = false; return; }
+              if(window._listingsRenderAbort) return;
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
@@ -5966,8 +5967,11 @@ function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
     $('prop-modal').classList.remove('open'); 
+    // set abort flag — idle batch renders ที่ค้างอยู่จะ skip
     window._listingsRenderAbort = true;
-    setTimeout(() => { window._listingsRenderAbort = false; }, 100);
+    // reset หลัง 300ms > 2 idle cycles (idle fallback = setTimeout 80ms)
+    // ป้องกันการไม่ลบ flag ในกรณี idle callbacks ยังไม่ได้ fire
+    setTimeout(() => { window._listingsRenderAbort = false; }, 300);
     const savedY = document.body._savedScrollY || 0;
     document.body.classList.remove('modal-open');
     document.body.style.position = '';

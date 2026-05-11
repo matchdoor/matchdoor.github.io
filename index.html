@@ -264,6 +264,9 @@ a,button,input,select,textarea,
   }
   /* ป้องกัน horizontal scroll leaking */
   .page,.wrap{overflow-x:hidden}
+  /* modal: ปิดทันทีบน mobile ไม่มี animation delay */
+  #prop-modal{transition:none!important}
+  #prop-modal .modal{transition:none!important}
   /* listings grid: contain เพื่อลด repaint scope */
   #listings-grid .prop-card{contain:layout style paint}
   /* listings grid: contain เพื่อลด repaint scope — ลบ will-change:contents ออก
@@ -4750,12 +4753,18 @@ window.addEventListener('popstate', function(e) {
       document.body.style.left = '';
       document.body._savedScrollY = 0;
       window._listingsRenderAbort = true;
-      setTimeout(() => { window._listingsRenderAbort = false; }, 400);
-      requestAnimationFrame(() => {
+      setTimeout(() => { window._listingsRenderAbort = false; }, 100);
+      if (window.innerWidth <= 900) {
         window.scrollTo(0, savedY);
         window._currentModalId = null;
         if (typeof close360 === 'function') close360();
-      });
+      } else {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, savedY);
+          window._currentModalId = null;
+          if (typeof close360 === 'function') close360();
+        });
+      }
       // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
       _silentShowPage(state.name, true);
     } else {
@@ -5076,7 +5085,7 @@ function propCard(p){
 // ===== LISTINGS PAGE =====
 let _listingsData = [];
 let _listingsCurPage = 1;
-const _listingsPerPage = 32;
+const _listingsPerPage = window.innerWidth <= 768 ? 16 : 32;
 let _listingsMapInitialized = false;
 let _listingsMapInstance = null;
 let _listingsMarkers = [];
@@ -5957,17 +5966,9 @@ function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
     $('prop-modal').classList.remove('open'); 
-    // ══ iOS scroll-lock restore: คืน scroll position โดยไม่ jump ══
-    // ── FIX ROOT CAUSE: ยกเลิก pending render tasks ก่อนปิด modal ──
-    // เพื่อป้องกัน renderListingsPage batch (requestIdleCallback) ที่ค้างอยู่
-    // จาก fire พร้อมกับ modal-close flow ทำให้ main thread อัดแน่นบน mobile
-    if(window._listingsRenderAbort) window._listingsRenderAbort = true;
     window._listingsRenderAbort = true;
-    // reset หลัง 400ms — ให้ close animation + scroll เสร็จก่อนค่อย render ต่อ
-    setTimeout(() => { window._listingsRenderAbort = false; }, 400);
-    // 1. อ่าน savedY ก่อนลบ class (ไม่งั้นค่าหาย)
+    setTimeout(() => { window._listingsRenderAbort = false; }, 100);
     const savedY = document.body._savedScrollY || 0;
-    // 2. ลบ styles ทั้งหมดที่ทำให้เกิด position:fixed ก่อน — synchronous
     document.body.classList.remove('modal-open');
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5975,18 +5976,13 @@ function closeModal(e){
     document.body.style.width = '';
     document.body.style.left = '';
     document.body._savedScrollY = 0;
-    // 3. scrollTo แบบ instant (ไม่ smooth) บน mobile เพื่อลด frame budget
-    // smooth scroll บน iOS บน background paint ทำให้หน้าค้างนานขึ้น
     const isMob = window.innerWidth <= 900;
     if(isMob) {
-      // instant scroll ก่อน ใช้ rAF เดียวเพื่อให้ browser repaint ก่อน
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedY);
-        window._currentModalId = null;
-        if(typeof close360==='function') close360();
-      });
+      // mobile: ปิดทันทีไม่มี delay — scroll instant
+      window.scrollTo(0, savedY);
+      window._currentModalId = null;
+      if(typeof close360==='function') close360();
     } else {
-      // desktop: smooth เพื่อ UX ที่ดีกว่า
       requestAnimationFrame(() => {
         window.scrollTo(0, savedY);
         requestAnimationFrame(() => {
@@ -11380,7 +11376,7 @@ function resetAdvFilter(){
   <!-- Footer for listings page -->
   <!-- ══ SEO RICH CONTENT — Google Index ══════════════════════════════════
        เนื้อหา HTML ที่ Google Crawler อ่านได้จริง — keyword density สูง กรุงเทพ + รถไฟฟ้า -->
-  <div style="max-width:1320px;margin:0 auto;padding:32px 20px 0">
+  <div id="listings-seo-rich-content" style="max-width:1320px;margin:0 auto;padding:32px 20px 0">
     <section aria-label="อสังหาริมทรัพย์ในกรุงเทพตามสายรถไฟฟ้า" style="background:#fff;border-radius:16px;border:1.5px solid var(--bd);padding:28px;margin-bottom:24px">
       <h2 style="font-size:18px;font-weight:800;color:var(--p);margin-bottom:6px;font-family:'Kanit',sans-serif">
         <i class="fas fa-train" style="color:#0a8a3a"></i> อสังหาริมทรัพย์ใกล้รถไฟฟ้า BTS MRT กรุงเทพ

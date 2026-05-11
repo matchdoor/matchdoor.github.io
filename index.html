@@ -237,6 +237,8 @@ a,button,input,select,textarea,
     position:fixed!important;
     left:0;right:0;
     overflow-y:scroll!important;
+    /* FIX: ป้องกัน width collapse เมื่อ position:fixed ทำให้กว้างหดลง */
+    width:100%!important;
   }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
@@ -4715,7 +4717,15 @@ function _closePropertyUrl() {
   if (!_routerReady) return;
   const cur = history.state;
   if (cur && cur.type === 'property') {
-    history.back();
+    // ── FIX: ใช้ replaceState แทน history.back() ──
+    // history.back() ทำให้ popstate fire → _silentShowPage('home') เสมอ
+    // ทำให้ refresh แล้วกลับหน้า home แทนที่จะอยู่หน้าเดิม
+    const prevPage = window._pageBeforeModal || 'home';
+    const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['home'];
+    const path = route ? route.path : '/';
+    history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
+    // อัพเดต meta กลับเป็น page เดิม
+    if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
 
@@ -4726,7 +4736,26 @@ window.addEventListener('popstate', function(e) {
   if (state.type === 'property') {
     if (state.id) { openModal(state.id); }
   } else if (state.type === 'page') {
-    _silentShowPage(state.name);
+    // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
+    const propModal = document.getElementById('prop-modal');
+    if (propModal && propModal.classList.contains('open')) {
+      propModal.classList.remove('open');
+      const savedY = document.body._savedScrollY || 0;
+      document.body.classList.remove('modal-open');
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.overflow = '';
+      document.body.style.width = '';
+      document.body.style.left = '';
+      document.body._savedScrollY = 0;
+      window.scrollTo(0, savedY);
+      if (typeof close360 === 'function') close360();
+      window._currentModalId = null;
+      // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
+      _silentShowPage(state.name, true);
+    } else {
+      _silentShowPage(state.name);
+    }
   }
 });
 
@@ -4805,7 +4834,10 @@ function _initRouteFromUrl() {
   const match = path.match(/^\/property\/([^\/\-]+)/);
   if (match) {
     const propId = match[1];
-    _silentShowPage('home');
+    // ── FIX: ถ้ามาจาก refresh ที่ /property/... ให้ตั้ง _pageBeforeModal เป็น 'listings'
+    // เพราะ property card อยู่ในหน้า listings เสมอ
+    window._pageBeforeModal = 'listings';
+    _silentShowPage('listings');
     // Try to open modal — data may not be loaded yet, handled by _pendingOpenId
     window._pendingOpenId = propId;
     return;
@@ -4840,6 +4872,20 @@ function _initRouteFromUrl() {
 // ── Patch openModal to also update URL ──
 const _origOpenModal = openModal;
 window.openModal = function(id) {
+  // ── FIX: บันทึก page ปัจจุบันก่อนเปิด modal เพื่อ restore หลังปิด ──
+  const curState = history.state;
+  if (curState && curState.type === 'page') {
+    window._pageBeforeModal = curState.name;
+  } else {
+    // อ่านจาก active page element ถ้า state ไม่มี
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const pid = activePage.id.replace('page-', '');
+      window._pageBeforeModal = pid || 'home';
+    } else {
+      window._pageBeforeModal = 'home';
+    }
+  }
   _origOpenModal(id);
   _openPropertyUrl(id);
 };
@@ -5845,11 +5891,17 @@ function openModal(id){
   $('m-tel').href='tel:'+ph;
   $('prop-modal').classList.add('open');
   // ══ iOS scroll-lock: save position → position:fixed → restore on close ══
-  const _scrollY = window.scrollY;
-  document.body.classList.add('modal-open');
-  document.body.style.top = '-' + _scrollY + 'px';
-  document.body.style.overflow = 'hidden';
+  // ── FIX: ใช้ requestAnimationFrame ป้องกัน layout thrash บน iOS ──
+  // บันทึก scrollY ก่อน แล้วค่อย apply position:fixed ใน rAF ถัดไป
+  const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
+  // ใช้ rAF เพื่อให้ modal render ก่อน แล้วค่อย lock scroll
+  // วิธีนี้ป้องกัน forced reflow ที่ทำให้มือถือค้าง
+  requestAnimationFrame(() => {
+    document.body.classList.add('modal-open');
+    document.body.style.top = '-' + _scrollY + 'px';
+    document.body.style.overflow = 'hidden';
+  });
   // Update fav buttons
   const _isFaved = favs.includes(String(p.id));
   const _favBtn = $('m-fav-btn');
@@ -5868,7 +5920,10 @@ function closeModal(e){
   if(!e||e.target.id==='prop-modal') { 
     $('prop-modal').classList.remove('open'); 
     // ══ iOS scroll-lock restore: คืน scroll position โดยไม่ jump ══
+    // ── FIX: แก้อาการค้างบนมือถือ ──
+    // 1. อ่าน savedY ก่อนลบ class (ไม่งั้นค่าหาย)
     const savedY = document.body._savedScrollY || 0;
+    // 2. ลบ styles ทั้งหมดที่ทำให้เกิด position:fixed ก่อน
     document.body.classList.remove('modal-open');
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5876,9 +5931,16 @@ function closeModal(e){
     document.body.style.width = '';
     document.body.style.left = '';
     document.body._savedScrollY = 0;
-    window.scrollTo(0, savedY);
-    if(typeof close360==='function') close360(); 
-    window._currentModalId = null;
+    // 3. รอ 1 frame ให้ browser คำนวณ layout ใหม่ก่อน แล้วค่อย scroll
+    // วิธีนี้ป้องกัน forced reflow ที่ทำให้มือถือแสดงผลค้าง
+    requestAnimationFrame(() => {
+      window.scrollTo(0, savedY);
+      // 4. อีก 1 frame เพื่อให้ scroll settle ก่อน ค่อย trigger render ใดๆ
+      requestAnimationFrame(() => {
+        if(typeof close360==='function') close360();
+        window._currentModalId = null;
+      });
+    });
   } 
 }
 // Helper: build SEO-friendly property URL from prop object

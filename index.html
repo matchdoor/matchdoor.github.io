@@ -3333,7 +3333,7 @@ footer::after{
 </div>
 
 <div class="ov" id="prop-modal" onclick="closeModal(event)"><div class="modal"><div class="mhd"><h2 id="m-title"></h2><div style="display:flex;align-items:center;gap:8px"><button onclick="(function(){const url=location.href;if(navigator.share)navigator.share({title:document.title,url});else navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅'));})()" style="width:34px;height:34px;border-radius:50%;background:var(--lt);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--p);font-size:14px" title="แชร์"><i class="fas fa-share-nodes"></i></button><button id="m-fav-btn" onclick="toggleModalFav()" class="modal-fav-btn" title="เพิ่มรายการโปรด"><i class="far fa-heart"></i></button><span class="mclose" onclick="closeModal()">×</span></div></div><div class="mbody"><div class="mslider-wrap"><div class="mslider"><div class="slides" id="slides"></div></div><button class="sarr prev" onclick="slide(-1)"><i class="fas fa-chevron-left"></i></button><button class="sarr next" onclick="slide(1)"><i class="fas fa-chevron-right"></i></button><div class="sdots" id="sdots"></div></div><div id="m-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div><div class="modal-price" id="m-price"></div><div class="modal-loc" id="m-loc"></div><div class="specs" id="m-specs"></div><div id="m-extras"></div><div class="agent-box" id="m-agent"><div class="ag-av" id="m-ag-av"></div><div><div id="m-ag-name" style="font-weight:700"></div><div id="m-ag-role" style="font-size:12px;color:var(--gr)"></div></div></div><div class="modal-desc" id="m-desc"></div><div id="m-chips" style="margin-bottom:10px"></div><div id="m-map" style="margin-bottom:16px"></div><div id="m-360-wrap" style="margin-bottom:16px"><button id="m-360-toggle-btn" onclick="toggle360()" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#0f1e3a,#1b3a6b);color:#fff;border:none;border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-street-view" style="font-size:18px;opacity:.9"></i><span id="m-360-label">มุมมอง 360°</span><span class="tour360-badge">Virtual Tour</span><i id="m-360-chevron" class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.7;transition:transform .3s"></i></button><div id="m-360-viewer-wrap" style="display:none;margin-top:8px"><div id="m-360-viewer" class="tour360-viewer"><canvas id="tour360-canvas"></canvas><div class="tour360-hint"><i class="fas fa-hand-pointer"></i> <span id="m-drag-hint">ลากเพื่อหมุน</span></div><button class="tour360-close" onclick="toggle360()"><i class="fas fa-times"></i></button></div></div></div><div id="m-nearby" style="margin-bottom:14px"></div><div class="cta-row"><a class="btn-cta cta-ln" id="m-ln" href="#" target="_blank"><i class="fab fa-line"></i> <span id="m-ln-label">แชท Line</span></a><a class="btn-cta cta-tel" id="m-tel" href="#"><i class="fas fa-mobile-alt"></i> <span id="m-tel-label">โทรสอบถาม</span></a></div></div></div></div>
-<div class="ov" id="all-modal" onclick="if(event.target===this){this.classList.remove('open');window._modalCurrentType=null;if(typeof _forceRestoreBody==='function')_forceRestoreBody();}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="document.getElementById('all-modal').classList.remove('open');window._modalCurrentType=null;if(typeof _forceRestoreBody==='function')_forceRestoreBody();">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
+<div class="ov" id="all-modal" onclick="if(event.target===this){this.classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="document.getElementById('all-modal').classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
 <div class="ov" id="srv-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="srv-title2"></h2><span class="mclose" onclick="document.getElementById('srv-modal').classList.remove('open')">×</span></div><div class="mbody" id="srv-body"></div></div></div>
 <div class="ov" id="blog-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="blog-title"></h2><span class="mclose" onclick="document.getElementById('blog-modal').classList.remove('open')">×</span></div><div class="mbody" id="blog-body"></div></div></div>
 <div class="ov" id="port-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="port-title"></h2><span class="mclose" onclick="document.getElementById('port-modal').classList.remove('open')">×</span></div><div class="mbody" id="port-body"></div></div></div>
@@ -4806,12 +4806,16 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ทำอะไร ──
+  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ re-render ──
   // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
   if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 500)) {
     const _curActive = document.querySelector('.page.active');
     const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
-    if (_curName === name) return; // หน้าเดิม → ไม่ต้องทำอะไร
+    if (_curName === name) {
+      // หน้าเดิม → restore body แล้ว return (ไม่แตะ grid)
+      if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
+      return;
+    }
   }
   // ── restore body จาก scroll lock (กรณีที่ถูกเรียกขณะ modal เปิดอยู่) ──
   if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden') {
@@ -4967,10 +4971,19 @@ window.closeModal = function(e) {
   const _modalWasOpen = document.getElementById('prop-modal')?.classList.contains('open');
   _origCloseModal(e);
   if (_modalWasOpen && !document.getElementById('prop-modal')?.classList.contains('open')) {
-    // ensure flags always reset after any close path
     window._listingsRenderAbort = false;
     window._listingsRenderPending = false;
     _closePropertyUrl();
+    // ── ตรวจว่า listings active และ grid ว่างอยู่ → re-render ──
+    // กรณีที่ _listingsRenderAbort ถูก set ตอนเปิด modal ทำให้ grid ยังไม่ render
+    const _isListingsActive = document.getElementById('page-listings')?.classList.contains('active');
+    if (_isListingsActive) {
+      const _grid = document.getElementById('listings-grid');
+      const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
+      if (!_hasCards && window._listingsDataReady && typeof renderListingsPage === 'function') {
+        renderListingsPage();
+      }
+    }
   }
 };
 
@@ -5033,9 +5046,7 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
       const allOpen  = document.getElementById('all-modal')?.classList.contains('open');
       const advOpen  = document.getElementById('adv-filter-panel')?.classList.contains('open');
       const sheetOpen= document.getElementById('adv-sheet')?.classList.contains('open');
-      const applyOpen= document.querySelector('.apply-overlay.open') !== null;
-      const qsOpen   = document.getElementById('qs-mob-overlay')?.style.display === 'block';
-      if(!propOpen && !allOpen && !advOpen && !sheetOpen && !applyOpen && !qsOpen) return true;
+      if(!propOpen && !allOpen && !advOpen && !sheetOpen) return true;
     }
     return false;
   }
@@ -5047,7 +5058,6 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
   }
   document.addEventListener('touchstart', _safetyCheck, {passive: true, capture: true});
   document.addEventListener('click', _safetyCheck, {capture: true});
-  document.addEventListener('pointerdown', _safetyCheck, {passive: true, capture: true});
 })();
 
 const CAT_LABELS={
@@ -6149,16 +6159,12 @@ function _forceRestoreBody() {
 }
 
 function closeModal(e){
-  // pattern 1: closeModal()        — JS call (ปุ่ม ×), ปิดเสมอ → e = undefined
-  // pattern 2: closeModal(event)   — จาก overlay onclick → ปิดเฉพาะเมื่อ click ที่ overlay พื้นหลัง
-  //
-  // FIX v2: ถ้ามี event ให้เช็คว่า click ตกอยู่ใน .modal (content) หรือไม่
-  // ถ้า click ใน .modal → ไม่ปิด, ถ้า click นอก (บน overlay) → ปิด
+  // pattern 1: closeModal()      — เรียกตรงจาก JS (ปุ่ม ×) → e = undefined → ปิดเสมอ
+  // pattern 2: closeModal(event) — overlay onclick → ปิดเฉพาะเมื่อ click ที่พื้น overlay
+  //   ใช้ closest('.modal') เพื่อป้องกัน click ใน content area bubble ขึ้นมาปิด modal
   if(e && e instanceof Event && e.target) {
     if(e.target.closest && e.target.closest('.modal')) return;
-    // ถ้า target ไม่ใช่ overlay #prop-modal เองและไม่ได้กดบน overlay พื้น → ไม่ปิด
-    const overlay = document.getElementById('prop-modal');
-    if(overlay && e.target !== overlay) return;
+    if(e.target !== document.getElementById('prop-modal')) return;
   }
   const _modal = $('prop-modal');
   if(!_modal || !_modal.classList.contains('open')) return;

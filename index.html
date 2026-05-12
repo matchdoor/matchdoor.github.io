@@ -4859,10 +4859,12 @@ function _silentShowPage(name, skipScrollTop) {
     if (!_wasListingsActive) {
       window._lsSeoSidebarRendered = false;
     }
-    // ถ้า listings active อยู่แล้วและมีการ์ด → ไม่แตะ grid เลย (modal ปิด → กลับมา)
+    // ── ตรวจ grid และ cards ──
     const _grid = document.getElementById('listings-grid');
     const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
+
     if (_wasListingsActive && _hasCards) {
+      // listings active อยู่แล้ว + มีการ์ดครบ → ไม่ต้อง re-render (modal ปิด → กลับมา)
       window._listingsRenderAbort = false;
       window._listingsRenderPending = false;
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
@@ -4871,6 +4873,10 @@ function _silentShowPage(name, skipScrollTop) {
       }
       return;
     }
+    // listings active อยู่แล้วแต่ grid ว่าง (mobile batch ยังไม่ render, หรือ _listingsRenderAbort ขวางไว้)
+    // หรือ listings ไม่ active (navigate มาจากหน้าอื่น) → render เลย
+    window._listingsRenderAbort = false;
+    window._listingsRenderPending = false;
     if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
     if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
@@ -4972,19 +4978,24 @@ window.closeModal = function(e) {
   _origCloseModal(e);
   const _modalIsNowClosed = !document.getElementById('prop-modal')?.classList.contains('open');
   if (_modalWasOpen && _modalIsNowClosed) {
-    // flags ถูก reset ใน _forceRestoreBody แล้ว — เรียกซ้ำเพื่อความแน่ใจ
+    // ── reset flags ทันที (synchronous) — ป้องกัน renderListingsPage ถูก abort ──
     window._listingsRenderAbort = false;
     window._listingsRenderPending = false;
     _closePropertyUrl();
-    // ถ้า listings active อยู่และ grid ว่าง → re-render หลัง body restore เสร็จ
+    // ── re-render listings ถ้า grid ว่าง หรือ batch ยังไม่เสร็จ (mobile :partial) ──
+    // ใช้ requestAnimationFrame เพื่อให้ _forceRestoreBody rAF เสร็จก่อน
     requestAnimationFrame(function() {
+      // ตรวจซ้ำว่า modal ปิดจริงและ listings active อยู่
       var _isListingsActive = document.getElementById('page-listings')?.classList.contains('active');
-      if (_isListingsActive) {
-        var _grid = document.getElementById('listings-grid');
-        var _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
-        if (!_hasCards && window._listingsDataReady && typeof renderListingsPage === 'function') {
-          renderListingsPage();
-        }
+      if (!_isListingsActive) return;
+      var _grid = document.getElementById('listings-grid');
+      // นับ prop-card จริง (ไม่นับ loading-sk skeleton)
+      var _hasRealCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
+      // ตรวจว่า batch ยังไม่เสร็จ (key ลงท้าย :partial)
+      var _isPartialRender = _grid && (_grid.dataset.renderKey || '').endsWith(':partial');
+      if ((!_hasRealCards || _isPartialRender) && window._listingsDataReady && typeof renderListingsPage === 'function') {
+        window._listingsRenderAbort = false; // ยืนยัน flag ก่อน render
+        renderListingsPage();
       }
     });
   }
@@ -5248,7 +5259,9 @@ function renderListingsPage() {
     const _sortValChk = document.getElementById('listings-sort')?.value || 'default';
     const _cacheKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortValChk;
     const _hasCards = _grid.querySelector('.prop-card') !== null;
-    if (_hasCards && _grid.dataset.renderKey === _cacheKey) return;
+    // ถ้า renderKey ลงท้าย ':partial' = batch ยังไม่เสร็จ → ไม่ใช้ cache → render ต่อ
+    const _isPartialKey = (_grid.dataset.renderKey || '').endsWith(':partial');
+    if (_hasCards && !_isPartialKey && _grid.dataset.renderKey === _cacheKey) return;
   }
 
   _listingsRenderPending = true;
@@ -5341,8 +5354,10 @@ function renderListingsPage() {
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
       grid.innerHTML = firstBatch.map(propCard).join('');
-      // บันทึก render key ทันทีหลัง first batch — ป้องกัน re-render ซ้ำจาก _silentShowPage
-      grid.dataset.renderKey = _renderKey;
+      // บันทึก render key หลัง first batch — แต่ถ้ายังมี batch ค้าง ให้ต่อท้าย ':partial'
+      // เพื่อให้ re-render ครั้งถัดไปรู้ว่ายังไม่เสร็จ (ป้องกัน snapshot cache hit ก่อนกำหนด)
+      const _isPartial = (secondBatch.length > 0 || restBatch.length > 0);
+      grid.dataset.renderKey = _renderKey + (_isPartial ? ':partial' : '');
       // init swipe สำหรับ batch แรก — skip บน mobile ถ้า abort
       if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
         requestAnimationFrame(()=>initAllCardSwipes(grid));
@@ -5359,6 +5374,8 @@ function renderListingsPage() {
           tmp.innerHTML = secondBatch.map(propCard).join('');
           while(tmp.firstChild) frag.appendChild(tmp.firstChild);
           grid.appendChild(frag);
+          // อัปเดต render key — ถ้ายังมี restBatch ค้างอยู่ ต่อท้าย ':partial' ไว้ก่อน
+          grid.dataset.renderKey = _renderKey + (restBatch.length > 0 ? ':partial' : '');
           // init swipe batch 2 — เฉพาะ card ที่เพิ่งเพิ่ม
           if(typeof initAllCardSwipes==='function'){
             const newCards = grid.querySelectorAll('.prop-card:not([data-swipe-init])');
@@ -5373,6 +5390,8 @@ function renderListingsPage() {
               tmp2.innerHTML = restBatch.map(propCard).join('');
               while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
               grid.appendChild(frag2);
+              // render key สมบูรณ์ — ลบ ':partial' ออก
+              grid.dataset.renderKey = _renderKey;
               if(typeof initAllCardSwipes==='function'){
                 requestAnimationFrame(()=>initAllCardSwipes(grid));
               }

@@ -235,12 +235,8 @@ a,button,input,select,textarea,
      position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
   body.modal-open{
     overflow:hidden!important;
-    /* ห้าม touch-action ขณะ modal เปิด — ป้องกัน background scroll บน iOS */
-    touch-action:none!important;
-  }
-  /* เมื่อ modal-open หายไป ให้ restore touch-action ทันที */
-  body:not(.modal-open){
-    touch-action:auto;
+    /* ไม่ใช้ touch-action:none — มันทำให้ iOS ค้างหลังปิด modal
+       ใช้แค่ overflow:hidden เพื่อป้องกัน background scroll */
   }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
@@ -4798,17 +4794,25 @@ window.addEventListener('popstate', function(e) {
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.left = '';
+      // ── iOS fix: force restore touch-action และ pointer-events ──
+      document.body.style.touchAction = '';
+      document.body.style.pointerEvents = '';
       const savedY = document.body._savedScrollY || 0;
       document.body._savedScrollY = 0;
       window._currentModalId = null;
       if (typeof close360 === 'function') close360();
-      if (savedY > 0) {
-        requestAnimationFrame(function() { window.scrollTo(0, savedY); });
-      }
-      // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม (grid ยังอยู่ครบ)
+      // ── double-rAF: ป้องกันหน้าค้าง/คลิกไม่ได้บน iOS หลังปิด modal ──
       const _activePageEl = document.querySelector('.page.active');
       const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
-      if (_activeName === state.name) return; // ตรงกัน — จบ
+      const _targetName = state.name;
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          if (savedY > 0 && _activeName === _targetName) { window.scrollTo(0, savedY); }
+          document.body.style.webkitTransform = 'translateZ(0)';
+          requestAnimationFrame(function() { document.body.style.webkitTransform = ''; });
+        });
+      });
+      if (_activeName === _targetName) return; // ตรงกัน — จบ
       // หน้าต่างกัน → navigate
       _silentShowPage(state.name, true);
     } else {
@@ -4825,6 +4829,9 @@ function _silentShowPage(name, skipScrollTop) {
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.left = '';
+  // ── iOS fix: force restore touch-action และ pointer-events ──
+  document.body.style.touchAction = '';
+  document.body.style.pointerEvents = '';
   document.body.classList.remove('modal-open');
   // ไม่ reset _savedScrollY — closeModal/popstate อ่านค่านี้เพื่อ restore scroll
   // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
@@ -6077,26 +6084,32 @@ function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
     const _modal = $('prop-modal');
-    // ── ปิด modal ทันที — ไม่รอ transition ใดๆ ──
     _modal.classList.remove('open');
-    // restore scroll-lock (ใช้ overflow:hidden แทน position:fixed)
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
-    // position/top/width/left ไม่ได้ set แล้ว แต่ clear ไว้ป้องกัน residual state
     document.body.style.position = '';
     document.body.style.top = '';
     document.body.style.width = '';
     document.body.style.left = '';
+    // ── iOS fix: force restore touch-action และ pointer-events ──
+    document.body.style.touchAction = '';
+    document.body.style.pointerEvents = '';
     const savedY = document.body._savedScrollY || 0;
     document.body._savedScrollY = 0;
     window._currentModalId = null;
     if(typeof close360==='function') close360();
-    // ── scroll กลับใน rAF — ให้ browser ปลด layout lock (overflow:hidden) ก่อน
-    // การเรียก scrollTo ทันทีบน iOS ทำให้ browser ต้อง recalculate layout ก่อน scroll
-    // ใส่ใน rAF จะทำให้ browser วาด frame ใหม่ก่อน จึง scroll ได้ทันที ไม่ค้าง
-    if (savedY > 0) {
-      requestAnimationFrame(function() { window.scrollTo(0, savedY); });
-    }
+    // ── double-rAF: ให้ iOS paint frame ก่อน แล้วค่อย scroll
+    // ป้องกันหน้าค้าง/คลิกไม่ได้หลังปิด modal
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (savedY > 0) { window.scrollTo(0, savedY); }
+        // force reflow เพื่อให้ iOS re-enable touch events
+        document.body.style.webkitTransform = 'translateZ(0)';
+        requestAnimationFrame(function() {
+          document.body.style.webkitTransform = '';
+        });
+      });
+    });
   } 
 }
 // Helper: build SEO-friendly property URL from prop object

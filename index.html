@@ -252,7 +252,7 @@ a,button,input,select,textarea,
     overscroll-behavior:contain!important
   }
   /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
-  *:not(.ov){transition-duration:.08s!important}
+  *:not(.ov):not(.seo-drawer):not(.seo-drawer-overlay){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   /* modal overlay: ปิด/เปิดทันทีบน mobile ไม่มี fade เลย */
   .ov{transition:none!important;
@@ -1241,8 +1241,8 @@ footer::after{
 }
 
 /* SEO Drawer (mobile) */
-.seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
-.seo-drawer-overlay.open{display:block}
+.seo-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .32s ease}
+.seo-drawer-overlay.open{opacity:1;pointer-events:auto}
 .seo-drawer{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);background:#fff;z-index:4001;transform:translateX(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.18)}
 .seo-drawer.open{transform:translateX(0)}
 .seo-drawer-hd{position:sticky;top:0;background:#fff;padding:14px 16px 10px;border-bottom:1.5px solid var(--bd);display:flex;align-items:center;justify-content:space-between;z-index:2}
@@ -5538,9 +5538,15 @@ function listingsFilterTx(tx) {
   else if(tx === 'RENT') base = base.filter(p=>p.tx==='RENT');
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
-  renderListingsPage();
-  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter บนมือถือ ──
-  _scrollToListingsResults();
+  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย render ──
+  const _seoDrawerFTx = document.getElementById('seo-drawer');
+  if(_seoDrawerFTx && _seoDrawerFTx.classList.contains('open')) {
+    closeSeoDrawer();
+    setTimeout(() => { renderListingsPage(); _scrollToListingsResults(); }, 320);
+  } else {
+    renderListingsPage();
+    _scrollToListingsResults();
+  }
 }
 
 function listingsFilterHot() {
@@ -5636,8 +5642,14 @@ function listingsInlineSearch() {
 function listingsQuickSearch(kw) {
   const inp = document.getElementById('ls-kw');
   if(inp) inp.value = kw;
-  listingsInlineSearch();
-  // _scrollToListingsResults เรียกแล้วใน listingsInlineSearch
+  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย search หลัง transition ──
+  const _seoDrawer = document.getElementById('seo-drawer');
+  if(_seoDrawer && _seoDrawer.classList.contains('open')) {
+    closeSeoDrawer();
+    setTimeout(listingsInlineSearch, 320);
+  } else {
+    listingsInlineSearch();
+  }
 }
 // debounced version สำหรับ keyboard input (oninput) — ลด render ซ้ำ
 const listingsInlineSearchDebounced = (function(){
@@ -5667,9 +5679,15 @@ function listingsFilterByType(typeVal) {
   _listingsTxFilter = 'ALL';
   _updateListingsTxTabs('ALL');
   _listingsCurPage = 1;
-  renderListingsPage();
-  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter ──
-  _scrollToListingsResults();
+  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย render ──
+  const _seoDrawerFBT = document.getElementById('seo-drawer');
+  if(_seoDrawerFBT && _seoDrawerFBT.classList.contains('open')) {
+    closeSeoDrawer();
+    setTimeout(() => { renderListingsPage(); _scrollToListingsResults(); }, 320);
+  } else {
+    renderListingsPage();
+    _scrollToListingsResults();
+  }
 }
 
 function openListingsAdvFilter() {

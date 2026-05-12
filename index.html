@@ -239,12 +239,9 @@ a,button,input,select,textarea,
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* ══ FIX: body.modal-open — ใช้ position:fixed (iOS standard pattern) ══
-     overflow:hidden อย่างเดียวบน iOS Safari ไม่หยุด background scroll ได้จริง */
-  body.modal-open{
-    overflow:hidden!important;
-    /* position/top/width set ใน JS openModal เพราะต้องการค่า scrollY */
-  }
+  /* body.modal-open: position:fixed + overflow:hidden ถูก set ทั้งหมดใน JS openModal
+     CSS ไม่ต้อง set เพราะ JS จัดการ scrollY ให้ถูกต้อง */
+  body.modal-open{ overflow:hidden!important }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
     -webkit-overflow-scrolling:touch;
@@ -4764,20 +4761,23 @@ function _closePropertyUrl() {
     const prevPage = window._pageBeforeModal || 'listings';
     const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['listings'] || PAGE_ROUTES['home'];
     const path = route ? route.path : '/listings';
-    // ป้องกัน popstate จาก replaceState บน iOS Safari
-    // ใช้ setTimeout แทน Promise.resolve — iOS Safari fire popstate ช้ากว่า microtask
+    // ── guard: ป้องกัน popstate จาก replaceState บน iOS Safari ──
+    // ใช้ flag + timestamp แทน timeout เพื่อรองรับ iOS ทุกเวอร์ชัน
     window._closingModal = true;
+    window._closingModalTime = Date.now();
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
-    setTimeout(function() { window._closingModal = false; }, 100);
-    // อัพเดต meta กลับเป็น page เดิม — ไม่แตะ DOM, ไม่ render grid
+    // reset flag หลัง 500ms — ครอบคลุม iOS Safari ทุกเวอร์ชันที่ delay popstate
+    setTimeout(function() { window._closingModal = false; window._closingModalTime = 0; }, 500);
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
 
 // Handle browser Back/Forward
 window.addEventListener('popstate', function(e) {
-  // guard: popstate จาก replaceState ขณะปิด modal (iOS Safari quirk) → skip
+  // guard 1: _closingModal flag — ป้องกัน popstate จาก replaceState ขณะปิด modal
   if (window._closingModal) return;
+  // guard 2: timestamp — iOS Safari บางเวอร์ชัน fire popstate ช้ามาก แต่ flag อาจ reset แล้ว
+  if (window._closingModalTime && (Date.now() - window._closingModalTime) < 500) return;
   const state = e.state;
   if (!state) { _silentShowPage('home'); return; }
   if (state.type === 'property') {
@@ -4829,6 +4829,13 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
+  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ทำอะไร ──
+  // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
+  if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 500)) {
+    const _curActive = document.querySelector('.page.active');
+    const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
+    if (_curName === name) return; // หน้าเดิม → ไม่ต้องทำอะไร
+  }
   // ── restore body จาก scroll lock (กรณีที่ถูกเรียกขณะ modal เปิดอยู่) ──
   document.body.classList.remove('modal-open');
   document.body.style.position = '';
@@ -6127,6 +6134,7 @@ function closeModal(e){
       window.scrollTo(0, savedY);
       // อนุญาต listings re-render หลัง scroll restore แล้ว
       window._listingsRenderAbort = false;
+      // _closingModalTime จะ expire ใน 500ms อยู่แล้ว ไม่ต้อง reset ที่นี่
       // reconnect MutationObserver ที่หยุดไว้ตอนเปิด modal
       if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
         window._cardObserverPaused = false;

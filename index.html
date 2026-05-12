@@ -4231,13 +4231,18 @@ async function loadData(){
               });
               updated=true;
             }
-            // re-render sections ที่เกี่ยวข้องในหน้าหลัก
+            // re-render sections เฉพาะหน้าที่ active อยู่จริง
+            // ไม่ render ถ้า listings active — ป้องกัน layout thrash หลังปิด modal
             if(updated){
-              if(typeof renderServices==='function') renderServices();
-              if(typeof renderBlogs==='function') renderBlogs();
-              if(typeof renderHomePortfolio==='function') renderHomePortfolio();
-              if(typeof renderFavDropdown==='function') renderFavDropdown();
-              renderRecCarousel && renderRecCarousel();
+              const _activePg = document.querySelector('.page.active');
+              const _apId = _activePg ? _activePg.id : '';
+              if(typeof renderFavDropdown==='function') renderFavDropdown(); // always safe
+              if(_apId === 'page-home' || _apId === '') {
+                if(typeof renderServices==='function') renderServices();
+                if(typeof renderBlogs==='function') renderBlogs();
+                if(typeof renderHomePortfolio==='function') renderHomePortfolio();
+                renderRecCarousel && renderRecCarousel();
+              }
             }
             // โหลด legal pages แบบ background
             loadLegalPages().catch(e=>console.warn('[loadLegalPages]',e));
@@ -4790,7 +4795,21 @@ window.addEventListener('popstate', function(e) {
       document.body.style.pointerEvents = '';
       window._currentModalId = null;
       if (typeof close360 === 'function') close360();
-      requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+      requestAnimationFrame(function() {
+        window.scrollTo(0, savedY);
+        window._listingsRenderAbort = false;
+        // reconnect MutationObserver ที่หยุดไว้ตอนเปิด modal
+        if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+          window._cardObserverPaused = false;
+          ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+           'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
+           'listings-grid'
+          ].forEach(function(gid){
+            var el = document.getElementById(gid);
+            if(el) _cardObserver.observe(el, {childList:true, subtree:false});
+          });
+        }
+      });
       // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม
       const _activePageEl = document.querySelector('.page.active');
       const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
@@ -4842,10 +4861,11 @@ function _silentShowPage(name, skipScrollTop) {
     if (!_wasListingsActive) {
       window._lsSeoSidebarRendered = false;
     }
-    // ถ้า listings active อยู่แล้วและมีการ์ด → ไม่แตะ grid เลย
+    // ถ้า listings active อยู่แล้วและมีการ์ด → ไม่แตะ grid เลย (modal ปิด → กลับมา)
     const _grid = document.getElementById('listings-grid');
     const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
     if (_wasListingsActive && _hasCards) {
+      window._listingsRenderAbort = false; // ปลดล็อค
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
         const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
         idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
@@ -5186,9 +5206,16 @@ function renderListingsPage() {
     }
   }
 
+  // ── ถ้า modal กำลังเปิดอยู่ → ห้าม re-render listings ──
+  if(window._listingsRenderAbort) {
+    _listingsRenderPending = false;
+    return;
+  }
   _listingsRenderPending = true;
   const _doRender = () => {
   _listingsRenderPending = false;
+  // double-check ใน _doRender ด้วย เพราะ rAF อาจ delay
+  if(window._listingsRenderAbort) return;
 
   // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
   const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
@@ -5904,6 +5931,12 @@ function openModal(id){
   const dotsEl=$('sdots'); if(dotsEl) dotsEl.innerHTML='';
 
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
+  window._listingsRenderAbort = true; // ห้าม re-render listings ขณะ modal เปิด
+  // หยุด MutationObserver บน listings-grid ขณะ modal เปิด — ป้องกัน initAllCardSwipes ทำงานซ้ำ
+  if(typeof _cardObserver !== 'undefined' && _cardObserver && _cardObserver.disconnect) {
+    _cardObserver.disconnect();
+    window._cardObserverPaused = true;
+  }
   $('prop-modal').classList.add('open');
 
   // ── iOS scroll-lock: ใช้ position:fixed — วิธีที่ iOS Safari รองรับดีที่สุด ──
@@ -6088,6 +6121,19 @@ function closeModal(e){
     // restore scroll position — ใช้ rAF เดียวพอ เพราะ position:fixed ถูกปลดแล้ว
     requestAnimationFrame(function() {
       window.scrollTo(0, savedY);
+      // อนุญาต listings re-render หลัง scroll restore แล้ว
+      window._listingsRenderAbort = false;
+      // reconnect MutationObserver ที่หยุดไว้ตอนเปิด modal
+      if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+        window._cardObserverPaused = false;
+        ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+         'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
+         'listings-grid'
+        ].forEach(function(gid){
+          var el = document.getElementById(gid);
+          if(el) _cardObserver.observe(el, {childList:true, subtree:false});
+        });
+      }
     });
   } 
 }

@@ -4806,13 +4806,13 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ re-render ──
+  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ re-render grid ──
   // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
   if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 500)) {
     const _curActive = document.querySelector('.page.active');
     const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
     if (_curName === name) {
-      // หน้าเดิม → restore body แล้ว return (ไม่แตะ grid)
+      // หน้าเดิม → restore body lock (สำคัญมาก!) แล้ว return
       if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
       return;
     }
@@ -4974,8 +4974,8 @@ window.closeModal = function(e) {
     window._listingsRenderAbort = false;
     window._listingsRenderPending = false;
     _closePropertyUrl();
-    // ── ตรวจว่า listings active และ grid ว่างอยู่ → re-render ──
-    // กรณีที่ _listingsRenderAbort ถูก set ตอนเปิด modal ทำให้ grid ยังไม่ render
+    // ถ้า listings active อยู่และ grid ว่าง → re-render ทันที
+    // (เกิดจาก _listingsRenderAbort=true ตอนเปิด modal ทำให้ grid ยังไม่ render)
     const _isListingsActive = document.getElementById('page-listings')?.classList.contains('active');
     if (_isListingsActive) {
       const _grid = document.getElementById('listings-grid');
@@ -5042,11 +5042,14 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
   function _bodyIsStuck() {
     if(document.body.style.position === 'fixed') return true;
     if(document.body.style.overflow === 'hidden') {
-      const propOpen = document.getElementById('prop-modal')?.classList.contains('open');
-      const allOpen  = document.getElementById('all-modal')?.classList.contains('open');
-      const advOpen  = document.getElementById('adv-filter-panel')?.classList.contains('open');
-      const sheetOpen= document.getElementById('adv-sheet')?.classList.contains('open');
-      if(!propOpen && !allOpen && !advOpen && !sheetOpen) return true;
+      const propOpen  = document.getElementById('prop-modal')?.classList.contains('open');
+      const allOpen   = document.getElementById('all-modal')?.classList.contains('open');
+      const advOpen   = document.getElementById('adv-filter-panel')?.classList.contains('open');
+      const sheetOpen = document.getElementById('adv-sheet')?.classList.contains('open');
+      const applyOpen = document.querySelector('.apply-overlay.open') !== null;
+      const seoOpen   = document.getElementById('seo-drawer')?.classList.contains('open');
+      const qsOpen    = document.getElementById('qs-mob-overlay')?.style.display === 'block';
+      if(!propOpen && !allOpen && !advOpen && !sheetOpen && !applyOpen && !seoOpen && !qsOpen) return true;
     }
     return false;
   }
@@ -5056,8 +5059,9 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
       if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
     }
   }
-  document.addEventListener('touchstart', _safetyCheck, {passive: true, capture: true});
-  document.addEventListener('click', _safetyCheck, {capture: true});
+  document.addEventListener('touchstart',  _safetyCheck, {passive:true, capture:true});
+  document.addEventListener('pointerdown', _safetyCheck, {passive:true, capture:true});
+  document.addEventListener('click',       _safetyCheck, {capture:true});
 })();
 
 const CAT_LABELS={
@@ -6159,9 +6163,8 @@ function _forceRestoreBody() {
 }
 
 function closeModal(e){
-  // pattern 1: closeModal()      — เรียกตรงจาก JS (ปุ่ม ×) → e = undefined → ปิดเสมอ
-  // pattern 2: closeModal(event) — overlay onclick → ปิดเฉพาะเมื่อ click ที่พื้น overlay
-  //   ใช้ closest('.modal') เพื่อป้องกัน click ใน content area bubble ขึ้นมาปิด modal
+  // pattern 1: closeModal()      — ปุ่ม × เรียกตรง → e=undefined → ปิดเสมอ
+  // pattern 2: closeModal(event) — overlay onclick → ปิดเฉพาะเมื่อ click บน overlay พื้นหลัง
   if(e && e instanceof Event && e.target) {
     if(e.target.closest && e.target.closest('.modal')) return;
     if(e.target !== document.getElementById('prop-modal')) return;
@@ -7899,7 +7902,8 @@ function hGalleryMove(trackId, dir) {
 
 function initHGallerySwipe(wrapId) {
   const wrap = document.getElementById(wrapId);
-  if(!wrap) return;
+  if(!wrap || wrap._hGallerySwipeInit) return; // ป้องกัน init ซ้ำ
+  wrap._hGallerySwipeInit = true;
   let startX = 0, startY = 0, startScroll = 0, isDragging = false, moved = 0, isVertical = false;
   // Touch: only hijack horizontal swipes, let vertical pass to page scroll
   wrap.addEventListener('touchstart', e => {
@@ -7912,7 +7916,6 @@ function initHGallerySwipe(wrapId) {
     const dx = startX - e.touches[0].clientX;
     const dy = startY - e.touches[0].clientY;
     if(!isDragging) {
-      // Determine direction on first significant move
       if(Math.abs(dx) > 4 || Math.abs(dy) > 4) {
         isVertical = Math.abs(dy) > Math.abs(dx);
         isDragging = true;
@@ -7922,28 +7925,30 @@ function initHGallerySwipe(wrapId) {
       moved = Math.abs(dx);
       wrap.scrollLeft = startScroll + dx;
     }
-    // If vertical, do nothing — browser handles page scroll
   }, {passive:true});
   wrap.addEventListener('touchend', () => { isDragging = false; moved = 0; isVertical = false; });
-  // Mouse drag (desktop)
+  // Mouse drag (desktop) — bind to wrap ไม่ใช่ window เพื่อไม่ leak
+  const onMouseMove = e => {
+    if(!isDragging) return;
+    const dx = startX - e.clientX;
+    moved = Math.abs(dx);
+    wrap.scrollLeft = startScroll + dx;
+  };
+  const onMouseUp = () => {
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+  };
   wrap.addEventListener('mousedown', e => {
     startX = e.clientX;
     startScroll = wrap.scrollLeft;
     isDragging = true;
     moved = 0;
     wrap.classList.add('dragging');
+    window.addEventListener('mousemove', onMouseMove, {passive:true});
+    window.addEventListener('mouseup', onMouseUp, {once:true});
   });
-  window.addEventListener('mousemove', e => {
-    if(!isDragging) return;
-    const dx = startX - e.clientX;
-    moved = Math.abs(dx);
-    wrap.scrollLeft = startScroll + dx;
-  });
-  window.addEventListener('mouseup', () => {
-    if(!isDragging) return;
-    isDragging = false;
-    wrap.classList.remove('dragging');
-  });
+  window.addEventListener('mouseup', onMouseUp);
   // Block click only if dragged
   wrap.addEventListener('click', e => {
     if(moved > 5) { e.stopPropagation(); e.preventDefault(); }
@@ -9677,7 +9682,9 @@ function openApplyModal(type){
 }
 function closeApplyModal(type){
   const ov = document.getElementById('apply-'+type+'-overlay');
-  if(ov){ ov.classList.remove('open'); document.body.style.overflow=''; }
+  if(ov){ ov.classList.remove('open'); }
+  if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
+  else document.body.style.overflow='';
 }
 
 // Close on ESC
@@ -10313,7 +10320,8 @@ function closeSeoDrawer(){
   const drawer = document.getElementById('seo-drawer');
   if(overlay) overlay.classList.remove('open');
   if(drawer) drawer.classList.remove('open');
-  document.body.style.overflow = '';
+  if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
+  else document.body.style.overflow='';
 }
 
 function resetAdvFilter(){

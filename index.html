@@ -216,6 +216,14 @@ a,button,input,select,textarea,
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
 @media(max-width:768px){
+  /* Mobile hero: dark overlay เพื่อให้ text อ่านได้บนภาพ banner */
+  .hero::before{
+    content:'';
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(180deg,rgba(8,14,29,0.72) 0%,rgba(8,14,29,0.45) 50%,rgba(8,14,29,0.65) 100%);
+    pointer-events:none;
+  }
+  .hero-content,.hero-bg-clip{z-index:2}
   *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
   /* ปิด animation ที่ไม่จำเป็นบน mobile */
   .door-left,.door-right,.pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
@@ -765,28 +773,18 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .page{display:none}
 .page.active{display:block}
 
-.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}
-/* Desktop/Tablet: hero-banner-img แสดงเต็มภาพถูกสัดส่วน — contain + bottom align ให้ตึกอยู่ด้านล่าง */
+.hero{background:#F2EEE8;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}
+/* hero-banner-img: cover เต็ม banner ทั้ง desktop และ mobile */
 .hero-banner-img{
   position:absolute;
-  bottom:0; left:50%;
-  transform:translateX(-50%);
-  width:100%; height:auto;
-  max-height:100%;
-  object-fit:contain;
-  object-position:center bottom;
+  inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  object-position:center center;
   z-index:0;opacity:0;pointer-events:none;
+  transform:none;
 }
-/* Mobile: ไม่เปลี่ยนแปลง — ใช้ canvas แทนอยู่แล้ว */
-@media(max-width:768px){
-  .hero-banner-img{
-    position:absolute;inset:0;
-    width:100%;height:100%;
-    object-fit:cover;object-position:center 60%;
-    transform:none;left:0;bottom:auto;
-  }
-}
-/* Desktop/Tablet: กำหนด min-height ให้พอดีกับสัดส่วนภาพ 16:9 */
+/* Desktop/Tablet: กำหนด min-height ให้พอดีกับสัดส่วนภาพ */
 @media(min-width:769px){
   .hero{min-height:clamp(380px, 42vw, 620px);display:flex;flex-direction:column;justify-content:center;}
 }
@@ -3708,7 +3706,7 @@ const C = {
   // --- [3] System Images (อัปโหลดไฟล์ไว้ใน bucket ตาม path นี้) ---
   IMG_LOGO:   'system/Logoweb.webp',       // 🔧 [CONFIG-4] โลโก้ navbar & footer  → อัปโหลด: matchdoor-assets/system/logoweb.webp
   IMG_BANNER: 'system/bannerWeb.webp',     // 🔧 [CONFIG-5] ภาพ hero background    → อัปโหลด: matchdoor-assets/system/bannerWeb.webp
-  IMG_BANNER_OPACITY: 0.18,            // 🔧 [CONFIG-6] ความเข้มภาพ hero (0.0–1.0)
+  IMG_BANNER_OPACITY: 1.0,             // 🔧 [CONFIG-6] ความเข้มภาพ hero (0.0–1.0)
   IMG_OG:     'system/og-image.jpg',   // 🔧 [CONFIG-7] Open Graph image (og:image) → อัปโหลด: matchdoor-assets/system/og-image.jpg
 
   // --- [4] ข้อมูลบริษัท ---
@@ -3750,10 +3748,16 @@ async function loadSystemImages() {
     // Banner hero background — ใช้ไฟล์ local
     document.querySelectorAll('.hero-banner-img').forEach(el => {
       el.src = '/bannerWeb.webp';
-      // บนมือถือไม่มี canvas overlay → ใช้ opacity สูงกว่า desktop เพื่อให้เห็นภาพชัด
       const isMobile = window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
-      el.style.opacity = isMobile ? '0.55' : String(C.IMG_BANNER_OPACITY || 0.18);
-      el.style.display = 'block';
+      if(isMobile) {
+        // Mobile: img แสดงตรงๆ ไม่มี canvas — ใช้ opacity สูง + dark overlay ผ่าน CSS
+        el.style.opacity = '0.55';
+        el.style.display = 'block';
+      } else {
+        // Desktop: canvas วาดภาพเอง → ซ่อน img element ไว้ (canvas โหลดภาพแยก)
+        el.style.opacity = '0';
+        el.style.display = 'none';
+      }
     });
   } catch(e) {
     console.warn('[loadSystemImages]', e);
@@ -7535,23 +7539,20 @@ async function renderNearbyProps(prop, container) {
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
 
-    // 1. Draw Bangkok skyline photo as background (contain, anchored bottom so buildings sit at base)
+    // 1. Draw Bangkok skyline photo — cover mode เพื่อเต็ม canvas ไม่มีขอบว่าง
     if(bgImg.complete && bgImg.naturalWidth > 0) {
       const imgAspect = bgImg.naturalWidth / bgImg.naturalHeight;
       const canvasAspect = W / H;
       let dw, dh, dx, dy;
-      // ── "contain" mode: fit whole image inside canvas, anchor to bottom ──
-      // ภาพแสดงเต็มสัดส่วน ไม่ crop — ตึกอยู่ที่ฐานล่าง
+      // ── "cover" mode: ขยายให้ครอบคลุม canvas ทั้งหมด center crop ──
       if(canvasAspect > imgAspect) {
-        // canvas กว้างกว่า → จำกัดด้วยความสูง
+        // canvas กว้างกว่าภาพ → ยึดความกว้าง crop บน/ล่าง
+        dw = W; dh = W / imgAspect;
+        dx = 0; dy = (H - dh) / 2;
+      } else {
+        // canvas แคบกว่าภาพ → ยึดความสูง crop ซ้าย/ขวา
         dh = H; dw = H * imgAspect;
         dx = (W - dw) / 2; dy = 0;
-      } else {
-        // canvas แคบกว่า → จำกัดด้วยความกว้าง
-        dw = W; dh = W / imgAspect;
-        dx = 0;
-        // anchor bottom: ให้ฐานภาพ (แม่น้ำ/ตึก) ชิดขอบล่าง canvas
-        dy = H - dh;
       }
       ctx.drawImage(bgImg, dx, dy, dw, dh);
     } else {
@@ -7574,6 +7575,14 @@ async function renderNearbyProps(prop, container) {
 
     // 5. Birds (daytime)
     drawBirds(frame, nightAlpha);
+
+    // 6. Dark gradient overlay บน/ล่าง — ให้ text อ่านได้ชัดบนภาพสีอ่อน
+    const textOverlay = ctx.createLinearGradient(0, 0, 0, H);
+    textOverlay.addColorStop(0,   'rgba(8,14,29,0.72)');
+    textOverlay.addColorStop(0.5, 'rgba(8,14,29,0.45)');
+    textOverlay.addColorStop(1,   'rgba(8,14,29,0.65)');
+    ctx.fillStyle = textOverlay;
+    ctx.fillRect(0, 0, W, H);
 
     requestAnimationFrame(drawFrame);
   }

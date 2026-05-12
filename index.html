@@ -235,6 +235,12 @@ a,button,input,select,textarea,
      position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
   body.modal-open{
     overflow:hidden!important;
+    /* ห้าม touch-action ขณะ modal เปิด — ป้องกัน background scroll บน iOS */
+    touch-action:none!important;
+  }
+  /* เมื่อ modal-open หายไป ให้ restore touch-action ทันที */
+  body:not(.modal-open){
+    touch-action:auto;
   }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
@@ -248,9 +254,13 @@ a,button,input,select,textarea,
   /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
   *:not(.ov){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* modal overlay: ปิดทันทีบน mobile ไม่มี fade */
-  .ov{transition:none!important}
-  #prop-modal .modal{transition:none!important}
+  /* modal overlay: ปิด/เปิดทันทีบน mobile ไม่มี fade เลย */
+  .ov{transition:none!important;
+      -webkit-transition:none!important}
+  #prop-modal,.ov .modal{transition:none!important;
+      -webkit-transition:none!important}
+  /* modal slide ไม่ใช้ transform บน mobile */
+  .slides{transition:none!important}
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
   .prop-thumb img,.blog-thumb img{
@@ -338,6 +348,20 @@ img{max-width:100%;height:auto}
 .listings-seo-sidebar{
   content-visibility:auto;
   contain-intrinsic-size:0 400px;
+}
+/* mobile: SEO footer sections ใน listings — defer render ด้วย content-visibility */
+@media(max-width:768px){
+  #page-listings .listings-seo-sidebar,
+  #page-listings section[aria-label*="อสังหา"],
+  #page-listings section[aria-label*="คู่มือ"]{
+    content-visibility:auto;
+    contain-intrinsic-size:0 300px;
+  }
+  /* listings grid: force GPU layer ป้องกัน repaint ขณะ modal ปิด */
+  #listings-grid{
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+  }
 }
 .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 
@@ -4752,8 +4776,11 @@ window.addEventListener('popstate', function(e) {
       document.body.style.left = '';
       document.body._savedScrollY = 0;
       window._listingsRenderAbort = true;
-      setTimeout(() => { window._listingsRenderAbort = false; }, 300);
-      window.scrollTo(0, savedY);
+      // reset abort หลัง paint ถัดไป
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { window._listingsRenderAbort = false; });
+      });
+      if (savedY > 0) window.scrollTo(0, savedY);
       window._currentModalId = null;
       if (typeof close360 === 'function') close360();
       // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
@@ -5199,21 +5226,27 @@ function renderListingsPage() {
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
       grid.innerHTML = firstBatch.map(propCard).join('');
-      // init swipe เฉพาะใน grid (scoped) — ไม่ query ทั้งเพจ
-      if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+      // init swipe สำหรับ batch แรก — skip บน mobile ถ้า abort
+      if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
+        requestAnimationFrame(()=>initAllCardSwipes(grid));
+      }
 
       const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
 
       if(secondBatch.length){
         idle(()=>{
-          // ถ้า modal เพิ่งปิด หรือมีการสั่ง abort → skip batch นี้ทิ้ง ไม่ลบ flag
+          // ถ้า modal เพิ่งปิด หรือมีการสั่ง abort → skip batch นี้ทิ้ง
           if(window._listingsRenderAbort) return;
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
           while(tmp.firstChild) frag.appendChild(tmp.firstChild);
           grid.appendChild(frag);
-          if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+          // init swipe batch 2 — เฉพาะ card ที่เพิ่งเพิ่ม
+          if(typeof initAllCardSwipes==='function'){
+            const newCards = grid.querySelectorAll('.prop-card:not([data-swipe-init])');
+            if(newCards.length) requestAnimationFrame(()=>initAllCardSwipes(grid));
+          }
 
           if(restBatch.length){
             idle(()=>{
@@ -5223,7 +5256,9 @@ function renderListingsPage() {
               tmp2.innerHTML = restBatch.map(propCard).join('');
               while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
               grid.appendChild(frag2);
-              if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+              if(typeof initAllCardSwipes==='function'){
+                requestAnimationFrame(()=>initAllCardSwipes(grid));
+              }
             });
           }
         });
@@ -5638,6 +5673,10 @@ function toggleListingsMapPanel() {
 }
 
 function renderListingsSeoSidebar() {
+  // ── guard: ถ้าเพิ่ง render ไปแล้วใน 500ms — skip (ป้องกัน call ซ้ำจากหลายที่)
+  const _now = Date.now();
+  if(renderListingsSeoSidebar._lastRun && (_now - renderListingsSeoSidebar._lastRun) < 500) return;
+  renderListingsSeoSidebar._lastRun = _now;
   const btnBase = 'text-align:left;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);font-size:12px;color:var(--tx);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px;width:100%';
   // Popular areas — dynamic from data or static fallback
   const areaEl = document.getElementById('seo-popular-areas');
@@ -5957,10 +5996,11 @@ function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+sl
 function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
-    $('prop-modal').classList.remove('open');
-    // abort pending idle batch renders
+    const _modal = $('prop-modal');
+    // ── ปิด modal ทันที — ไม่รอ transition ใดๆ ──
+    _modal.classList.remove('open');
+    // abort pending idle batch renders ทันที
     window._listingsRenderAbort = true;
-    setTimeout(() => { window._listingsRenderAbort = false; }, 300);
     // restore scroll-lock (ใช้ overflow:hidden แทน position:fixed)
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -5972,9 +6012,13 @@ function closeModal(e){
     const savedY = document.body._savedScrollY || 0;
     document.body._savedScrollY = 0;
     // scroll กลับ — instant ทั้ง mobile และ desktop
-    window.scrollTo(0, savedY);
+    if (savedY > 0) window.scrollTo(0, savedY);
     window._currentModalId = null;
     if(typeof close360==='function') close360();
+    // reset abort flag หลัง browser paint frame ถัดไป — ไม่ใช้ setTimeout
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { window._listingsRenderAbort = false; });
+    });
   } 
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -6991,20 +7035,29 @@ function initCardSwipeOn(containerEl) {
 // ถ้าไม่ส่ง → fallback query ทั้ง document (เฉพาะหน้าที่ active เท่านั้น)
 function initAllCardSwipes(scopeEl) {
   var root = scopeEl || document.querySelector('.page.active') || document;
-  root.querySelectorAll('.prop-card, .blog-card, .gal-card, .agent-card')
-    .forEach(initCardSwipeOn);
+  // ── skip card ที่ init แล้ว ลด loop บน mobile ──
+  root.querySelectorAll('.prop-card:not([data-swipe-init]), .blog-card:not([data-swipe-init]), .gal-card:not([data-swipe-init]), .agent-card:not([data-swipe-init])')
+    .forEach(function(card){
+      initCardSwipeOn(card);
+      card.setAttribute('data-swipe-init','1');
+    });
 }
 
 // Observer — ดู grid/track ทั้งหมด เมื่อ render card ใหม่
 // listings-grid ใช้ scoped init เพื่อไม่บล็อก main thread
 var _cardObserver = new MutationObserver(function(mutations){
   var idle = window.requestIdleCallback || function(cb){ setTimeout(cb,50); };
-  mutations.forEach(function(m){
-    if(m.target && m.target.id === 'listings-grid'){
-      // listings: init เฉพาะ card ใหม่ใน grid นี้ — ไม่ touch card อื่น
-      idle(function(){ initAllCardSwipes(m.target); });
+  // debounce: รวม mutation หลายอันใน frame เดียวกันเป็น call เดียว
+  var targets = new Set();
+  mutations.forEach(function(m){ if(m.addedNodes.length) targets.add(m.target); });
+  if(!targets.size) return;
+  targets.forEach(function(target){
+    if(target.id === 'listings-grid'){
+      // listings: skip ถ้ากำลัง abort (modal เพิ่งปิด)
+      if(window._listingsRenderAbort) return;
+      idle(function(){ if(!window._listingsRenderAbort) initAllCardSwipes(target); });
     } else {
-      idle(function(){ initAllCardSwipes(m.target); });
+      idle(function(){ initAllCardSwipes(target); });
     }
   });
 });

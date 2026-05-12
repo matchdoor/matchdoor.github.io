@@ -231,12 +231,11 @@ a,button,input,select,textarea,
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* ══ FIX: body.modal-open — ใช้ overflow:hidden แทน position:fixed ══
-     position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
+  /* ══ FIX: body.modal-open — ใช้ position:fixed (iOS standard pattern) ══
+     overflow:hidden อย่างเดียวบน iOS Safari ไม่หยุด background scroll ได้จริง */
   body.modal-open{
     overflow:hidden!important;
-    /* ไม่ใช้ touch-action:none — มันทำให้ iOS ค้างหลังปิด modal
-       ใช้แค่ overflow:hidden เพื่อป้องกัน background scroll */
+    /* position/top/width set ใน JS openModal เพราะต้องการค่า scrollY */
   }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
@@ -247,15 +246,10 @@ a,button,input,select,textarea,
     -webkit-overflow-scrolling:touch!important;
     overscroll-behavior:contain!important
   }
-  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
-  *:not(.ov):not(.seo-drawer):not(.seo-drawer-overlay){transition-duration:.08s!important}
+  /* ลด transition บน mobile */
+  *:not(.seo-drawer):not(.seo-drawer-overlay){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* modal overlay: ปิด/เปิดทันทีบน mobile ไม่มี fade เลย */
-  .ov{transition:none!important;
-      -webkit-transition:none!important}
-  #prop-modal,.ov .modal{transition:none!important;
-      -webkit-transition:none!important}
-  /* modal slide ไม่ใช้ transform บน mobile */
+  /* .ov ใช้ display:none/flex แล้ว ไม่ต้อง override transition */
   .slides{transition:none!important}
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
@@ -353,11 +347,8 @@ img{max-width:100%;height:auto}
     content-visibility:auto;
     contain-intrinsic-size:0 300px;
   }
-  /* listings grid: force GPU layer ป้องกัน repaint ขณะ modal ปิด */
-  #listings-grid{
-    transform:translateZ(0);
-    -webkit-transform:translateZ(0);
-  }
+  /* listings grid: ลบ translateZ(0) ออก — มันสร้าง stacking context ใหม่
+     ทำให้ iOS ขัดแย้งกับ visibility transition ของ .ov overlay → หน้าค้าง */
 }
 .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 
@@ -617,13 +608,11 @@ nav{
 
 .ov{
   position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;
-  display:flex;align-items:center;justify-content:center;padding:16px;
+  display:none;
+  align-items:center;justify-content:center;padding:16px;
   -webkit-tap-highlight-color:transparent;
-  /* ใช้ visibility+opacity แทน display:none/flex เพื่อหลีกเลี่ยง layout recalc บน iOS */
-  visibility:hidden;opacity:0;pointer-events:none;
-  transition:opacity .15s,visibility .15s;
 }
-.ov.open{visibility:visible;opacity:1;pointer-events:auto}
+.ov.open{display:flex}
 #prop-modal.open{z-index:3300}
 #ag-modal.open{z-index:3400}
 .modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -4767,9 +4756,10 @@ function _closePropertyUrl() {
     const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['listings'] || PAGE_ROUTES['home'];
     const path = route ? route.path : '/listings';
     // ป้องกัน popstate จาก replaceState บน iOS Safari
+    // ใช้ setTimeout แทน Promise.resolve — iOS Safari fire popstate ช้ากว่า microtask
     window._closingModal = true;
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
-    Promise.resolve().then(function() { window._closingModal = false; });
+    setTimeout(function() { window._closingModal = false; }, 100);
     // อัพเดต meta กลับเป็น page เดิม — ไม่แตะ DOM, ไม่ render grid
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
@@ -4786,33 +4776,25 @@ window.addEventListener('popstate', function(e) {
   } else if (state.type === 'page') {
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      // ปิด modal — แค่ซ่อน overlay + restore scroll ไม่แตะ page/grid
+      // ปิด modal — restore scroll lock และคืน scroll position
       propModal.classList.remove('open');
       document.body.classList.remove('modal-open');
-      document.body.style.overflow = '';
+      const savedY = document.body._savedScrollY || 0;
+      document.body._savedScrollY = 0;
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.left = '';
-      // ── iOS fix: force restore touch-action และ pointer-events ──
+      document.body.style.overflow = '';
       document.body.style.touchAction = '';
       document.body.style.pointerEvents = '';
-      const savedY = document.body._savedScrollY || 0;
-      document.body._savedScrollY = 0;
       window._currentModalId = null;
       if (typeof close360 === 'function') close360();
-      // ── double-rAF: ป้องกันหน้าค้าง/คลิกไม่ได้บน iOS หลังปิด modal ──
+      requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+      // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม
       const _activePageEl = document.querySelector('.page.active');
       const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
-      const _targetName = state.name;
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          if (savedY > 0 && _activeName === _targetName) { window.scrollTo(0, savedY); }
-          document.body.style.webkitTransform = 'translateZ(0)';
-          requestAnimationFrame(function() { document.body.style.webkitTransform = ''; });
-        });
-      });
-      if (_activeName === _targetName) return; // ตรงกัน — จบ
+      if (_activeName === state.name) return;
       // หน้าต่างกัน → navigate
       _silentShowPage(state.name, true);
     } else {
@@ -4824,15 +4806,15 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  document.body.style.overflow = '';
+  // ── restore body จาก scroll lock (กรณีที่ถูกเรียกขณะ modal เปิดอยู่) ──
+  document.body.classList.remove('modal-open');
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.left = '';
-  // ── iOS fix: force restore touch-action และ pointer-events ──
+  document.body.style.overflow = '';
   document.body.style.touchAction = '';
   document.body.style.pointerEvents = '';
-  document.body.classList.remove('modal-open');
   // ไม่ reset _savedScrollY — closeModal/popstate อ่านค่านี้เพื่อ restore scroll
   // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
   const _wasListingsActive = (name === 'listings') && (document.getElementById('page-listings')?.classList.contains('active') === true);
@@ -5924,11 +5906,16 @@ function openModal(id){
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
   $('prop-modal').classList.add('open');
 
-  // ── iOS scroll-lock: ใช้ overflow:hidden บน body แทน position:fixed ──
-  // position:fixed สร้าง layout recalc ขนาดใหญ่บน iOS
+  // ── iOS scroll-lock: ใช้ position:fixed — วิธีที่ iOS Safari รองรับดีที่สุด ──
+  // overflow:hidden อย่างเดียวบน iOS ทำให้ body ยัง scroll ได้ (Safari quirk)
+  // position:fixed + top = -scrollY เป็น pattern มาตรฐาน
   const _scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
   document.body._savedScrollY = _scrollY;
   document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.top = '-' + _scrollY + 'px';
+  document.body.style.width = '100%';
+  document.body.style.left = '0';
   document.body.classList.add('modal-open');
 
   // scroll modal กลับบนสุด
@@ -6086,29 +6073,21 @@ function closeModal(e){
     const _modal = $('prop-modal');
     _modal.classList.remove('open');
     document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
+    // ── restore จาก position:fixed scroll lock ──
+    const savedY = document.body._savedScrollY || 0;
+    document.body._savedScrollY = 0;
     document.body.style.position = '';
     document.body.style.top = '';
     document.body.style.width = '';
     document.body.style.left = '';
-    // ── iOS fix: force restore touch-action และ pointer-events ──
+    document.body.style.overflow = '';
     document.body.style.touchAction = '';
     document.body.style.pointerEvents = '';
-    const savedY = document.body._savedScrollY || 0;
-    document.body._savedScrollY = 0;
     window._currentModalId = null;
     if(typeof close360==='function') close360();
-    // ── double-rAF: ให้ iOS paint frame ก่อน แล้วค่อย scroll
-    // ป้องกันหน้าค้าง/คลิกไม่ได้หลังปิด modal
+    // restore scroll position — ใช้ rAF เดียวพอ เพราะ position:fixed ถูกปลดแล้ว
     requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        if (savedY > 0) { window.scrollTo(0, savedY); }
-        // force reflow เพื่อให้ iOS re-enable touch events
-        document.body.style.webkitTransform = 'translateZ(0)';
-        requestAnimationFrame(function() {
-          document.body.style.webkitTransform = '';
-        });
-      });
+      window.scrollTo(0, savedY);
     });
   } 
 }

@@ -254,7 +254,9 @@ a,button,input,select,textarea,
   /* ลด transition บน mobile — ยกเว้น #gc-track carousel */
   *:not(.seo-drawer):not(.seo-drawer-overlay):not(#gc-track){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* .ov ใช้ display:none/flex แล้ว ไม่ต้อง override transition */
+  /* .ov ปิด transition ทั้งหมด — ให้ modal overlay หายทันทีบน mobile */
+  .ov{transition:none!important;animation:none!important}
+  /* .slides{transition:none!important} */
   .slides{transition:none!important}
   /* smooth carousel บน mobile */
   #gc-track{transition:transform .5s cubic-bezier(.25,.46,.45,.94)!important;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
@@ -4768,8 +4770,8 @@ function _closePropertyUrl() {
     window._closingModal = true;
     window._closingModalTime = Date.now();
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
-    // reset flag หลัง 500ms — ครอบคลุม iOS Safari ทุกเวอร์ชันที่ delay popstate
-    setTimeout(function() { window._closingModal = false; window._closingModalTime = 0; }, 500);
+    // reset flag หลัง 80ms — เพียงพอสำหรับ iOS Safari ทุกเวอร์ชัน
+    setTimeout(function() { window._closingModal = false; window._closingModalTime = 0; }, 80);
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
@@ -4779,7 +4781,7 @@ window.addEventListener('popstate', function(e) {
   // guard 1: _closingModal flag — ป้องกัน popstate จาก replaceState ขณะปิด modal
   if (window._closingModal) return;
   // guard 2: timestamp — iOS Safari บางเวอร์ชัน fire popstate ช้ามาก แต่ flag อาจ reset แล้ว
-  if (window._closingModalTime && (Date.now() - window._closingModalTime) < 500) return;
+  if (window._closingModalTime && (Date.now() - window._closingModalTime) < 80) return;
   const state = e.state;
   if (!state) { _silentShowPage('home'); return; }
   if (state.type === 'property') {
@@ -4808,7 +4810,7 @@ function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)n
 function _silentShowPage(name, skipScrollTop) {
   // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ re-render grid ──
   // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
-  if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 500)) {
+  if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 80)) {
     const _curActive = document.querySelector('.page.active');
     const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
     if (_curName === name) {
@@ -4861,7 +4863,7 @@ function _silentShowPage(name, skipScrollTop) {
     }
     // ── ตรวจ grid และ cards ──
     const _grid = document.getElementById('listings-grid');
-    const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
+    const _hasCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
 
     if (_wasListingsActive && _hasCards) {
       // listings active อยู่แล้ว + มีการ์ดครบ → ไม่ต้อง re-render (modal ปิด → กลับมา)
@@ -4983,8 +4985,8 @@ window.closeModal = function(e) {
     window._listingsRenderPending = false;
     _closePropertyUrl();
     // ── re-render listings ถ้า grid ว่าง หรือ batch ยังไม่เสร็จ (mobile :partial) ──
-    // ใช้ requestAnimationFrame เพื่อให้ _forceRestoreBody rAF เสร็จก่อน
-    requestAnimationFrame(function() {
+    // ใช้ setTimeout(0) เพื่อให้ DOM update เสร็จก่อน แต่ไม่ block นานเหมือน rAF chain
+    setTimeout(function() {
       // ตรวจซ้ำว่า modal ปิดจริงและ listings active อยู่
       var _isListingsActive = document.getElementById('page-listings')?.classList.contains('active');
       if (!_isListingsActive) return;
@@ -4997,7 +4999,7 @@ window.closeModal = function(e) {
         window._listingsRenderAbort = false; // ยืนยัน flag ก่อน render
         renderListingsPage();
       }
-    });
+    }, 0);
   }
 };
 
@@ -5279,7 +5281,7 @@ function renderListingsPage() {
     if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
       grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
     }
-    setTimeout(renderListingsPage, 300);
+    setTimeout(renderListingsPage, 50);
     return;
   }
 
@@ -5345,10 +5347,10 @@ function renderListingsPage() {
       const _sortVal = document.getElementById('listings-sort')?.value || 'default';
       const _renderKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortVal;
 
-      // ── Mobile: batch เล็กลง (4 แรก) เพื่อให้ first paint เร็ว ──────
+      // ── Mobile: batch ใหญ่ขึ้น (8 แรก) เพื่อให้ render เสร็จในรอบเดียวกรณีข้อมูลน้อย ──
       const isMob = window.innerWidth <= 768;
-      const FIRST_BATCH = isMob ? 4 : 8;
-      const SECOND_BATCH = isMob ? 8 : 16;
+      const FIRST_BATCH = isMob ? 8 : 12;
+      const SECOND_BATCH = isMob ? 16 : 24;
       const firstBatch  = pageData.slice(0, FIRST_BATCH);
       const secondBatch = pageData.slice(FIRST_BATCH, FIRST_BATCH + SECOND_BATCH);
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
@@ -5363,7 +5365,7 @@ function renderListingsPage() {
         requestAnimationFrame(()=>initAllCardSwipes(grid));
       }
 
-      const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
+      const idle = window.requestIdleCallback || (cb => setTimeout(cb, 16));
 
       if(secondBatch.length){
         idle(()=>{
@@ -6178,8 +6180,8 @@ function _forceRestoreBody() {
   bs.pointerEvents = '';
   // 3. scroll restore synchronous (iOS Safari ต้องการ synchronous call ทันที)
   if(savedY > 0) window.scrollTo(0, savedY);
-  // 4. rAF: ตรวจซ้ำและ scroll อีกครั้ง + reconnect observer
-  requestAnimationFrame(function() {
+  // 4. setTimeout(0): ตรวจซ้ำและ scroll อีกครั้ง + reconnect observer (เร็วกว่า rAF บน mobile)
+  setTimeout(function() {
     var propModal = document.getElementById('prop-modal');
     var isOpen = propModal && propModal.classList.contains('open');
     // scroll restore อีกครั้งถ้า modal ปิดจริง
@@ -6191,8 +6193,8 @@ function _forceRestoreBody() {
       document.body.style.overflow = '';
       document.body.classList.remove('modal-open');
     }
-    // reconnect MutationObserver
-    if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+    // reconnect MutationObserver — เฉพาะเมื่อ modal ปิดจริงแล้ว
+    if(!isOpen && window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
       window._cardObserverPaused = false;
       ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
        'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
@@ -6202,7 +6204,7 @@ function _forceRestoreBody() {
         if(el) _cardObserver.observe(el, {childList:true, subtree:false});
       });
     }
-  });
+  }, 0);
 }
 
 function closeModal(e){

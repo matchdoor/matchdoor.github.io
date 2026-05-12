@@ -251,11 +251,18 @@ a,button,input,select,textarea,
     -webkit-overflow-scrolling:touch!important;
     overscroll-behavior:contain!important
   }
-  /* ลด transition บน mobile */
-  *:not(.seo-drawer):not(.seo-drawer-overlay){transition-duration:.08s!important}
+  /* ลด transition บน mobile — ยกเว้น gc-track ที่ต้องการ smooth slide */
+  *:not(.seo-drawer):not(.seo-drawer-overlay):not(#gc-track){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   /* .ov ใช้ display:none/flex แล้ว ไม่ต้อง override transition */
   .slides{transition:none!important}
+  /* ✅ Smooth carousel — เหมือน desktop */
+  #gc-track{
+    transition:transform .55s cubic-bezier(.25,.46,.45,.94) !important;
+    will-change:transform;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
   .prop-thumb img,.blog-thumb img{
@@ -4785,35 +4792,8 @@ window.addEventListener('popstate', function(e) {
   } else if (state.type === 'page') {
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      // ปิด modal — restore scroll lock และคืน scroll position
-      propModal.classList.remove('open');
-      document.body.classList.remove('modal-open');
-      const savedY = document.body._savedScrollY || 0;
-      document.body._savedScrollY = 0;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.left = '';
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-      document.body.style.pointerEvents = '';
-      window._currentModalId = null;
-      if (typeof close360 === 'function') close360();
-      requestAnimationFrame(function() {
-        window.scrollTo(0, savedY);
-        window._listingsRenderAbort = false;
-        // reconnect MutationObserver ที่หยุดไว้ตอนเปิด modal
-        if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
-          window._cardObserverPaused = false;
-          ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
-           'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
-           'listings-grid'
-          ].forEach(function(gid){
-            var el = document.getElementById(gid);
-            if(el) _cardObserver.observe(el, {childList:true, subtree:false});
-          });
-        }
-      });
+      // ปิด modal ผ่าน _doCloseModal — unlock body + reset flags ครบใน 1 ที่
+      _doCloseModal();
       // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม
       const _activePageEl = document.querySelector('.page.active');
       const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
@@ -4830,24 +4810,22 @@ window.addEventListener('popstate', function(e) {
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
   // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ทำอะไร ──
-  // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
   if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 500)) {
     const _curActive = document.querySelector('.page.active');
     const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
-    if (_curName === name) return; // หน้าเดิม → ไม่ต้องทำอะไร
+    if (_curName === name) return;
   }
-  // ── ALWAYS restore body จาก scroll lock — ไม่ว่าจะมาจากทางใด ──
-  // ป้องกัน body ค้าง position:fixed เมื่อ modal ปิดแล้วแต่ flag ค้าง
+  // ── ALWAYS unlock body ทุกครั้ง ไม่ว่าจะมาจากทางใด ──────────────────
   document.body.classList.remove('modal-open');
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  document.body.style.left = '';
-  document.body.style.overflow = '';
-  document.body.style.touchAction = '';
+  document.body.style.position   = '';
+  document.body.style.top        = '';
+  document.body.style.width      = '';
+  document.body.style.left       = '';
+  document.body.style.overflow   = '';
+  document.body.style.touchAction  = '';
   document.body.style.pointerEvents = '';
-  // ── ปลดล็อค render flags ด้วย ──
-  window._listingsRenderAbort = false;
+  // ── reset render-abort flags ──────────────────────────────────────────
+  window._listingsRenderAbort   = false;
   window._listingsRenderPending = false;
   // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
   const _wasListingsActive = (name === 'listings') && (document.getElementById('page-listings')?.classList.contains('active') === true);
@@ -4879,7 +4857,8 @@ function _silentShowPage(name, skipScrollTop) {
     const _grid = document.getElementById('listings-grid');
     const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
     if (_wasListingsActive && _hasCards) {
-      window._listingsRenderAbort = false; // ปลดล็อค
+      window._listingsRenderAbort   = false; // ปลดล็อค
+      window._listingsRenderPending = false; // ปลดล็อค render
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
         const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
         idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
@@ -4980,29 +4959,20 @@ window.openModal = function(id) {
   _openPropertyUrl(id);
 };
 
-// ── Patch closeModal to restore URL ──
-const _origCloseModal = closeModal;
+// ── Patch window.closeModal: เพิ่ม URL restore หลัง close ──
+// ใช้ _doCloseModal โดยตรงแทน _origCloseModal เพื่อไม่ให้ condition เดิมขัด
 window.closeModal = function(e) {
+  // ถ้ามี event และ click เกิดบน child element → ไม่ปิด
+  if (e && e.target) {
+    const _modal = document.getElementById('prop-modal');
+    if (e.target !== _modal) return;
+  }
   const _modalWasOpen = document.getElementById('prop-modal')?.classList.contains('open');
-  _origCloseModal(e);
-  // เรียก _closePropertyUrl เมื่อ modal ปิดจริง ไม่ว่าจะกด × หรือ overlay
+  _doCloseModal();
   if (_modalWasOpen && !document.getElementById('prop-modal')?.classList.contains('open')) {
     _closePropertyUrl();
-    // ── Safety reset: ปลดล็อค abort flag ทุกกรณี ──
-    window._listingsRenderAbort = false;
-    window._listingsRenderPending = false;
   }
 };
-
-// ── Global safety: ถ้า _listingsRenderAbort ค้างเป็น true นานเกิน 3s หลัง modal ปิด → reset ──
-// ป้องกันกรณีที่ iOS Safari ไม่ fire popstate / patch ไม่ครบ
-setInterval(function() {
-  const modalOpen = document.getElementById('prop-modal')?.classList.contains('open');
-  if (!modalOpen && window._listingsRenderAbort) {
-    window._listingsRenderAbort = false;
-    window._listingsRenderPending = false;
-  }
-}, 3000);
 
 // Add "ดูหน้าเต็ม" share button inside property modal after it's opened
 function _addShareButtonToModal() { /* disabled */ }
@@ -5184,6 +5154,30 @@ let _listingsMapInstance = null;
 let _listingsMarkers = [];
 let _listingsRenderPending = false; // throttle ป้องกัน render ซ้อน
 
+// ── Safety watchdog: ถ้า modal ปิดแล้วแต่ flags ยังค้าง → reset ทุก 2.5s ──
+// ป้องกัน edge-case บน iOS Safari ที่ event อาจ fire ไม่ครบ
+setInterval(function() {
+  const modalOpen = document.getElementById('prop-modal')?.classList.contains('open');
+  if (!modalOpen) {
+    if (window._listingsRenderAbort)   window._listingsRenderAbort   = false;
+    if (window._listingsRenderPending) window._listingsRenderPending = false;
+    // unlock body ถ้ายังค้าง position:fixed
+    if (document.body.style.position === 'fixed') {
+      const savedY = document.body._savedScrollY || 0;
+      document.body._savedScrollY = 0;
+      document.body.style.position   = '';
+      document.body.style.top        = '';
+      document.body.style.width      = '';
+      document.body.style.left       = '';
+      document.body.style.overflow   = '';
+      document.body.style.touchAction  = '';
+      document.body.style.pointerEvents = '';
+      document.body.classList.remove('modal-open');
+      requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+    }
+  }
+}, 2500);
+
 function sortListings(data, method) {
   const arr = [...data];
   switch(method) {
@@ -5211,37 +5205,29 @@ function listingsSortChange() {
 }
 
 function renderListingsPage() {
-  // ── throttle: ป้องกัน render ซ้อนกัน (เช่น filter + scroll เร็วๆ) ──
-  if(_listingsRenderPending) {
-    // ถ้ามีข้อมูลแล้ว (afterLoad เรียกมา) ให้ force reset throttle แล้ว render
+  // ── ถ้า modal เปิดอยู่ → skip render ────────────────────────────────
+  if (window._listingsRenderAbort) { _listingsRenderPending = false; return; }
+
+  // ── throttle: ป้องกัน render ซ้อนกัน ────────────────────────────────
+  if (_listingsRenderPending) {
     const _hasProps = (typeof props !== 'undefined' && props && props.length);
-    if(!_hasProps) return; // ยังไม่มีข้อมูล → skip ได้
+    if (!_hasProps) return;
     _listingsRenderPending = false; // force reset เพื่อให้ render ผ่าน
   }
 
-  // ── SNAPSHOT CACHE: ถ้า grid มี card อยู่แล้วและ page/data ไม่เปลี่ยน → skip re-render ──
-  // สิ่งนี้ป้องกันไม่ให้ปิด modal แล้ว grid โหลดใหม่ทั้งหมดทุกครั้ง
+  // ── SNAPSHOT CACHE ──────────────────────────────────────────────────
   const _grid = document.getElementById('listings-grid');
   if (_grid) {
     const _sortValChk = document.getElementById('listings-sort')?.value || 'default';
     const _cacheKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortValChk;
     const _hasCards = _grid.querySelector('.prop-card') !== null;
-    if (_hasCards && _grid.dataset.renderKey === _cacheKey) {
-      // ข้อมูลเหมือนเดิม card อยู่ครบ → ไม่ต้อง render ใหม่ — return ทันทีโดยไม่เข้า rAF
-      return;
-    }
+    if (_hasCards && _grid.dataset.renderKey === _cacheKey) return;
   }
 
-  // ── ถ้า modal กำลังเปิดอยู่ → ห้าม re-render listings ──
-  if(window._listingsRenderAbort) {
-    _listingsRenderPending = false;
-    return;
-  }
   _listingsRenderPending = true;
   const _doRender = () => {
   _listingsRenderPending = false;
-  // double-check ใน _doRender ด้วย เพราะ rAF อาจ delay
-  if(window._listingsRenderAbort) { _listingsRenderPending = false; return; }
+  if (window._listingsRenderAbort) { _listingsRenderPending = false; return; }
 
   // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
   const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
@@ -6127,46 +6113,52 @@ function openModal(id){
 function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transform=`translateX(-${slide_cur*100}%)`; }
 function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; renderSlider(); }
 function goSlide(i){ slide_cur=i; renderSlider(); }
-function closeModal(e){
-  // ── อนุญาตทั้ง: กด × (e=undefined), กด overlay (e.target=prop-modal), กด Escape
-  // เดิมเช็ค e.target.id==='prop-modal' ทำให้กด × แล้ว body ไม่ถูก unlock → หน้าค้าง
+// ── _doCloseModal: ฟังก์ชัน unlock จริง — เรียกได้จากทุกที่ ──────────────
+function _doCloseModal() {
   const _modal = $('prop-modal');
-  if (!_modal) return;
-  // ถ้าเรียกจาก event ของ overlay — ตรวจว่ากด overlay จริงๆ หรือ child element
-  if (e && e.target && e.target !== _modal) return;
-  if (!_modal.classList.contains('open')) return; // modal ปิดอยู่แล้ว → ข้าม
-
+  if (!_modal || !_modal.classList.contains('open')) return; // ปิดอยู่แล้ว → ข้าม
   _modal.classList.remove('open');
   document.body.classList.remove('modal-open');
-  // ── restore จาก position:fixed scroll lock ──
+  // ── restore body จาก position:fixed scroll-lock ──────────────────────
   const savedY = document.body._savedScrollY || 0;
   document.body._savedScrollY = 0;
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  document.body.style.left = '';
-  document.body.style.overflow = '';
-  document.body.style.touchAction = '';
+  document.body.style.position   = '';
+  document.body.style.top        = '';
+  document.body.style.width      = '';
+  document.body.style.left       = '';
+  document.body.style.overflow   = '';
+  document.body.style.touchAction  = '';
   document.body.style.pointerEvents = '';
   window._currentModalId = null;
-  if(typeof close360==='function') close360();
-  // restore scroll position — ใช้ rAF เดียวพอ เพราะ position:fixed ถูกปลดแล้ว
-  requestAnimationFrame(function() {
-    window.scrollTo(0, savedY);
-    // อนุญาต listings re-render หลัง scroll restore แล้ว
-    window._listingsRenderAbort = false;
-    // reconnect MutationObserver ที่หยุดไว้ตอนเปิด modal
-    if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
-      window._cardObserverPaused = false;
-      ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
-       'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
-       'listings-grid'
-      ].forEach(function(gid){
-        var el = document.getElementById(gid);
-        if(el) _cardObserver.observe(el, {childList:true, subtree:false});
-      });
-    }
-  });
+  window._listingsRenderAbort   = false;
+  window._listingsRenderPending = false;
+  if (typeof close360 === 'function') close360();
+  // reconnect MutationObserver
+  if (window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+    window._cardObserverPaused = false;
+    ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+     'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
+     'listings-grid'
+    ].forEach(function(gid) {
+      var el = document.getElementById(gid);
+      if (el) _cardObserver.observe(el, {childList:true, subtree:false});
+    });
+  }
+  // restore scroll — 1 rAF หลัง position:fixed ถูกปลดแล้ว
+  requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+}
+
+// closeModal — รองรับทั้ง 3 pattern:
+//   closeModal()           ← กด × (e = undefined)
+//   closeModal(event)      ← onclick="closeModal(event)" บน overlay  
+//   Escape key / JS call   ← closeModal()
+function closeModal(e) {
+  // ถ้ามี event และ click เกิดบน child element (ไม่ใช่ overlay เอง) → ไม่ปิด
+  if (e && e.target) {
+    const _modal = $('prop-modal');
+    if (e.target !== _modal) return; // กด child (scroll-content ฯลฯ) → ไม่ปิด
+  }
+  _doCloseModal();
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -7758,7 +7750,7 @@ function gcApply(animate=true) {
   const wrap = document.getElementById('gc-wrap');
   const ww = wrap ? wrap.offsetWidth : 800;
   const offset = ww / 2 - cw / 2 - gcIdx * (cw);
-  track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
+  track.style.transition = animate ? 'transform .55s cubic-bezier(.25,.46,.45,.94)' : 'none';
   track.style.transform = `translateX(${offset}px)`;
   // Update card classes
   track.querySelectorAll('.gc-card').forEach((c, i) => {

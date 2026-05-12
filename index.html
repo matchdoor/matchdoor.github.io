@@ -4802,6 +4802,8 @@ function _silentShowPage(name, skipScrollTop) {
   document.body.style.left = '';
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
+  // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
+  const _wasListingsActive = (name === 'listings') && (document.getElementById('page-listings')?.classList.contains('active') === true);
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
@@ -4823,11 +4825,15 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    window._lsSeoSidebarRendered = false; // reset เพื่อให้ re-render sidebar เมื่อเข้าหน้าใหม่
+    // ── ถ้า listings active อยู่แล้ว (กลับจาก modal) → sidebar ไม่ต้อง reset
+    if (!_wasListingsActive) {
+      window._lsSeoSidebarRendered = false; // reset เฉพาะตอนที่มาจากหน้าอื่น
+    }
     // ถ้า _listingsDataReady === false แสดงว่าข้อมูลยังไม่โหลด → afterLoad() จะ render แทน
     // ถ้า _listingsDataReady === true แสดงว่าเปิดหน้า listings ปกติ (ไม่ใช่ refresh) → render ทันที
+    // renderListingsPage จะ skip ถ้า grid มี card อยู่แล้วและข้อมูลไม่เปลี่ยน (snapshot cache)
     if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
-    if(typeof renderListingsSeoSidebar === 'function'){
+    if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
       idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
     }
@@ -5141,6 +5147,20 @@ function renderListingsPage() {
     if(!_hasProps) return; // ยังไม่มีข้อมูล → skip ได้
     _listingsRenderPending = false; // force reset เพื่อให้ render ผ่าน
   }
+
+  // ── SNAPSHOT CACHE: ถ้า grid มี card อยู่แล้วและ page/data ไม่เปลี่ยน → skip re-render ──
+  // สิ่งนี้ป้องกันไม่ให้ปิด modal แล้ว grid โหลดใหม่ทั้งหมดทุกครั้ง
+  const _grid = document.getElementById('listings-grid');
+  if (_grid) {
+    const _sortValChk = document.getElementById('listings-sort')?.value || 'default';
+    const _cacheKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortValChk;
+    const _hasCards = _grid.querySelector('.prop-card') !== null;
+    if (_hasCards && _grid.dataset.renderKey === _cacheKey) {
+      // ข้อมูลเหมือนเดิม card อยู่ครบ → ไม่ต้อง render ใหม่
+      return;
+    }
+  }
+
   _listingsRenderPending = true;
   const _doRender = () => {
   _listingsRenderPending = false;
@@ -5217,6 +5237,10 @@ function renderListingsPage() {
   const grid = document.getElementById('listings-grid');
   if(grid) {
     if(pageData.length) {
+      // ── คำนวณ cache key สำหรับ snapshot ──
+      const _sortVal = document.getElementById('listings-sort')?.value || 'default';
+      const _renderKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortVal;
+
       // ── Mobile: batch เล็กลง (4 แรก) เพื่อให้ first paint เร็ว ──────
       const isMob = window.innerWidth <= 768;
       const FIRST_BATCH = isMob ? 4 : 8;
@@ -5226,6 +5250,8 @@ function renderListingsPage() {
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
       grid.innerHTML = firstBatch.map(propCard).join('');
+      // บันทึก render key ทันทีหลัง first batch — ป้องกัน re-render ซ้ำจาก _silentShowPage
+      grid.dataset.renderKey = _renderKey;
       // init swipe สำหรับ batch แรก — skip บน mobile ถ้า abort
       if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
         requestAnimationFrame(()=>initAllCardSwipes(grid));

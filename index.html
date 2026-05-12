@@ -780,8 +780,31 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .page{display:none}
 .page.active{display:block}
 
-.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:visible}.hero-banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 60%;z-index:0;opacity:0;pointer-events:none;filter:blur(0px);}
-@media(max-width:768px){.hero-banner-img{object-fit:cover;object-position:center 60%;}}
+.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}
+/* Desktop/Tablet: hero-banner-img แสดงเต็มภาพถูกสัดส่วน — contain + bottom align ให้ตึกอยู่ด้านล่าง */
+.hero-banner-img{
+  position:absolute;
+  bottom:0; left:50%;
+  transform:translateX(-50%);
+  width:100%; height:auto;
+  max-height:100%;
+  object-fit:contain;
+  object-position:center bottom;
+  z-index:0;opacity:0;pointer-events:none;
+}
+/* Mobile: ไม่เปลี่ยนแปลง — ใช้ canvas แทนอยู่แล้ว */
+@media(max-width:768px){
+  .hero-banner-img{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    object-fit:cover;object-position:center 60%;
+    transform:none;left:0;bottom:auto;
+  }
+}
+/* Desktop/Tablet: กำหนด min-height ให้พอดีกับสัดส่วนภาพ 16:9 */
+@media(min-width:769px){
+  .hero{min-height:clamp(380px, 42vw, 620px);display:flex;flex-direction:column;justify-content:center;}
+}
 .hero-bg-clip{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 #hero-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .hero-content{position:relative;z-index:2;padding-bottom:20px}
@@ -4739,67 +4762,54 @@ function _openPropertyUrl(propId) {
   ldScript.textContent = JSON.stringify(ldData);
 }
 
-// Called when modal closes — restore previous section URL
+// Called when modal closes — restore previous section URL only (no page navigation, no grid render)
 function _closePropertyUrl() {
   if (!_routerReady) return;
   const cur = history.state;
   if (cur && cur.type === 'property') {
-    // ── FIX: ใช้ replaceState แทน history.back() ──
-    // history.back() ทำให้ popstate fire → _silentShowPage('home') เสมอ
-    // ทำให้ refresh แล้วกลับหน้า home แทนที่จะอยู่หน้าเดิม
-    const prevPage = window._pageBeforeModal || 'home';
-    const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['home'];
-    const path = route ? route.path : '/';
-    // ── ป้องกัน popstate จาก replaceState (iOS Safari quirk) ──
-    // set flag ก่อน replaceState — ถ้า popstate fire จาก quirk ให้ handler ตรวจ flag นี้
+    const prevPage = window._pageBeforeModal || 'listings';
+    const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['listings'] || PAGE_ROUTES['home'];
+    const path = route ? route.path : '/listings';
+    // ป้องกัน popstate จาก replaceState บน iOS Safari
     window._closingModal = true;
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
-    // clear flag หลัง tick เดียว
-    setTimeout(function() { window._closingModal = false; }, 0);
-    // อัพเดต meta กลับเป็น page เดิม
+    Promise.resolve().then(function() { window._closingModal = false; });
+    // อัพเดต meta กลับเป็น page เดิม — ไม่แตะ DOM, ไม่ render grid
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
 
 // Handle browser Back/Forward
 window.addEventListener('popstate', function(e) {
-  // ── guard: ถ้า popstate fire จาก replaceState ระหว่างปิด modal (iOS Safari quirk) → skip ──
+  // guard: popstate จาก replaceState ขณะปิด modal (iOS Safari quirk) → skip
   if (window._closingModal) return;
   const state = e.state;
   if (!state) { _silentShowPage('home'); return; }
   if (state.type === 'property') {
     if (state.id) { openModal(state.id); }
   } else if (state.type === 'page') {
-    // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
+      // ปิด modal — แค่ซ่อน overlay + restore scroll ไม่แตะ page/grid
       propModal.classList.remove('open');
-      const savedY = document.body._savedScrollY || 0;
       document.body.classList.remove('modal-open');
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.left = '';
+      const savedY = document.body._savedScrollY || 0;
       document.body._savedScrollY = 0;
       window._currentModalId = null;
       if (typeof close360 === 'function') close360();
-      // restore scroll ใน rAF เพื่อให้ browser ปลด layout lock ก่อน
       if (savedY > 0) {
         requestAnimationFrame(function() { window.scrollTo(0, savedY); });
       }
-      // ── ถ้า page เป้าหมายคือ listings และ listings active อยู่แล้ว → ไม่ต้อง _silentShowPage
-      // เพียงแค่ปิด modal และ restore scroll เท่านั้น — grid ยังอยู่ครบ ไม่ต้อง re-render
-      const _targetIsListings = (state.name === 'listings');
-      const _listingsEl = document.getElementById('page-listings');
-      const _listingsActive = _listingsEl && _listingsEl.classList.contains('active');
-      const _grid = document.getElementById('listings-grid');
-      const _gridHasCards = _grid && _grid.querySelector('.prop-card') !== null;
-      if (_targetIsListings && _listingsActive && _gridHasCards) {
-        // grid ครบแล้ว ไม่ต้องทำอะไรเพิ่ม
-        return;
-      }
-      // หน้าเป้าหมายต่างกัน หรือ grid ว่าง → ต้อง showPage
+      // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม (grid ยังอยู่ครบ)
+      const _activePageEl = document.querySelector('.page.active');
+      const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
+      if (_activeName === state.name) return; // ตรงกัน — จบ
+      // หน้าต่างกัน → navigate
       _silentShowPage(state.name, true);
     } else {
       _silentShowPage(state.name);
@@ -4810,14 +4820,13 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // คืน body scroll เสมอ — ไม่ว่าจะ lock ด้วย overflow:hidden หรือ position:fixed
   document.body.style.overflow = '';
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.left = '';
   document.body.classList.remove('modal-open');
-  document.body._savedScrollY = 0;
+  // ไม่ reset _savedScrollY — closeModal/popstate อ่านค่านี้เพื่อ restore scroll
   // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
   const _wasListingsActive = (name === 'listings') && (document.getElementById('page-listings')?.classList.contains('active') === true);
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
@@ -4841,25 +4850,19 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    // ── ถ้า listings active อยู่แล้ว (กลับจาก modal) → sidebar ไม่ต้อง reset
     if (!_wasListingsActive) {
-      window._lsSeoSidebarRendered = false; // reset เฉพาะตอนที่มาจากหน้าอื่น
+      window._lsSeoSidebarRendered = false;
     }
-    // ── ถ้า listings active อยู่แล้ว และ grid มี card ครบแล้ว → ไม่ต้อง re-render เลย
-    // กรณีนี้เกิดขึ้นเมื่อปิด modal กลับมาหน้า listings (modal เป็น overlay ไม่ได้เปลี่ยน page)
+    // ถ้า listings active อยู่แล้วและมีการ์ด → ไม่แตะ grid เลย
     const _grid = document.getElementById('listings-grid');
-    const _gridHasCards = _grid && _grid.querySelector('.prop-card') !== null;
-    if (_wasListingsActive && _gridHasCards) {
-      // grid มีข้อมูลครบแล้ว ไม่ต้อง render ใหม่ — เพียงแค่ตรวจ sidebar
+    const _hasCards = _grid && _grid.querySelector('.prop-card') !== null;
+    if (_wasListingsActive && _hasCards) {
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
         const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
         idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
       }
-      return; // ออกก่อน ไม่ render ซ้ำ
+      return;
     }
-    // ถ้า _listingsDataReady === false แสดงว่าข้อมูลยังไม่โหลด → afterLoad() จะ render แทน
-    // ถ้า _listingsDataReady === true แสดงว่าเปิดหน้า listings ปกติ (ไม่ใช่ refresh) → render ทันที
-    // renderListingsPage จะ skip ถ้า grid มี card อยู่แล้วและข้อมูลไม่เปลี่ยน (snapshot cache)
     if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
     if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
@@ -4957,12 +4960,11 @@ window.openModal = function(id) {
 // ── Patch closeModal to restore URL ──
 const _origCloseModal = closeModal;
 window.closeModal = function(e) {
-  // ตรวจว่า modal เปิดอยู่ก่อนปิด — ถ้าปิดแล้ว ไม่ต้อง restore URL ซ้ำ
   const _modalWasOpen = document.getElementById('prop-modal')?.classList.contains('open');
   _origCloseModal(e);
-  // ── restore URL เสมอเมื่อ modal ปิด (ทั้งกดปุ่ม × และกด overlay) ──
-  // เงื่อนไข: modal ต้องเปิดอยู่ก่อนปิด และ event ต้องมาจาก modal (ไม่ใช่ child element อื่น)
-  if (_modalWasOpen && (!e || e.target.id === 'prop-modal')) {
+  // เรียก _closePropertyUrl เมื่อ modal ปิดจริง ไม่ว่าจะกด × หรือ overlay
+  // (เงื่อนไขเดิม e.target.id==='prop-modal' ทำให้ × ไม่ restore URL เพราะ e=undefined)
+  if (_modalWasOpen && !document.getElementById('prop-modal')?.classList.contains('open')) {
     _closePropertyUrl();
   }
 };
@@ -7325,8 +7327,10 @@ async function renderNearbyProps(prop, container) {
   bgImg.src = '/bannerWeb.webp';
 
   function resize() {
+    const heroEl = canvas.closest('.hero') || canvas.parentElement?.parentElement;
     canvas.width = canvas.offsetWidth || window.innerWidth;
-    canvas.height = canvas.offsetHeight || 500;
+    // ใช้ความสูงจริงของ hero section — ไม่ใช้ค่า fallback 500 ที่อาจไม่ตรง
+    canvas.height = (heroEl && heroEl.offsetHeight > 0) ? heroEl.offsetHeight : (canvas.offsetHeight || window.innerWidth * 9 / 16);
   }
   resize();
   window.addEventListener('resize', () => { resize(); });
@@ -7493,18 +7497,23 @@ async function renderNearbyProps(prop, container) {
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
 
-    // 1. Draw Bangkok skyline photo as background (cover, focus on buildings at 60% vertical)
+    // 1. Draw Bangkok skyline photo as background (contain, anchored bottom so buildings sit at base)
     if(bgImg.complete && bgImg.naturalWidth > 0) {
       const imgAspect = bgImg.naturalWidth / bgImg.naturalHeight;
       const canvasAspect = W / H;
       let dw, dh, dx, dy;
+      // ── "contain" mode: fit whole image inside canvas, anchor to bottom ──
+      // ภาพแสดงเต็มสัดส่วน ไม่ crop — ตึกอยู่ที่ฐานล่าง
       if(canvasAspect > imgAspect) {
-        dw = W; dh = W / imgAspect; dx = 0;
-        // focus 60% down (buildings area) instead of dead center
-        dy = (H - dh) * 0.6;
-      } else {
+        // canvas กว้างกว่า → จำกัดด้วยความสูง
         dh = H; dw = H * imgAspect;
         dx = (W - dw) / 2; dy = 0;
+      } else {
+        // canvas แคบกว่า → จำกัดด้วยความกว้าง
+        dw = W; dh = W / imgAspect;
+        dx = 0;
+        // anchor bottom: ให้ฐานภาพ (แม่น้ำ/ตึก) ชิดขอบล่าง canvas
+        dy = H - dh;
       }
       ctx.drawImage(bgImg, dx, dy, dw, dh);
     } else {
@@ -7537,14 +7546,21 @@ async function renderNearbyProps(prop, container) {
     return;
   }
 
-  // Start when image is ready (or immediately if already loaded)
-  if(bgImg.complete) {
-    drawFrame();
-  } else {
-    bgImg.onload = drawFrame;
-    // Also start drawing immediately so night/day still works if img is slow
-    setTimeout(drawFrame, 100);
-  }
+  // ── รอให้ CSS layout (min-height) คำนวณก่อน แล้วค่อย resize และ start ──
+  // ใช้ requestAnimationFrame เพื่อให้ browser วาด layout ก่อน อ่านค่าความสูงถูกต้อง
+  requestAnimationFrame(function() {
+    resize();
+    window.addEventListener('resize', () => { resize(); });
+
+    // Start when image is ready (or immediately if already loaded)
+    if(bgImg.complete) {
+      drawFrame();
+    } else {
+      bgImg.onload = drawFrame;
+      // Also start drawing immediately so night/day still works if img is slow
+      setTimeout(drawFrame, 100);
+    }
+  });
 })();
 
 // Update weather badge

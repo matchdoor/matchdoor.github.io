@@ -216,14 +216,6 @@ a,button,input,select,textarea,
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
 @media(max-width:768px){
-  /* Mobile hero: dark overlay เพื่อให้ text อ่านได้บนภาพ banner */
-  .hero::before{
-    content:'';
-    position:absolute;inset:0;z-index:1;
-    background:linear-gradient(180deg,rgba(8,14,29,0.72) 0%,rgba(8,14,29,0.45) 50%,rgba(8,14,29,0.65) 100%);
-    pointer-events:none;
-  }
-  .hero-content,.hero-bg-clip{z-index:2}
   *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
   /* ปิด animation ที่ไม่จำเป็นบน mobile */
   .door-left,.door-right,.pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
@@ -239,9 +231,11 @@ a,button,input,select,textarea,
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* body.modal-open: JS จัดการ position:fixed + overflow:hidden ทั้งหมด
-     CSS ไม่ใส่ overflow:hidden ที่นี่เพราะจะทำให้ JS ลบ overflow ไม่ได้ (specificity ชนะ) */
-  /* body.modal-open{ overflow:hidden!important } — ลบออกแล้ว ป้องกัน stuck scroll บน mobile */
+  /* ══ FIX: body.modal-open — ใช้ overflow:hidden แทน position:fixed ══
+     position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
+  body.modal-open{
+    overflow:hidden!important;
+  }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
     -webkit-overflow-scrolling:touch;
@@ -251,17 +245,12 @@ a,button,input,select,textarea,
     -webkit-overflow-scrolling:touch!important;
     overscroll-behavior:contain!important
   }
-  /* ลด transition บน mobile — ยกเว้น card-slides, mslider, #gc-track */
-  *:not(.seo-drawer):not(.seo-drawer-overlay):not(#gc-track):not(.card-slides):not(.mslider):not(.slides){transition-duration:.08s!important}
+  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
+  *:not(.ov){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* .ov ปิด transition ทั้งหมด — ให้ modal overlay หายทันทีบน mobile */
-  .ov{transition:none!important;animation:none!important}
-  /* card-slides: smooth swipe บน mobile */
-  .card-slides{transition:transform .28s cubic-bezier(.25,.46,.45,.94)!important;-webkit-overflow-scrolling:touch}
-  /* modal slider (prop detail): smooth เลื่อนรูป */
-  .slides{transition:transform .28s cubic-bezier(.25,.46,.45,.94)!important}
-  /* smooth carousel บน mobile */
-  #gc-track{transition:transform .5s cubic-bezier(.25,.46,.45,.94)!important;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  /* modal overlay: ปิดทันทีบน mobile ไม่มี fade */
+  .ov{transition:none!important}
+  #prop-modal .modal{transition:none!important}
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
   .prop-thumb img,.blog-thumb img{
@@ -270,11 +259,13 @@ a,button,input,select,textarea,
   }
   /* ป้องกัน horizontal scroll leaking */
   .page,.wrap{overflow-x:hidden}
-  /* listings grid: ลด repaint scope — ปิด contain:layout บน iOS (ทำให้การ์ดหายหลัง modal close) */
-  #listings-grid .prop-card{contain:style paint}
-  /* listings grid: ไม่ใช้ contain เลย บน mobile — ป้องกัน stacking context ขัด iOS Safari */
+  /* listings grid: contain เพื่อลด repaint scope */
+  #listings-grid .prop-card{contain:layout style paint}
+  /* listings grid: contain เพื่อลด repaint scope — ลบ will-change:contents ออก
+     เพราะ will-change:contents สร้าง composite layer ขนาดใหญ่ ทำให้ browser ค้างเมื่อ
+     body ถูก remove position:fixed (modal close) และต้อง recalculate layers ใหม่ทั้งหมด */
   #listings-grid{
-    contain:none;
+    contain:layout style;
   }
   /* listings search bar: ลด GPU load บน mobile */
   #page-listings .listings-search-sf{
@@ -285,22 +276,47 @@ a,button,input,select,textarea,
     grid-column:1/-1;
   }
 }
-/* ── z-index system เป็นระเบียบ (ทุก device) ─────────────────
-   Layer stack:
-   nav=100 | nav-dd=200 | autocomplete=300 | modal=500 | sheets=600 | toast=9999 */
-nav{z-index:100!important}
-.dd-panel,.qs-dd-panel{z-index:200!important}
+/* ── z-index ให้เป็นระบบ (ทุก device) ────────────────────────
+   nav=1000 | dd-mobile-overlay=1001 | dd-panel=1050 | modal=3200 | sheet=1500 | toast=9999 */
+nav{z-index:1000!important}
+/* dd-panel อยู่เหนือ nav */
+.dd-panel,.qs-dd-panel{z-index:1050!important}
+/* items ภายใน dd-panel ต้องกดได้เสมอ */
 .dd-panel *,.qs-dd-panel *{pointer-events:auto}
-.qs-group .qs-dd-panel{z-index:200!important}
-/* autocomplete อยู่เหนือ nav-dd และ card grid เสมอ */
-.ac-list{z-index:300!important}
-#ls-ac-list{z-index:300!important}
-.ov,.loading-overlay{z-index:500!important}
-.seo-drawer-overlay,.adv-sheet-overlay{z-index:580!important}
-.adv-desktop-overlay{z-index:590!important}
-.adv-sheet,.seo-drawer,.adv-fp{z-index:600!important}
-.adv-filter-panel{z-index:610!important;pointer-events:auto!important}
+.ov,.loading-overlay{z-index:3200!important}
+.seo-drawer-overlay,.adv-sheet-overlay{z-index:3300!important}
+.adv-desktop-overlay{z-index:3490!important}
+.adv-sheet,.seo-drawer,.adv-fp{z-index:3400!important}
+.adv-filter-panel{z-index:3500!important;pointer-events:auto!important}
 .toast{z-index:9999!important}
+/* search autocomplete อยู่เหนือ dropdown */
+.ac-list{z-index:1100!important}
+/* listings page autocomplete */
+.ls-ac-wrap{position:relative;z-index:500}
+.ls-ac-list{
+  position:absolute;top:100%;left:0;right:0;
+  background:#fff;
+  border:1.5px solid var(--bd);
+  border-top:none;
+  border-radius:0 0 10px 10px;
+  z-index:9100;
+  max-height:260px;overflow-y:auto;
+  box-shadow:0 12px 32px rgba(27,58,107,.28);
+  margin-top:-2px;
+}
+.ls-ac-list .ac-item{
+  padding:10px 14px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--lt);
+  font-size:13px;color:var(--tx);
+  transition:background .15s;
+}
+.ls-ac-list .ac-item:last-child{border-bottom:none}
+.ls-ac-list .ac-item:hover{background:var(--pastel3)}
+.ls-ac-list .ac-item mark{background:rgba(200,146,42,.25);color:var(--p);font-weight:700;border-radius:2px;padding:0 1px}
+.ls-ac-list .ac-sub{font-size:11px;color:var(--gr);margin-left:auto;white-space:nowrap}
+/* quick-search panel */
+.qs-group .qs-dd-panel{z-index:1060!important}
 </style>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -337,11 +353,7 @@ img{max-width:100%;height:auto}
 ::-webkit-scrollbar-thumb{background:#c5c9d6;border-radius:3px}
 
 .wrap{max-width:1320px;margin:0 auto;padding:35px 20px}
-/* ── ป้องกัน .ov ที่ไม่เปิดอยู่บัง interaction ──────────────────── */
-.ov:not(.open){pointer-events:none!important}
-.ov.open{pointer-events:auto}
-/* ── listings-grid min-height: แสดง layout ทันที ก่อนการ์ดโหลด ─── */
-#listings-grid{min-height:300px}
+/* ── content-visibility: auto — ให้ browser skip render sections นอก viewport ── */
 #rec-sec, #blog-sec, #price-sec, #port-sec, #agents-sec, #osrv-sec, #new-sec{
   content-visibility:auto;
   contain-intrinsic-size:0 500px;
@@ -350,17 +362,6 @@ img{max-width:100%;height:auto}
 .listings-seo-sidebar{
   content-visibility:auto;
   contain-intrinsic-size:0 400px;
-}
-/* mobile: SEO footer sections ใน listings — defer render ด้วย content-visibility */
-@media(max-width:768px){
-  #page-listings .listings-seo-sidebar,
-  #page-listings section[aria-label*="อสังหา"],
-  #page-listings section[aria-label*="คู่มือ"]{
-    content-visibility:auto;
-    contain-intrinsic-size:0 300px;
-  }
-  /* listings grid: ลบ translateZ(0) ออก — มันสร้าง stacking context ใหม่
-     ทำให้ iOS ขัดแย้งกับ visibility transition ของ .ov overlay → หน้าค้าง */
 }
 .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 
@@ -375,7 +376,7 @@ img{max-width:100%;height:auto}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 22px;border-radius:30px;font-size:14px;z-index:490;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:480;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:0;pointer-events:none;transition:opacity .3s}
-.loading-overlay.show{opacity:1;pointer-events:none}
+.loading-overlay.show{opacity:1;pointer-events:auto}
 
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -620,11 +621,13 @@ nav{
 
 .ov{
   position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;
-  display:none;
-  align-items:center;justify-content:center;padding:16px;
+  display:flex;align-items:center;justify-content:center;padding:16px;
   -webkit-tap-highlight-color:transparent;
+  /* ใช้ visibility+opacity แทน display:none/flex เพื่อหลีกเลี่ยง layout recalc บน iOS */
+  visibility:hidden;opacity:0;pointer-events:none;
+  transition:opacity .15s,visibility .15s;
 }
-.ov.open{display:flex}
+.ov.open{visibility:visible;opacity:1;pointer-events:auto}
 #prop-modal.open{z-index:3300}
 #ag-modal.open{z-index:3400}
 .modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -636,7 +639,7 @@ nav{
 .mbody{padding:20px;overflow-y:auto}
 .mslider-wrap{position:relative;margin-bottom:14px}
 .mslider{overflow:hidden;border-radius:var(--r);height:220px}
-.slides{display:flex;transition:transform .28s cubic-bezier(.25,.46,.45,.94);height:100%}
+.slides{display:flex;transition:transform .3s;height:100%}
 .slides>*{width:100%;height:220px;object-fit:cover;flex-shrink:0}
 .slide-ph{display:flex;align-items:center;justify-content:center;font-size:60px;background:#e8edf5}
 .sarr{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:#fff;border:1.5px solid rgba(10,22,48,.18);color:var(--p);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -777,21 +780,8 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .page{display:none}
 .page.active{display:block}
 
-.hero{background:#F2EEE8;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}
-/* hero-banner-img: cover เต็ม banner ทั้ง desktop และ mobile */
-.hero-banner-img{
-  position:absolute;
-  inset:0;
-  width:100%;height:100%;
-  object-fit:cover;
-  object-position:center center;
-  z-index:0;opacity:0;pointer-events:none;
-  transform:none;
-}
-/* Desktop/Tablet: กำหนด min-height ให้พอดีกับสัดส่วนภาพ */
-@media(min-width:769px){
-  .hero{min-height:clamp(380px, 42vw, 620px);display:flex;flex-direction:column;justify-content:center;}
-}
+.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:visible}.hero-banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 60%;z-index:0;opacity:0;pointer-events:none;filter:blur(0px);}
+@media(max-width:768px){.hero-banner-img{object-fit:cover;object-position:center 60%;}}
 .hero-bg-clip{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 #hero-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .hero-content{position:relative;z-index:2;padding-bottom:20px}
@@ -1251,8 +1241,8 @@ footer::after{
 }
 
 /* SEO Drawer (mobile) */
-.seo-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .32s ease}
-.seo-drawer-overlay.open{opacity:1;pointer-events:auto}
+.seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
+.seo-drawer-overlay.open{display:block}
 .seo-drawer{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);background:#fff;z-index:4001;transform:translateX(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.18)}
 .seo-drawer.open{transform:translateX(0)}
 .seo-drawer-hd{position:sticky;top:0;background:#fff;padding:14px 16px 10px;border-bottom:1.5px solid var(--bd);display:flex;align-items:center;justify-content:space-between;z-index:2}
@@ -3710,7 +3700,7 @@ const C = {
   // --- [3] System Images (อัปโหลดไฟล์ไว้ใน bucket ตาม path นี้) ---
   IMG_LOGO:   'system/Logoweb.webp',       // 🔧 [CONFIG-4] โลโก้ navbar & footer  → อัปโหลด: matchdoor-assets/system/logoweb.webp
   IMG_BANNER: 'system/bannerWeb.webp',     // 🔧 [CONFIG-5] ภาพ hero background    → อัปโหลด: matchdoor-assets/system/bannerWeb.webp
-  IMG_BANNER_OPACITY: 1.0,             // 🔧 [CONFIG-6] ความเข้มภาพ hero (0.0–1.0)
+  IMG_BANNER_OPACITY: 0.18,            // 🔧 [CONFIG-6] ความเข้มภาพ hero (0.0–1.0)
   IMG_OG:     'system/og-image.jpg',   // 🔧 [CONFIG-7] Open Graph image (og:image) → อัปโหลด: matchdoor-assets/system/og-image.jpg
 
   // --- [4] ข้อมูลบริษัท ---
@@ -3752,16 +3742,10 @@ async function loadSystemImages() {
     // Banner hero background — ใช้ไฟล์ local
     document.querySelectorAll('.hero-banner-img').forEach(el => {
       el.src = '/bannerWeb.webp';
+      // บนมือถือไม่มี canvas overlay → ใช้ opacity สูงกว่า desktop เพื่อให้เห็นภาพชัด
       const isMobile = window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
-      if(isMobile) {
-        // Mobile: img แสดงตรงๆ ไม่มี canvas — ใช้ opacity สูง + dark overlay ผ่าน CSS
-        el.style.opacity = '0.55';
-        el.style.display = 'block';
-      } else {
-        // Desktop: canvas วาดภาพเอง → ซ่อน img element ไว้ (canvas โหลดภาพแยก)
-        el.style.opacity = '0';
-        el.style.display = 'none';
-      }
+      el.style.opacity = isMobile ? '0.55' : String(C.IMG_BANNER_OPACITY || 0.18);
+      el.style.display = 'block';
     });
   } catch(e) {
     console.warn('[loadSystemImages]', e);
@@ -3831,7 +3815,7 @@ function _initApplyFilters(){
   // เรียก _renderHomeGrids แทน — แสดง ALL props โดยตรง
   _renderHomeGrids();
 }
-function resetSearch(){ const kw=$('s-kw'); if(kw){kw.value='';const al=$('ac-list');if(al)al.style.display='none';} $('s-type').value=''; const sp=$('s-prov');if(sp)sp.value=''; $('s-min').value='0'; $('s-max').value='999000000'; const pr=$('s-price-range');if(pr)pr.value='0|0'; tx='ALL'; const bt=document.querySelectorAll('.tx-tab'); if(bt[0]){ bt[0].classList.add('active'); if(bt[1])bt[1].classList.remove('active'); if(bt[2])bt[2].classList.remove('active'); } const pb=$('price-buy-section'),prs=$('price-rent-section'); if(pb)pb.style.display='block'; if(prs)prs.style.display='none'; curType=''; const cc=$$('.cat-card'); cc.forEach((c,i)=>c.classList.toggle('active',i===0)); const ll=$('loc-search-layer');if(ll)ll.style.display='none'; locActiveCat=null; applyFilters().catch(console.error); }
+function resetSearch(){ const kw=$('s-kw'); if(kw){kw.value='';const al=$('ac-list');if(al)al.style.display='none';} const st=$('s-type');if(st)st.value=''; const sp=$('s-prov');if(sp)sp.value=''; const smn=$('s-min');if(smn)smn.selectedIndex=0; const smx=$('s-max');if(smx)smx.selectedIndex=0; const pr=$('s-price-range');if(pr)pr.value='0|0'; tx='ALL'; const bt=document.querySelectorAll('.tx-tab'); if(bt[0]){ bt[0].classList.add('active'); if(bt[1])bt[1].classList.remove('active'); if(bt[2])bt[2].classList.remove('active'); } const pb=$('price-buy-section'),prs=$('price-rent-section'); if(pb)pb.style.display='block'; if(prs)prs.style.display='none'; curType=''; const cc=$$('.cat-card'); cc.forEach((c,i)=>c.classList.toggle('active',i===0)); const ll=$('loc-search-layer');if(ll)ll.style.display='none'; locActiveCat=null; applyFilters().catch(console.error); requestAnimationFrame(()=>{ const hero=document.querySelector('#page-home .hero'); if(hero){ window.scrollTo({top:hero.getBoundingClientRect().top+(window.scrollY||window.pageYOffset)-64,behavior:'smooth'}); } else { window.scrollTo({top:0,behavior:'smooth'}); } }); }
 function handleLogoClick(){ resetSearch(); showPage('home'); }
 
 async function loadLegalPages(){
@@ -4239,18 +4223,13 @@ async function loadData(){
               });
               updated=true;
             }
-            // re-render sections เฉพาะหน้าที่ active อยู่จริง
-            // ไม่ render ถ้า listings active — ป้องกัน layout thrash หลังปิด modal
+            // re-render sections ที่เกี่ยวข้องในหน้าหลัก
             if(updated){
-              const _activePg = document.querySelector('.page.active');
-              const _apId = _activePg ? _activePg.id : '';
-              if(typeof renderFavDropdown==='function') renderFavDropdown(); // always safe
-              if(_apId === 'page-home' || _apId === '') {
-                if(typeof renderServices==='function') renderServices();
-                if(typeof renderBlogs==='function') renderBlogs();
-                if(typeof renderHomePortfolio==='function') renderHomePortfolio();
-                renderRecCarousel && renderRecCarousel();
-              }
+              if(typeof renderServices==='function') renderServices();
+              if(typeof renderBlogs==='function') renderBlogs();
+              if(typeof renderHomePortfolio==='function') renderHomePortfolio();
+              if(typeof renderFavDropdown==='function') renderFavDropdown();
+              renderRecCarousel && renderRecCarousel();
             }
             // โหลด legal pages แบบ background
             loadLegalPages().catch(e=>console.warn('[loadLegalPages]',e));
@@ -4295,6 +4274,7 @@ function afterLoad(){
   populateProvinceSelect();
   initLocSearch();
   initAutocomplete();
+  initListingsAutocomplete();
 
   // ── render home grids ก่อนเป็นอันดับแรก ────────────────────────────
   _renderHomeGrids();
@@ -4323,9 +4303,9 @@ function afterLoad(){
   if(typeof _populateListingsProvince === 'function') _populateListingsProvince();
   if(typeof _updateListingsTxTabs === 'function') _updateListingsTxTabs('ALL');
   // SEO sidebar: defer ไว้ทีหลัง ไม่บล็อก listings grid
-  const _idleQ = window.requestIdleCallback || (cb=>setTimeout(cb,500));
-  _idleQ(()=>{ if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered) { renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; } });
-  // ── mark data ready — render จะเกิดจาก afterLoad setTimeout ด้านล่าง ──
+  const _idleQ = window.requestIdleCallback || (cb=>setTimeout(cb,300));
+  _idleQ(()=>{ if(typeof renderListingsSeoSidebar === 'function') renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
+  // ── render listings ถ้าหน้านั้น active อยู่ ──────────────────────
   window._pendingListingsInit = false;
   window._listingsDataReady = true;
 
@@ -4340,12 +4320,20 @@ function afterLoad(){
     var ap = document.querySelector('.page.active');
 
     if(ap && ap.id === 'page-listings') {
-      // หน้า listings active อยู่แล้ว (จาก initRouter) → render grid ถ้ายังว่าง
-      if(!window._listingsRenderAbort && typeof renderListingsPage === 'function') renderListingsPage();
-    } else if(targetPage && targetPage !== 'listings') {
-      // initRouter ยังไม่ได้ activate page → force navigate (ยกเว้น listings ซึ่ง _silentShowPage จัดการ)
+      // หน้า listings active อยู่แล้ว (จาก initRouter) → render grid ทันที
+      if(typeof renderListingsPage === 'function') renderListingsPage();
+    } else if(targetPage) {
+      // initRouter ยังไม่ได้ activate page (เช่น DOM ยังไม่พร้อมตอน initRouter รัน)
+      // หรือ page ที่ active ไม่ใช่ที่ถูกต้อง → force navigate
       if(typeof _silentShowPage === 'function') {
         _silentShowPage(targetPage);
+        // _silentShowPage เรียก renderListingsPage อยู่แล้วถ้า _listingsDataReady=true
+        // แต่ให้ call เองด้วยเพื่อป้องกัน edge case
+        if(targetPage === 'listings') {
+          setTimeout(function() {
+            if(typeof renderListingsPage === 'function') renderListingsPage();
+          }, 30);
+        }
       }
     }
   }, 50);
@@ -4530,9 +4518,8 @@ async function applyFilters(){
   // ── all-grid: แสดงผลตาม filter ────────────────────────────────
   _renderHomeAllGrid(filtered.slice(0,8));
 
-  // ── rec-grid: กรองตาม filter (defer ให้ idle เพื่อไม่ block main thread) ──
-  const _idle4F = window.requestIdleCallback || (cb=>setTimeout(cb,100));
-  _idle4F(()=>{ renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8)); });
+  // ── rec-grid: กรองตาม filter ──────────────────────────────────
+  renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8));
 
   // ── new-track: "มาใหม่ล่าสุด" — แสดงทั้งหมดเสมอ ไม่กรองตาม filter ──
   // (section นี้เป็น editorial/showcase ไม่ใช่ search result)
@@ -4567,8 +4554,7 @@ function _renderHomeAllGrid(list) {
   if(!el) return;
   if(list && list.length) {
     el.innerHTML = list.map(propCard).join('');
-    const _idle = window.requestIdleCallback || (cb=>setTimeout(cb,80));
-    _idle(()=>initAllCardSwipes(el));
+    setTimeout(initAllCardSwipes, 50);
     return;
   }
   // Empty state — สวยงาม มีปุ่ม LINE และ Reset
@@ -4754,15 +4740,19 @@ function _openPropertyUrl(propId) {
   ldScript.textContent = JSON.stringify(ldData);
 }
 
-// Called when modal closes — restore previous section URL only (no page navigation, no grid render)
+// Called when modal closes — restore previous section URL
 function _closePropertyUrl() {
   if (!_routerReady) return;
   const cur = history.state;
   if (cur && cur.type === 'property') {
-    const prevPage = window._pageBeforeModal || 'listings';
-    const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['listings'] || PAGE_ROUTES['home'];
-    const path = route ? route.path : '/listings';
+    // ── FIX: ใช้ replaceState แทน history.back() ──
+    // history.back() ทำให้ popstate fire → _silentShowPage('home') เสมอ
+    // ทำให้ refresh แล้วกลับหน้า home แทนที่จะอยู่หน้าเดิม
+    const prevPage = window._pageBeforeModal || 'home';
+    const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['home'];
+    const path = route ? route.path : '/';
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
+    // อัพเดต meta กลับเป็น page เดิม
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
@@ -4774,26 +4764,26 @@ window.addEventListener('popstate', function(e) {
   if (state.type === 'property') {
     if (state.id) { openModal(state.id); }
   } else if (state.type === 'page') {
+    // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
       propModal.classList.remove('open');
+      const savedY = document.body._savedScrollY || 0;
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.left = '';
+      document.body._savedScrollY = 0;
+      window._listingsRenderAbort = true;
+      setTimeout(() => { window._listingsRenderAbort = false; }, 300);
+      window.scrollTo(0, savedY);
+      window._currentModalId = null;
       if (typeof close360 === 'function') close360();
-      _forceRestoreBody();
-      const _activePageEl = document.querySelector('.page.active');
-      const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
-      if (_activeName === state.name) return;
+      // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
       _silentShowPage(state.name, true);
     } else {
-      // modal ปิดอยู่แล้ว: ถ้าหน้า listings active + grid สมบูรณ์ → ไม่ต้อง re-render
-      const _activePageEl2 = document.querySelector('.page.active');
-      const _activeName2 = _activePageEl2 ? _activePageEl2.id.replace('page-', '') : '';
-      if (_activeName2 === state.name && state.name === 'listings') {
-        const _grid2 = document.getElementById('listings-grid');
-        const _hasCards2 = _grid2 && _grid2.querySelector('.prop-card:not(.loading-sk)') !== null;
-        const _isPartial2 = _grid2 && (_grid2.dataset.renderKey||'').endsWith(':partial');
-        const _keyEmpty2 = !(_grid2 && (_grid2.dataset.renderKey||'').replace(':partial','').trim());
-        if (_hasCards2 && !_isPartial2 && !_keyEmpty2) return; // grid สมบูรณ์ → ไม่โหลดซ้ำ
-      }
       _silentShowPage(state.name);
     }
   }
@@ -4802,14 +4792,14 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // ── restore body scroll lock ถ้าเปิดอยู่ — ต้องเป็นอันดับแรก เพื่อให้ user กดได้ทันที ──
-  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
-    _forceRestoreBody();
-  }
-  // reset render flags — แต่ _listingsRenderAbort ให้ closeModal จัดการ (ผ่าน rAF)
-  _listingsRenderPending = false;
-  // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
-  const _wasListingsActive = (name === 'listings') && (document.getElementById('page-listings')?.classList.contains('active') === true);
+  // คืน body scroll เสมอ — ไม่ว่าจะ lock ด้วย overflow:hidden หรือ position:fixed
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.left = '';
+  document.body.classList.remove('modal-open');
+  document.body._savedScrollY = 0;
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
@@ -4831,35 +4821,11 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    if (!_wasListingsActive) {
-      // Reset sidebar flag เฉพาะเมื่อ sidebar DOM ว่างอยู่จริง —
-      // ไม่ reset ถ้า sidebar render ไปแล้ว (ป้องกัน re-render ซ้ำทุกครั้งที่ switch tab)
-      const _transitEl = document.getElementById('seo-transit-btns');
-      if (!_transitEl || !_transitEl.innerHTML.trim()) {
-        window._lsSeoSidebarRendered = false;
-      }
-    }
-    // ถ้า listings active อยู่แล้ว + มีการ์ดจริง + ไม่ใช่ partial → ไม่ re-render
-    // ยกเว้น: renderKey ว่าง (closeModal clear ไว้) → ต้อง re-render เสมอ
-    const _grid = document.getElementById('listings-grid');
-    const _hasCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
-    const _isPartial = _grid && (_grid.dataset.renderKey||'').endsWith(':partial');
-    const _keyEmpty = !(_grid && (_grid.dataset.renderKey||'').replace(':partial','').trim());
-    if (_wasListingsActive && _hasCards && !_isPartial && !_keyEmpty) {
-      if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
-        const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
-        idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
-      }
-      return;
-    }
-    // render หน้า listings — _forceRestoreBody ใน closeModal reset _listingsRenderAbort=false แล้ว
-    // ใช้ rAF เพื่อให้ layout paint ก่อน render grid
-    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
-      requestAnimationFrame(function(){
-        if(!_listingsRenderPending) renderListingsPage();
-      });
-    }
-    if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
+    window._lsSeoSidebarRendered = false; // reset เพื่อให้ re-render sidebar เมื่อเข้าหน้าใหม่
+    // ถ้า _listingsDataReady === false แสดงว่าข้อมูลยังไม่โหลด → afterLoad() จะ render แทน
+    // ถ้า _listingsDataReady === true แสดงว่าเปิดหน้า listings ปกติ (ไม่ใช่ refresh) → render ทันที
+    if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
+    if(typeof renderListingsSeoSidebar === 'function'){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
       idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
     }
@@ -4951,8 +4917,13 @@ window.openModal = function(id) {
   _origOpenModal(id);
   _openPropertyUrl(id);
 };
-// หมายเหตุ: closeModal จัดการ URL restore + body restore + re-render ครบในตัวเอง
-// ไม่ต้องใช้ patch wrapper อีกต่อไป
+
+// ── Patch closeModal to restore URL ──
+const _origCloseModal = closeModal;
+window.closeModal = function(e) {
+  _origCloseModal(e);
+  if (!e || e.target.id === 'prop-modal') _closePropertyUrl();
+};
 
 // Add "ดูหน้าเต็ม" share button inside property modal after it's opened
 function _addShareButtonToModal() { /* disabled */ }
@@ -5016,9 +4987,8 @@ function propCard(p){
   const photos=p.photos?.filter(Boolean)||[];
   const da=daysAgo(p.createdAt);
   const faved=favs.includes(String(p.id));
-  // uid: deterministic จาก p.id + grid context — ป้องกัน cache miss ซ้ำทุก render
-  // ถ้า property เดียวกันอยู่ใน grid หลายอัน UID ก็ยังไม่ชนกันเพราะ DOM position ต่างกัน
-  const uid='pc'+String(p.id).replace(/[^a-z0-9]/gi,'');
+  // uid ต้องไม่ซ้ำกันแม้ property เดียวกันจะถูก render หลาย grid พร้อมกัน
+  const uid='pc'+Math.random().toString(36).slice(2,8);
 
   // ---- thumb inner HTML ----
   // รูปทุกใบใช้ loading="lazy" — browser โหลดเฉพาะรูปที่ใกล้ viewport เท่านั้น
@@ -5162,23 +5132,16 @@ function listingsSortChange() {
 }
 
 function renderListingsPage() {
-  // ── ถ้า modal เปิดอยู่ → skip render ทันที ──────────────────────────
-  if(window._listingsRenderAbort) { _listingsRenderPending = false; return; }
-  // ── throttle: ถ้ากำลัง render อยู่แล้ว → skip ──────────────────────
-  if(_listingsRenderPending) { return; }
-
-  // ── SNAPSHOT CACHE ─────────────────────────────────────────────────────
-  const _grid = document.getElementById('listings-grid');
-  if (_grid) {
-    const _sortValChk = document.getElementById('listings-sort')?.value || 'default';
-    const _cacheKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortValChk;
-    const _hasCards = _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
-    const _isPartialKey = (_grid.dataset.renderKey || '').endsWith(':partial');
-    if (_hasCards && !_isPartialKey && _grid.dataset.renderKey === _cacheKey) return;
+  // ── throttle: ป้องกัน render ซ้อนกัน (เช่น filter + scroll เร็วๆ) ──
+  if(_listingsRenderPending) {
+    // ถ้ามีข้อมูลแล้ว (afterLoad เรียกมา) ให้ force reset throttle แล้ว render
+    const _hasProps = (typeof props !== 'undefined' && props && props.length);
+    if(!_hasProps) return; // ยังไม่มีข้อมูล → skip ได้
+    _listingsRenderPending = false; // force reset เพื่อให้ render ผ่าน
   }
-
   _listingsRenderPending = true;
-  if(window._listingsRenderAbort) { _listingsRenderPending = false; return; }
+  const _doRender = () => {
+  _listingsRenderPending = false;
 
   // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
   const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
@@ -5190,7 +5153,7 @@ function renderListingsPage() {
     if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
       grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
     }
-    setTimeout(renderListingsPage, 50);
+    setTimeout(renderListingsPage, 300);
     return;
   }
 
@@ -5252,71 +5215,43 @@ function renderListingsPage() {
   const grid = document.getElementById('listings-grid');
   if(grid) {
     if(pageData.length) {
-      // ── คำนวณ cache key สำหรับ snapshot ──
-      const _sortVal = document.getElementById('listings-sort')?.value || 'default';
-      const _renderKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortVal;
+      // ── Mobile: batch เล็กลง (4 แรก) เพื่อให้ first paint เร็ว ──────
+      const isMob = window.innerWidth <= 768;
+      const FIRST_BATCH = isMob ? 4 : 8;
+      const SECOND_BATCH = isMob ? 8 : 16;
+      const firstBatch  = pageData.slice(0, FIRST_BATCH);
+      const secondBatch = pageData.slice(FIRST_BATCH, FIRST_BATCH + SECOND_BATCH);
+      const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
-      // ── Batch render: ถ้า data ≤ 12 → render ทั้งหมดทันที (ไม่ต้องแบ่ง batch)
-      // ถ้า > 12 → render 8 ใบแรก → paint → append ที่เหลือใน idleCallback ──
-      const _idleSwipe = window.requestIdleCallback || (cb => setTimeout(cb, 80));
-      const FIRST_BATCH = pageData.length <= 12 ? pageData.length : 8;
-      const firstCards = pageData.slice(0, FIRST_BATCH);
-      const restCards  = pageData.slice(FIRST_BATCH);
+      grid.innerHTML = firstBatch.map(propCard).join('');
+      // init swipe เฉพาะใน grid (scoped) — ไม่ query ทั้งเพจ
+      if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
 
-      // ── ถ้า grid มีการ์ดอยู่แล้ว (จาก partial render) และ renderKey base เหมือนกัน
-      // → ไม่ต้อง clear grid ใหม่ ป้องกัน flash ขาว บนมือถือหลังปิด modal ──
-      const _existingKey = grid.dataset.renderKey || '';
-      const _existingBase = _existingKey.replace(':partial','');
-      const _existingCards = grid.querySelector('.prop-card:not(.loading-sk)');
-      if(_existingCards && _existingBase === _renderKey) {
-        // renderKey base ตรง → เพียงแค่ append ส่วนที่ขาด (restCards) แล้วทำ complete
-        if(restCards.length && _existingKey.endsWith(':partial')) {
+      const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
+
+      if(secondBatch.length){
+        idle(()=>{
+          // ถ้า modal เพิ่งปิด หรือมีการสั่ง abort → skip batch นี้ทิ้ง ไม่ลบ flag
+          if(window._listingsRenderAbort) return;
           const frag = document.createDocumentFragment();
-          restCards.forEach(p => {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = propCard(p);
-            frag.appendChild(tmp.firstChild);
-          });
+          const tmp = document.createElement('div');
+          tmp.innerHTML = secondBatch.map(propCard).join('');
+          while(tmp.firstChild) frag.appendChild(tmp.firstChild);
           grid.appendChild(frag);
-          grid.dataset.renderKey = _renderKey;
-          _listingsRenderPending = false;
-          if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
-            _idleSwipe(() => { if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
-          }
-        } else {
-          // complete แล้ว → ไม่ต้องทำอะไร
-          _listingsRenderPending = false;
-        }
-        return;
-      }
+          if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
 
-      // ── render ใหม่ทั้งหมด (data เปลี่ยน หรือ grid ว่าง) ──
-      grid.innerHTML = firstCards.map(propCard).join('');
-      grid.dataset.renderKey = _renderKey + ':partial';
-      // ── release throttle lock ทันที — ให้ user กดได้ทันที ──
-      _listingsRenderPending = false;
-      if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
-        _idleSwipe(() => { if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
-      }
-      if(restCards.length) {
-        _idleSwipe(() => {
-          // ถ้า modal เปิดขึ้นมาระหว่างรอ → skip append แต่ยัง keep :partial key ไว้
-          // เมื่อ closeModal จะ re-render ให้สมบูรณ์
-          if(window._listingsRenderAbort || _listingsRenderPending) return;
-          const frag = document.createDocumentFragment();
-          restCards.forEach(p => {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = propCard(p);
-            frag.appendChild(tmp.firstChild);
-          });
-          grid.appendChild(frag);
-          grid.dataset.renderKey = _renderKey;
-          if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
-            _idleSwipe(() => { if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
+          if(restBatch.length){
+            idle(()=>{
+              if(window._listingsRenderAbort) return;
+              const frag2 = document.createDocumentFragment();
+              const tmp2 = document.createElement('div');
+              tmp2.innerHTML = restBatch.map(propCard).join('');
+              while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
+              grid.appendChild(frag2);
+              if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+            });
           }
         });
-      } else {
-        grid.dataset.renderKey = _renderKey;
       }
     } else {
       // ── Empty state: แสดง CTA ให้ฝากความต้องการแทนการ reset ─────
@@ -5356,7 +5291,7 @@ function renderListingsPage() {
                  onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter=''">
                 <i class="fab fa-line" style="font-size:20px"></i> ${m.cta}
               </a>
-              <button onclick="listingsResetSearch();setTimeout(function(){var el=document.getElementById('listings-filter-bar')||document.getElementById('page-listings');if(el){var navH=72;var rect=el.getBoundingClientRect();var top=rect.top+(window.scrollY||window.pageYOffset)-navH;window.scrollTo({top:Math.max(0,top),behavior:'smooth'});}},80)"
+              <button onclick="listingsResetSearch()"
                  style="display:flex;align-items:center;justify-content:center;gap:8px;
                         background:var(--lt);color:var(--tx);
                         border:1.5px solid var(--bd);border-radius:12px;
@@ -5369,9 +5304,9 @@ function renderListingsPage() {
           </div>
         </div>`;
     }
+    // init swipe สำหรับ batch แรก (ถ้ายังไม่ได้ init ใน batch แยก)
+    if(pageData.length <= 4) setTimeout(initAllCardSwipes, 50);
   }
-  // ── release throttle ถ้า empty state ──
-  _listingsRenderPending = false;
   // scroll ขึ้นเฉพาะกรณีเปลี่ยนหน้า (ไม่ใช่ filter ใหม่บนหน้าเดิม)
   if(window._listingsScrollOnRender){
     window._listingsScrollOnRender = false;
@@ -5380,6 +5315,10 @@ function renderListingsPage() {
   // render pagination
   const _totalPg = Math.max(1, Math.ceil(_listingsData.length / _listingsPerPage));
   if(typeof renderListingsPagination==='function') renderListingsPagination(_totalPg);
+  }; // end _doRender
+
+  // ใช้ requestAnimationFrame เพื่อไม่บล็อก paint ก่อน render
+  requestAnimationFrame(_doRender);
 }
 
 function renderListingsPagination(totalPages) {
@@ -5465,11 +5404,6 @@ let _listingsTxFilter = 'ALL';
 let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
-  // ── reset body scroll lock ก่อนเสมอ — กรณีถูกเรียกจาก all-modal หรือ overlay อื่น ──
-  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
-    if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
-  }
-
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
                      (props && props.length ? [...props] :
@@ -5568,15 +5502,9 @@ function listingsFilterTx(tx) {
   else if(tx === 'RENT') base = base.filter(p=>p.tx==='RENT');
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
-  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย render ──
-  const _seoDrawerFTx = document.getElementById('seo-drawer');
-  if(_seoDrawerFTx && _seoDrawerFTx.classList.contains('open')) {
-    closeSeoDrawer();
-    setTimeout(() => { renderListingsPage(); _scrollToListingsResults(); }, 320);
-  } else {
-    renderListingsPage();
-    _scrollToListingsResults();
-  }
+  renderListingsPage();
+  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter บนมือถือ ──
+  _scrollToListingsResults();
 }
 
 function listingsFilterHot() {
@@ -5605,12 +5533,12 @@ function listingsTransitFilter(val) {
 }
 function listingsResetSearch() {
   const lsKw = document.getElementById('ls-kw'); if(lsKw) lsKw.value = '';
-  const lsTx = document.getElementById('ls-tx'); if(lsTx) lsTx.value = '';
-  const lsType = document.getElementById('ls-type'); if(lsType) lsType.value = '';
-  const lsProv = document.getElementById('ls-prov'); if(lsProv) lsProv.value = '';
-  const lsMin = document.getElementById('ls-min'); if(lsMin) lsMin.value = '0';
-  const lsMax = document.getElementById('ls-max'); if(lsMax) lsMax.value = '999000000';
-  const lsTransit = document.getElementById('ls-transit'); if(lsTransit) lsTransit.value = '';
+  const lsTx = document.getElementById('ls-tx'); if(lsTx) lsTx.selectedIndex = 0;
+  const lsType = document.getElementById('ls-type'); if(lsType) lsType.selectedIndex = 0;
+  const lsProv = document.getElementById('ls-prov'); if(lsProv) lsProv.selectedIndex = 0;
+  const lsMin = document.getElementById('ls-min'); if(lsMin) lsMin.selectedIndex = 0;
+  const lsMax = document.getElementById('ls-max'); if(lsMax) lsMax.selectedIndex = 0;
+  const lsTransit = document.getElementById('ls-transit'); if(lsTransit) lsTransit.selectedIndex = 0;
   _listingsTxFilter = 'ALL';
   _updateListingsTxTabs('ALL');
   _listingsData = sortListings([..._listingsBaseData], 'default');
@@ -5618,14 +5546,16 @@ function listingsResetSearch() {
   // Reset sort dropdown
   const sortEl = document.getElementById('listings-sort'); if(sortEl) sortEl.value = 'default';
   renderListingsPage();
-  // scroll กลับไปที่ filter bar ให้ค้นหาต่อได้ทันที
-  requestAnimationFrame(function(){
-    var target = document.getElementById('listings-filter-bar') || document.getElementById('page-listings');
-    if(target){
-      var navH = 64;
-      var rect = target.getBoundingClientRect();
-      var top = rect.top + (window.scrollY||window.pageYOffset) - navH;
-      window.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+  // Scroll กลับขึ้นไปที่ส่วนค้นหา
+  requestAnimationFrame(() => {
+    const searchHero = document.querySelector('#page-listings > div[style*="background:linear-gradient"]');
+    if (searchHero) {
+      const navH = 64;
+      const rect = searchHero.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      window.scrollTo({ top: rect.top + scrollY - navH, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   });
 }
@@ -5669,8 +5599,6 @@ function listingsInlineSearch() {
   _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
   _listingsCurPage = 1;
   renderListingsPage();
-  // ── FIX: scroll ไปที่ผลลัพธ์บนมือถือ (ไม่ scroll บน desktop เพราะ grid ชัดเจนอยู่แล้ว) ──
-  _scrollToListingsResults();
   // SEO sidebar: render ครั้งแรกเท่านั้น (ไม่ต้อง re-render ทุก search)
   if(!window._lsSeoSidebarRendered && typeof renderListingsSeoSidebar==='function'){
     window._lsSeoSidebarRendered = true;
@@ -5682,97 +5610,19 @@ function listingsInlineSearch() {
 function listingsQuickSearch(kw) {
   const inp = document.getElementById('ls-kw');
   if(inp) inp.value = kw;
-  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย search หลัง transition ──
-  const _seoDrawer = document.getElementById('seo-drawer');
-  if(_seoDrawer && _seoDrawer.classList.contains('open')) {
-    closeSeoDrawer();
-    setTimeout(listingsInlineSearch, 320);
-  } else {
-    listingsInlineSearch();
-  }
+  listingsInlineSearch();
+  _scrollToListingsResults();
+}
+
+// เรียกจากปุ่ม "ค้นหา" เท่านั้น — ค้นหา + scroll ไปผลลัพธ์
+function listingsDoSearchAndScroll() {
+  listingsInlineSearch();
+  _scrollToListingsResults();
 }
 // debounced version สำหรับ keyboard input (oninput) — ลด render ซ้ำ
 const listingsInlineSearchDebounced = (function(){
   let _t;
   return function(){ clearTimeout(_t); _t = setTimeout(listingsInlineSearch, 350); };
-})();
-
-// ── ls-kw Autocomplete Dropdown ──────────────────────────────────────────
-// แสดง dropdown เมื่อพิมพ์ — ไม่ trigger search ทันที รอกดปุ่ม "ค้นหา"
-(function(){
-  var _lsAcTimer = null;
-
-  window.lsKwShowDropdown = function(val) {
-    clearTimeout(_lsAcTimer);
-    var list = document.getElementById('ls-ac-list');
-    if(!list) return;
-    var kw = (val||'').trim();
-    if(!kw || kw.length < 1) { list.style.display = 'none'; return; }
-    _lsAcTimer = setTimeout(function(){
-      var kwl = kw.toLowerCase();
-      // match จาก props: title + location + province
-      var matches = (typeof props !== 'undefined' ? props : [])
-        .filter(function(p){
-          return (p.title||'').toLowerCase().includes(kwl)
-              || (p.location||'').toLowerCase().includes(kwl)
-              || (p.province||'').toLowerCase().includes(kwl);
-        })
-        .slice(0, 8);
-
-      if(!matches.length){ list.style.display='none'; return; }
-
-      // render items
-      list.innerHTML = matches.map(function(p){
-        var hl = typeof highlight === 'function' ? highlight(p.title, kw) : p.title;
-        var icon = typeof typeIcon === 'function' ? typeIcon(p.type) : '🏠';
-        var loc = p.location || p.province || '';
-        return '<div class="ls-ac-item" '
-          + 'style="padding:9px 13px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;'
-          + 'border-bottom:1px solid #EDE8DF;color:#1A1A2E;background:#fff" '
-          + 'onmousedown="lsKwSelectItem(event,\'' + String(p.id) + '\',\'' + (p.title||'').replace(/'/g,"\\'") + '\')" '
-          + 'onmouseover="this.style.background=\'#F5F0E8\'" '
-          + 'onmouseout="this.style.background=\'#fff\'">'
-          + '<span style="font-size:16px;flex-shrink:0">' + icon + '</span>'
-          + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + hl + '</span>'
-          + (loc ? '<span style="font-size:11px;color:#8A8070;margin-left:auto;white-space:nowrap;flex-shrink:0">' + loc + '</span>' : '')
-          + '</div>';
-      }).join('');
-      list.style.display = 'block';
-    }, 200);
-  };
-
-  // เลือก item จาก dropdown → ใส่ค่าใน input แล้วซ่อน dropdown (ยังไม่ search)
-  window.lsKwSelectItem = function(e, id, title) {
-    e.preventDefault(); // ป้องกัน blur ก่อน mousedown เสร็จ
-    var inp = document.getElementById('ls-kw');
-    var list = document.getElementById('ls-ac-list');
-    if(inp) inp.value = title;
-    if(list) list.style.display = 'none';
-    // focus กลับ input เพื่อให้ user กด Enter หรือกดปุ่ม "ค้นหา" ต่อได้
-    if(inp) inp.focus();
-  };
-
-  // keyboard: Enter → search + ปิด dropdown, Escape → ปิด dropdown
-  window.lsKwKeydown = function(e) {
-    var list = document.getElementById('ls-ac-list');
-    if(e.key === 'Escape') {
-      if(list) list.style.display = 'none';
-    } else if(e.key === 'Enter') {
-      if(list) list.style.display = 'none';
-      listingsInlineSearch();
-      _scrollToListingsResults();
-    }
-  };
-
-  // ปิด dropdown เมื่อ click นอก input
-  document.addEventListener('click', function(e){
-    var inp = document.getElementById('ls-kw');
-    var list = document.getElementById('ls-ac-list');
-    if(!list) return;
-    if(inp && (e.target === inp || inp.contains(e.target))) return;
-    if(list.contains(e.target)) return;
-    list.style.display = 'none';
-  }, true);
 })();
 
 // ฟิลเตอร์ประเภทอสังหาโดยตรงจาก SEO sidebar
@@ -5797,15 +5647,9 @@ function listingsFilterByType(typeVal) {
   _listingsTxFilter = 'ALL';
   _updateListingsTxTabs('ALL');
   _listingsCurPage = 1;
-  // ── ถ้า SEO drawer เปิดอยู่ → ปิด smooth แล้วค่อย render ──
-  const _seoDrawerFBT = document.getElementById('seo-drawer');
-  if(_seoDrawerFBT && _seoDrawerFBT.classList.contains('open')) {
-    closeSeoDrawer();
-    setTimeout(() => { renderListingsPage(); _scrollToListingsResults(); }, 320);
-  } else {
-    renderListingsPage();
-    _scrollToListingsResults();
-  }
+  renderListingsPage();
+  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter ──
+  _scrollToListingsResults();
 }
 
 function openListingsAdvFilter() {
@@ -5835,10 +5679,6 @@ function toggleListingsMapPanel() {
 }
 
 function renderListingsSeoSidebar() {
-  // ── guard: ถ้าเพิ่ง render ไปแล้วใน 500ms — skip (ป้องกัน call ซ้ำจากหลายที่)
-  const _now = Date.now();
-  if(renderListingsSeoSidebar._lastRun && (_now - renderListingsSeoSidebar._lastRun) < 500) return;
-  renderListingsSeoSidebar._lastRun = _now;
   const btnBase = 'text-align:left;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);font-size:12px;color:var(--tx);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px;width:100%';
   // Popular areas — dynamic from data or static fallback
   const areaEl = document.getElementById('seo-popular-areas');
@@ -5936,8 +5776,7 @@ function renderGrid(id,list,loading_sk=false){
   }
   el.innerHTML=list.length?list.map(propCard).join(''):'<div class="empty" style="grid-column:1/-1"><i class="fas fa-search"></i><p>ไม่พบรายการ</p><button class="retry-btn" onclick="applyFilters()"><i class="fas fa-redo"></i> ลองใหม่</button></div>';
   // Init card image swipes after render
-  const _idleRG = window.requestIdleCallback || (cb=>setTimeout(cb,80));
-  _idleRG(()=>initAllCardSwipes(el));
+  setTimeout(initAllCardSwipes, 50);
 }
 
 function toggleFav(id,e){ if(e)e.stopPropagation(); const sid=String(id); const i=favs.indexOf(sid); if(i===-1)favs.push(sid); else favs.splice(i,1); localStorage.setItem('md_favs',JSON.stringify(favs)); updateFavUI(); renderFavDropdown(); if($('page-favorites').classList.contains('active'))renderFavPage(); $$(`[data-id="${sid}"]`).forEach(b=>{ const on=favs.includes(sid); b.innerHTML=on?'<i class="fas fa-heart"></i>':'<i class="far fa-heart"></i>'; b.classList.toggle('favorited',on); }); }
@@ -5977,13 +5816,7 @@ function renderFavPage(){
 function shareFavs(){ const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length)return toast('ไม่มีรายการโปรด'); const url = location.origin + '/favorites'; if(navigator.share){ navigator.share({title:'รายการโปรด Matchdoor',text:`อสังหาฯ ที่น่าสนใจ ${fp.length} รายการ`,url}); } else { navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅')); } }
 
 function openModal(id){
-  if($('all-modal').classList.contains('open')) {
-    $('all-modal').classList.remove('open');
-    // reset overflow ที่ all-modal set ไว้ — openModal จะ re-lock ด้วย position:fixed แทน
-    document.body.style.overflow = '';
-    document.body.classList.remove('modal-open');
-    window._modalCurrentType = null;
-  }
+  if($('all-modal').classList.contains('open')) $('all-modal').classList.remove('open');
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
@@ -6004,22 +5837,15 @@ function openModal(id){
   const dotsEl=$('sdots'); if(dotsEl) dotsEl.innerHTML='';
 
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
-  window._listingsRenderAbort = true; // ห้าม re-render listings ขณะ modal เปิด
-  _listingsRenderPending = false; // reset throttle
-  // หยุด MutationObserver บน listings-grid ขณะ modal เปิด — ป้องกัน initAllCardSwipes ทำงานซ้ำ
-  if(typeof _cardObserver !== 'undefined' && _cardObserver && _cardObserver.disconnect) {
-    _cardObserver.disconnect();
-    window._cardObserverPaused = true;
-  }
   $('prop-modal').classList.add('open');
 
-  // ── iOS scroll-lock v3: ไม่ใช้ position:fixed (ทำให้ body กระโดดบน iOS Safari) ──
-  // ใช้ overflow:hidden บน html+body แทน ปลอดภัยกว่า ไม่มี layout shift
-  const _scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+  // ── iOS scroll-lock: ใช้ overflow:hidden บน body แทน position:fixed ──
+  // position:fixed สร้าง layout recalc ขนาดใหญ่บน iOS
+  const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
-  document.documentElement.style.overflow = 'hidden';
   document.body.style.overflow = 'hidden';
   document.body.classList.add('modal-open');
+
   // scroll modal กลับบนสุด
   const modalEl = $('prop-modal').querySelector('.modal');
   if(modalEl) modalEl.scrollTop=0;
@@ -6170,108 +5996,27 @@ function openModal(id){
 function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transform=`translateX(-${slide_cur*100}%)`; }
 function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; renderSlider(); }
 function goSlide(i){ slide_cur=i; renderSlider(); }
-// ── utility: force-clear body scroll lock — เรียกได้จากทุก path ──
-function _forceRestoreBody() {
-  // ── อ่าน savedY ก่อนลบ ──
-  var savedY = document.body._savedScrollY || 0;
-
-  // ── ลบ scroll lock ทั้งหมด — ไม่มี position:fixed อีกต่อไป ──
-  document.body.classList.remove('modal-open');
-  var bs = document.body.style;
-  bs.overflow = '';
-  bs.position = '';
-  bs.top = '';
-  bs.width = '';
-  bs.left = '';
-  bs.touchAction = '';
-  bs.pointerEvents = '';
-  document.documentElement.style.overflow = '';
-  document.documentElement.style.position = '';
-
-  // ── scroll กลับตำแหน่งเดิม ──
-  document.body._savedScrollY = 0;
-  window.scrollTo(0, savedY);
-
-  // ── reset flags ──
-  window._listingsRenderAbort = false;
-  _listingsRenderPending = false;
-  window._currentModalId = null;
-
-  // ── reconnect MutationObserver ──
-  if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
-    window._cardObserverPaused = false;
-    ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
-     'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track'
-    ].forEach(function(gid){
-      var el = document.getElementById(gid);
-      if(el) _cardObserver.observe(el, {childList:true, subtree:false});
-    });
-  }
-}
-
-function closeModal(e){
-  // pattern 1: closeModal()      — ปุ่ม × เรียกตรง → ปิดเสมอ
-  // pattern 2: closeModal(event) — overlay onclick → ปิดเฉพาะเมื่อ click บน overlay พื้นหลัง
-  if(e && e instanceof Event && e.target) {
-    if(e.target.closest && e.target.closest('.modal')) return;
-    if(e.target !== document.getElementById('prop-modal')) return;
-  }
-  var _modal = $('prop-modal');
-  if(!_modal || !_modal.classList.contains('open')) return;
-
-  // ── 1. บันทึก savedY ก่อนลบ style — ต้องอ่านก่อนเสมอ ──
-  var savedY = document.body._savedScrollY || 0;
-  document.body._savedScrollY = 0;
-
-  // ── 2. ปิด modal ──
-  _modal.classList.remove('open');
-  if(typeof close360 === 'function') close360();
-
-  // ── 3. restore URL ──
-  if(typeof _closePropertyUrl === 'function') _closePropertyUrl();
-
-  // ── 4. ลบ scroll lock ทั้งหมด ──
-  document.body.classList.remove('modal-open');
-  var bs = document.body.style;
-  bs.overflow = '';
-  bs.position = '';
-  bs.top = '';
-  bs.width = '';
-  bs.left = '';
-  bs.touchAction = '';
-  bs.pointerEvents = '';
-  document.documentElement.style.overflow = '';
-  document.documentElement.style.position = '';
-
-  // ── 5. scroll กลับตำแหน่งเดิม ──
-  window.scrollTo(0, savedY);
-
-  // ── 6. reset render flags ──
-  window._listingsRenderAbort = false;
-  _listingsRenderPending = false;
-  window._currentModalId = null;
-
-  // ── 7. reconnect MutationObserver ──
-  if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
-    window._cardObserverPaused = false;
-    ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
-     'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track'
-    ].forEach(function(gid){
-      var el = document.getElementById(gid);
-      if(el) _cardObserver.observe(el, {childList:true, subtree:false});
-    });
-  }
-
-  // ── 8. re-init card swipes บน listings-grid ──
-  requestAnimationFrame(function() {
-    var grid = document.getElementById('listings-grid');
-    if(grid && typeof initAllCardSwipes === 'function') {
-      var idle = window.requestIdleCallback || function(cb){ setTimeout(cb, 50); };
-      idle(function(){
-        if(!window._listingsRenderAbort) initAllCardSwipes(grid);
-      });
-    }
-  });
+function closeModal(e){ 
+  if(!e||e.target.id==='prop-modal') { 
+    $('prop-modal').classList.remove('open');
+    // abort pending idle batch renders
+    window._listingsRenderAbort = true;
+    setTimeout(() => { window._listingsRenderAbort = false; }, 300);
+    // restore scroll-lock (ใช้ overflow:hidden แทน position:fixed)
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    // position/top/width/left ไม่ได้ set แล้ว แต่ clear ไว้ป้องกัน residual state
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.left = '';
+    const savedY = document.body._savedScrollY || 0;
+    document.body._savedScrollY = 0;
+    // scroll กลับ — instant ทั้ง mobile และ desktop
+    window.scrollTo(0, savedY);
+    window._currentModalId = null;
+    if(typeof close360==='function') close360();
+  } 
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -6850,51 +6595,68 @@ function selectAC(id, title, loc) {
   setTimeout(()=>scrollToEl('all-sec'), 80);
 }
 
+function initListingsAutocomplete() {
+  const inp = document.getElementById('ls-kw');
+  const list = document.getElementById('ls-ac-list');
+  if(!inp || !list) return;
+
+  const doAC = (function(){
+    let _t;
+    return function(kw){
+      clearTimeout(_t);
+      _t = setTimeout(function(){
+        if(!kw || kw.length < 1) { list.style.display='none'; return; }
+        const kwl = kw.toLowerCase();
+        const matches = props
+          .filter(p => p.title.toLowerCase().includes(kwl) || (p.location||'').toLowerCase().includes(kwl))
+          .slice(0, 8);
+        if(!matches.length) { list.style.display='none'; return; }
+        list.innerHTML = matches.map(p=>`
+          <div class="ac-item" onclick="selectLsAC('${p.id}','${p.title.replace(/'/g,"\\'")}','${(p.location||'').replace(/'/g,"\\'")}')">
+            <span style="font-size:15px">${typeIcon(p.type)}</span>
+            <span>${highlight(p.title,kw)}</span>
+            <span class="ac-sub">${p.location||''}</span>
+          </div>`).join('');
+        list.style.display='block';
+      }, 280);
+    };
+  })();
+
+  inp.addEventListener('input', function(e){ doAC(e.target.value.trim()); });
+  inp.addEventListener('keydown', function(e){
+    if(e.key==='Escape') { list.style.display='none'; }
+    if(e.key==='Enter') { list.style.display='none'; listingsDoSearchAndScroll(); }
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.ls-ac-wrap')) list.style.display='none';
+  });
+}
+
+function selectLsAC(id, title, loc) {
+  const inp = document.getElementById('ls-kw');
+  if(inp) inp.value = title;
+  const list = document.getElementById('ls-ac-list');
+  if(list) list.style.display='none';
+  listingsInlineSearch();
+  setTimeout(function(){ openModal(id); }, 120);
+}
+
 function initSwipe(sliderEl, prevFn, nextFn) {
   if(!sliderEl) return;
-  let startX=0, isDragging=false, moved=0, lastVX=0, lastT=0;
-  // หา .slides ใน modal เพื่อทำ live follow-finger
-  const getSlidesEl = () => sliderEl.querySelector('.slides') || sliderEl;
-  const getCurSlide = () => { const s=getSlidesEl(); return parseInt(s.dataset.cur||'0')||0; };
-
-  sliderEl.addEventListener('touchstart', e=>{
-    startX=e.touches[0].clientX; isDragging=true; moved=0; lastVX=0; lastT=Date.now();
-    // หยุด animation ชั่วคราวขณะลาก
-    const s=getSlidesEl(); s.style.transition='none';
-  }, {passive:true});
-
-  sliderEl.addEventListener('touchmove', e=>{
-    if(!isDragging) return;
-    moved=e.touches[0].clientX-startX;
-    // live follow-finger
-    const s=getSlidesEl();
-    const cur=getCurSlide();
-    s.style.transform='translateX(calc(-'+(cur*100)+'% + '+(moved*0.88)+'px))';
-    const now=Date.now(); lastVX=moved/Math.max(1,now-lastT); lastT=now;
-  }, {passive:true});
-
+  let startX=0, isDragging=false, moved=0;
+  sliderEl.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; isDragging=true; moved=0; }, {passive:true});
+  sliderEl.addEventListener('touchmove', e=>{ if(!isDragging) return; moved=e.touches[0].clientX-startX; }, {passive:true});
   sliderEl.addEventListener('touchend', ()=>{
     if(!isDragging) return; isDragging=false;
-    const s=getSlidesEl(); s.style.transition='';
-    if(moved < -32 || lastVX < -0.3) nextFn();
-    else if(moved > 32 || lastVX > 0.3) prevFn();
-    else { const cur=getCurSlide(); s.style.transform='translateX(-'+(cur*100)+'%)'; }
-    moved=0; lastVX=0;
+    if(moved < -50) nextFn();
+    else if(moved > 50) prevFn();
   });
-
-  sliderEl.addEventListener('mousedown', e=>{ startX=e.clientX; isDragging=true; moved=0; sliderEl.classList.add('dragging'); getSlidesEl().style.transition='none'; e.preventDefault(); });
-  window.addEventListener('mousemove', e=>{
-    if(!isDragging) return; moved=e.clientX-startX;
-    const s=getSlidesEl(); const cur=getCurSlide();
-    s.style.transform='translateX(calc(-'+(cur*100)+'% + '+(moved*0.88)+'px))';
-  });
+  sliderEl.addEventListener('mousedown', e=>{ startX=e.clientX; isDragging=true; moved=0; sliderEl.classList.add('dragging'); e.preventDefault(); });
+  window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; });
   window.addEventListener('mouseup', ()=>{
     if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
-    const s=getSlidesEl(); s.style.transition='';
-    if(moved < -32) nextFn();
-    else if(moved > 32) prevFn();
-    else { const cur=getCurSlide(); s.style.transform='translateX(-'+(cur*100)+'%)'; }
-    moved=0;
+    if(moved < -50) nextFn();
+    else if(moved > 50) prevFn();
   });
 }
 
@@ -7255,17 +7017,13 @@ function initCardSwipeOn(containerEl) {
   if (!pid) return;
 
   var startX = 0, startY = 0, moved = 0, active = false, didDrag = false;
-  var THRESHOLD = 32; // ลด threshold → swipe ง่ายขึ้น
-  var lastVX = 0, lastTime = 0; // สำหรับ momentum detection
+  var THRESHOLD = 40;
 
-  // ── Touch — ให้ visual feedback แบบ follow finger ──
+  // ── Touch ──
   surface.addEventListener('touchstart', function(e) {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     moved = 0; active = true; didDrag = false;
-    lastVX = 0; lastTime = Date.now();
-    // หยุด transition ชั่วคราวขณะ drag
-    slidesEl.style.transition = 'none';
   }, { passive: true });
 
   surface.addEventListener('touchmove', function(e) {
@@ -7273,39 +7031,13 @@ function initCardSwipeOn(containerEl) {
     var dx = e.touches[0].clientX - startX;
     var dy = e.touches[0].clientY - startY;
     if (!didDrag && Math.abs(dx) > Math.abs(dy) + 4 && Math.abs(dx) > 8) didDrag = true;
-    if (didDrag) {
-      moved = dx;
-      // Live follow-finger: คำนวณ offset ปัจจุบัน แล้ว offset ตาม dx
-      var cur = parseInt((surface.closest('[data-card="'+pid+'"]') || {dataset:{}}).dataset.cur) || 0;
-      var dampedDx = dx * 0.85; // dampen ให้รู้สึก natural
-      slidesEl.style.transform = 'translateX(calc(-' + (cur * 100) + '% + ' + dampedDx + 'px))';
-      // track velocity
-      var now = Date.now();
-      lastVX = dx / Math.max(1, now - lastTime);
-      lastTime = now;
-    }
+    if (didDrag) moved = dx;
   }, { passive: true });
 
   surface.addEventListener('touchend', function() {
     if (!active) return;
     active = false;
-    // คืน transition ก่อน snap
-    slidesEl.style.transition = '';
-    if (didDrag && (Math.abs(moved) > THRESHOLD || Math.abs(lastVX) > 0.3)) {
-      _doCardSlide(pid, moved < 0 ? 1 : -1);
-    } else {
-      // snap กลับตำแหน่งเดิม
-      var cur = parseInt((surface.closest('[data-card="'+pid+'"]') || {dataset:{}}).dataset.cur) || 0;
-      slidesEl.style.transform = 'translateX(-' + (cur * 100) + '%)';
-    }
-    moved = 0; didDrag = false; lastVX = 0;
-  });
-
-  surface.addEventListener('touchcancel', function() {
-    active = false;
-    slidesEl.style.transition = '';
-    var cur = parseInt((surface.closest('[data-card="'+pid+'"]') || {dataset:{}}).dataset.cur) || 0;
-    slidesEl.style.transform = 'translateX(-' + (cur * 100) + '%)';
+    if (didDrag && Math.abs(moved) > THRESHOLD) _doCardSlide(pid, moved < 0 ? 1 : -1);
     moved = 0; didDrag = false;
   });
 
@@ -7314,7 +7046,6 @@ function initCardSwipeOn(containerEl) {
     if (e.target.closest('.card-sarr, button, a')) return;
     startX = e.clientX; moved = 0; active = true; didDrag = false;
     surface.classList.add('dragging');
-    slidesEl.style.transition = 'none';
 
     var ac = new AbortController();
     var sig = { signal: ac.signal };
@@ -7323,26 +7054,18 @@ function initCardSwipeOn(containerEl) {
       if (!active) return;
       var dx = e.clientX - startX;
       if (!didDrag && Math.abs(dx) > 8) didDrag = true;
-      if (didDrag) {
-        moved = dx;
-        var cur = parseInt((surface.closest('[data-card="'+pid+'"]') || {dataset:{}}).dataset.cur) || 0;
-        slidesEl.style.transform = 'translateX(calc(-' + (cur * 100) + '% + ' + (dx * 0.85) + 'px))';
-      }
+      if (didDrag) moved = dx;
     }, sig);
 
     document.addEventListener('mouseup', function() {
       if (!active) { ac.abort(); return; }
       active = false;
       surface.classList.remove('dragging');
-      slidesEl.style.transition = '';
       if (didDrag && Math.abs(moved) > THRESHOLD) {
         _doCardSlide(pid, moved < 0 ? 1 : -1);
         // ป้องกัน click หลัง drag เปิด modal
         var kill = function(ev) { ev.stopPropagation(); containerEl.removeEventListener('click', kill, true); };
         containerEl.addEventListener('click', kill, true);
-      } else if (didDrag) {
-        var cur = parseInt((surface.closest('[data-card="'+pid+'"]') || {dataset:{}}).dataset.cur) || 0;
-        slidesEl.style.transform = 'translateX(-' + (cur * 100) + '%)';
       }
       moved = 0; didDrag = false;
       ac.abort();
@@ -7355,37 +7078,26 @@ function initCardSwipeOn(containerEl) {
 // ถ้าไม่ส่ง → fallback query ทั้ง document (เฉพาะหน้าที่ active เท่านั้น)
 function initAllCardSwipes(scopeEl) {
   var root = scopeEl || document.querySelector('.page.active') || document;
-  // ── skip card ที่ init แล้ว ลด loop บน mobile ──
-  root.querySelectorAll('.prop-card:not([data-swipe-init]), .blog-card:not([data-swipe-init]), .gal-card:not([data-swipe-init]), .agent-card:not([data-swipe-init])')
-    .forEach(function(card){
-      initCardSwipeOn(card);
-      card.setAttribute('data-swipe-init','1');
-    });
+  root.querySelectorAll('.prop-card, .blog-card, .gal-card, .agent-card')
+    .forEach(initCardSwipeOn);
 }
 
 // Observer — ดู grid/track ทั้งหมด เมื่อ render card ใหม่
 // listings-grid ใช้ scoped init เพื่อไม่บล็อก main thread
 var _cardObserver = new MutationObserver(function(mutations){
-  var idle = window.requestIdleCallback || function(cb){ setTimeout(cb,80); };
-  // debounce: รวม mutation หลายอันใน frame เดียวกันเป็น call เดียว
-  var targets = new Set();
-  mutations.forEach(function(m){ if(m.addedNodes.length) targets.add(m.target); });
-  if(!targets.size) return;
-  targets.forEach(function(target){
-    if(target.id === 'listings-grid'){
-      // listings: skip ถ้ากำลัง abort (modal เพิ่งปิด) หรือ pending
-      if(window._listingsRenderAbort || _listingsRenderPending) return;
-      idle(function(){ if(!window._listingsRenderAbort && !_listingsRenderPending) initAllCardSwipes(target); });
+  var idle = window.requestIdleCallback || function(cb){ setTimeout(cb,50); };
+  mutations.forEach(function(m){
+    if(m.target && m.target.id === 'listings-grid'){
+      // listings: init เฉพาะ card ใหม่ใน grid นี้ — ไม่ touch card อื่น
+      idle(function(){ initAllCardSwipes(m.target); });
     } else {
-      idle(function(){ initAllCardSwipes(target); });
+      idle(function(){ initAllCardSwipes(m.target); });
     }
   });
 });
-// listings-grid ถูกลบออกจาก _cardObserver แล้ว —
-// renderListingsPage() เรียก initAllCardSwipes() ผ่าน requestIdleCallback โดยตรง
-// การ observe listings-grid ซ้ำทำให้ swipe init ถูกเรียก 2 ครั้งทุก render
 ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
- 'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track'
+ 'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
+ 'listings-grid'
 ].forEach(function(gid) {
   var el = document.getElementById(gid);
   if (el) _cardObserver.observe(el, { childList: true, subtree: false });
@@ -7571,10 +7283,8 @@ async function renderNearbyProps(prop, container) {
   bgImg.src = '/bannerWeb.webp';
 
   function resize() {
-    const heroEl = canvas.closest('.hero') || canvas.parentElement?.parentElement;
     canvas.width = canvas.offsetWidth || window.innerWidth;
-    // ใช้ความสูงจริงของ hero section — ไม่ใช้ค่า fallback 500 ที่อาจไม่ตรง
-    canvas.height = (heroEl && heroEl.offsetHeight > 0) ? heroEl.offsetHeight : (canvas.offsetHeight || window.innerWidth * 9 / 16);
+    canvas.height = canvas.offsetHeight || 500;
   }
   resize();
   window.addEventListener('resize', () => { resize(); });
@@ -7741,18 +7451,16 @@ async function renderNearbyProps(prop, container) {
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
 
-    // 1. Draw Bangkok skyline photo — cover mode เพื่อเต็ม canvas ไม่มีขอบว่าง
+    // 1. Draw Bangkok skyline photo as background (cover, focus on buildings at 60% vertical)
     if(bgImg.complete && bgImg.naturalWidth > 0) {
       const imgAspect = bgImg.naturalWidth / bgImg.naturalHeight;
       const canvasAspect = W / H;
       let dw, dh, dx, dy;
-      // ── "cover" mode: ขยายให้ครอบคลุม canvas ทั้งหมด center crop ──
       if(canvasAspect > imgAspect) {
-        // canvas กว้างกว่าภาพ → ยึดความกว้าง crop บน/ล่าง
-        dw = W; dh = W / imgAspect;
-        dx = 0; dy = (H - dh) / 2;
+        dw = W; dh = W / imgAspect; dx = 0;
+        // focus 60% down (buildings area) instead of dead center
+        dy = (H - dh) * 0.6;
       } else {
-        // canvas แคบกว่าภาพ → ยึดความสูง crop ซ้าย/ขวา
         dh = H; dw = H * imgAspect;
         dx = (W - dw) / 2; dy = 0;
       }
@@ -7778,14 +7486,6 @@ async function renderNearbyProps(prop, container) {
     // 5. Birds (daytime)
     drawBirds(frame, nightAlpha);
 
-    // 6. Dark gradient overlay บน/ล่าง — ให้ text อ่านได้ชัดบนภาพสีอ่อน
-    const textOverlay = ctx.createLinearGradient(0, 0, 0, H);
-    textOverlay.addColorStop(0,   'rgba(8,14,29,0.72)');
-    textOverlay.addColorStop(0.5, 'rgba(8,14,29,0.45)');
-    textOverlay.addColorStop(1,   'rgba(8,14,29,0.65)');
-    ctx.fillStyle = textOverlay;
-    ctx.fillRect(0, 0, W, H);
-
     requestAnimationFrame(drawFrame);
   }
 
@@ -7795,21 +7495,14 @@ async function renderNearbyProps(prop, container) {
     return;
   }
 
-  // ── รอให้ CSS layout (min-height) คำนวณก่อน แล้วค่อย resize และ start ──
-  // ใช้ requestAnimationFrame เพื่อให้ browser วาด layout ก่อน อ่านค่าความสูงถูกต้อง
-  requestAnimationFrame(function() {
-    resize();
-    window.addEventListener('resize', () => { resize(); });
-
-    // Start when image is ready (or immediately if already loaded)
-    if(bgImg.complete) {
-      drawFrame();
-    } else {
-      bgImg.onload = drawFrame;
-      // Also start drawing immediately so night/day still works if img is slow
-      setTimeout(drawFrame, 100);
-    }
-  });
+  // Start when image is ready (or immediately if already loaded)
+  if(bgImg.complete) {
+    drawFrame();
+  } else {
+    bgImg.onload = drawFrame;
+    // Also start drawing immediately so night/day still works if img is slow
+    setTimeout(drawFrame, 100);
+  }
 })();
 
 // Update weather badge
@@ -8070,8 +7763,7 @@ function hGalleryMove(trackId, dir) {
 
 function initHGallerySwipe(wrapId) {
   const wrap = document.getElementById(wrapId);
-  if(!wrap || wrap._hGallerySwipeInit) return; // ป้องกัน init ซ้ำ
-  wrap._hGallerySwipeInit = true;
+  if(!wrap) return;
   let startX = 0, startY = 0, startScroll = 0, isDragging = false, moved = 0, isVertical = false;
   // Touch: only hijack horizontal swipes, let vertical pass to page scroll
   wrap.addEventListener('touchstart', e => {
@@ -8084,6 +7776,7 @@ function initHGallerySwipe(wrapId) {
     const dx = startX - e.touches[0].clientX;
     const dy = startY - e.touches[0].clientY;
     if(!isDragging) {
+      // Determine direction on first significant move
       if(Math.abs(dx) > 4 || Math.abs(dy) > 4) {
         isVertical = Math.abs(dy) > Math.abs(dx);
         isDragging = true;
@@ -8093,30 +7786,28 @@ function initHGallerySwipe(wrapId) {
       moved = Math.abs(dx);
       wrap.scrollLeft = startScroll + dx;
     }
+    // If vertical, do nothing — browser handles page scroll
   }, {passive:true});
   wrap.addEventListener('touchend', () => { isDragging = false; moved = 0; isVertical = false; });
-  // Mouse drag (desktop) — bind to wrap ไม่ใช่ window เพื่อไม่ leak
-  const onMouseMove = e => {
-    if(!isDragging) return;
-    const dx = startX - e.clientX;
-    moved = Math.abs(dx);
-    wrap.scrollLeft = startScroll + dx;
-  };
-  const onMouseUp = () => {
-    if(!isDragging) return;
-    isDragging = false;
-    wrap.classList.remove('dragging');
-  };
+  // Mouse drag (desktop)
   wrap.addEventListener('mousedown', e => {
     startX = e.clientX;
     startScroll = wrap.scrollLeft;
     isDragging = true;
     moved = 0;
     wrap.classList.add('dragging');
-    window.addEventListener('mousemove', onMouseMove, {passive:true});
-    window.addEventListener('mouseup', onMouseUp, {once:true});
   });
-  window.addEventListener('mouseup', onMouseUp);
+  window.addEventListener('mousemove', e => {
+    if(!isDragging) return;
+    const dx = startX - e.clientX;
+    moved = Math.abs(dx);
+    wrap.scrollLeft = startScroll + dx;
+  });
+  window.addEventListener('mouseup', () => {
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+  });
   // Block click only if dragged
   wrap.addEventListener('click', e => {
     if(moved > 5) { e.stopPropagation(); e.preventDefault(); }
@@ -9850,9 +9541,7 @@ function openApplyModal(type){
 }
 function closeApplyModal(type){
   const ov = document.getElementById('apply-'+type+'-overlay');
-  if(ov){ ov.classList.remove('open'); }
-  if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
-  else document.body.style.overflow='';
+  if(ov){ ov.classList.remove('open'); document.body.style.overflow=''; }
 }
 
 // Close on ESC
@@ -10488,8 +10177,7 @@ function closeSeoDrawer(){
   const drawer = document.getElementById('seo-drawer');
   if(overlay) overlay.classList.remove('open');
   if(drawer) drawer.classList.remove('open');
-  if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
-  else document.body.style.overflow='';
+  document.body.style.overflow = '';
 }
 
 function resetAdvFilter(){
@@ -11616,12 +11304,12 @@ function resetAdvFilter(){
         <button id="listings-map-toggle-btn" onclick="toggleListingsMapPanel()" style="margin-left:auto;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(200,146,42,.4)"><i class="fas fa-map-marked-alt"></i> ค้นหาด้วยแผนที่</button>
       </div>
       <!-- Search Bar -->
-      <div id="listings-filter-bar" style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12);overflow:visible">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;overflow:visible" class="listings-search-sf">
-          <div style="position:relative;z-index:301">
+      <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12)">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
+          <div class="ls-ac-wrap" style="position:relative;z-index:500">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
-            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit" autocomplete="off" oninput="lsKwShowDropdown(this.value)" onkeydown="lsKwKeydown(event)">
-            <div id="ls-ac-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--bd);border-top:none;border-radius:0 0 10px 10px;z-index:300;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(27,58,107,.22)"></div>
+            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
+            <div class="ls-ac-list" id="ls-ac-list" style="display:none"></div>
           </div>
           <div>
             <label id="ls-label-tx" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-exchange-alt"></i> ซื้อ/เช่า</label>
@@ -11677,7 +11365,7 @@ function resetAdvFilter(){
               <option value="100000000">100M</option>
             </select>
           </div>
-          <button onclick="(function(){var l=document.getElementById('ls-ac-list');if(l)l.style.display='none';listingsInlineSearch();_scrollToListingsResults();})()" style="background:var(--a);color:#1A1A2E;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px"><i class="fas fa-search"></i> ค้นหา</button>
+          <button onclick="listingsDoSearchAndScroll()" style="background:var(--a);color:#1A1A2E;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px"><i class="fas fa-search"></i> ค้นหา</button>
           <button onclick="listingsResetSearch()" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:9px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px" title="รีเซ็ตการค้นหา"><i class="fas fa-undo"></i> Reset</button>
         </div>
         <!-- Filter tags row -->
@@ -11862,51 +11550,6 @@ function resetAdvFilter(){
     <button class="adv-apply-btn" onclick="applyAdvFilter()"><i class="fas fa-search"></i> ค้นหาผลลัพธ์</button>
   </div>
 </div>
-<!-- ===== SCROLL-LOCK SAFETY WATCHDOG ===== -->
-<script>
-/* แก้ปัญหาหน้าค้างหลังปิดการ์ด — ตรวจ body.style ทุก 800ms
-   ถ้า modal ปิดแล้วแต่ scroll lock ยังค้าง → force release */
-(function(){
-  setInterval(function(){
-    var modal = document.getElementById('prop-modal');
-    var isOpen = modal && modal.classList.contains('open');
-    if(!isOpen){
-      var bodyFixed = document.body.style.position === 'fixed';
-      var bodyHidden = document.body.style.overflow === 'hidden';
-      var htmlHidden = document.documentElement.style.overflow === 'hidden';
-      var hasClass = document.body.classList.contains('modal-open');
-      if(bodyFixed || bodyHidden || htmlHidden || hasClass){
-        // Force release everything
-        var savedY = document.body._savedScrollY || 0;
-        document.body._savedScrollY = 0;
-        document.body.classList.remove('modal-open');
-        document.body.style.cssText = document.body.style.cssText
-          .replace(/position\s*:[^;]+;?/gi,'')
-          .replace(/top\s*:[^;]+;?/gi,'')
-          .replace(/width\s*:\s*100%\s*;?/gi,'')
-          .replace(/left\s*:\s*0[^;]*;?/gi,'')
-          .replace(/overflow\s*:[^;]+;?/gi,'')
-          .replace(/touch-action\s*:[^;]+;?/gi,'')
-          .replace(/pointer-events\s*:[^;]+;?/gi,'');
-        document.documentElement.style.overflow = '';
-        document.documentElement.style.position = '';
-        window.scrollTo(0, savedY);
-        // reset listings flags
-        window._listingsRenderAbort = false;
-        if(typeof _listingsRenderPending !== 'undefined') _listingsRenderPending = false;
-        // re-init card swipes
-        requestAnimationFrame(function(){
-          var grid = document.getElementById('listings-grid');
-          if(grid && typeof initAllCardSwipes === 'function'){
-            var idle = window.requestIdleCallback || function(cb){setTimeout(cb,50);};
-            idle(function(){ initAllCardSwipes(grid); });
-          }
-        });
-      }
-    }
-  }, 800);
-})();
-</script>
 
 </body>
 </html>

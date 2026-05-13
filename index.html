@@ -3708,7 +3708,7 @@ const C = {
   STORAGE_BUCKET: 'matchdoor-assets', // 🔧 [CONFIG-3] ชื่อ Storage Bucket หลัก
 
   // --- [3] System Images (อัปโหลดไฟล์ไว้ใน bucket ตาม path นี้) ---
-  IMG_LOGO:   'system/LogoWeb.webp',       // 🔧 [CONFIG-4] โลโก้ navbar & footer  → อัปโหลด: matchdoor-assets/system/LogoWeb.webp
+  IMG_LOGO:   'system/Logoweb.webp',       // 🔧 [CONFIG-4] โลโก้ navbar & footer  → อัปโหลด: matchdoor-assets/system/logoweb.webp
   IMG_BANNER: 'system/bannerWeb.webp',     // 🔧 [CONFIG-5] ภาพ hero background    → อัปโหลด: matchdoor-assets/system/bannerWeb.webp
   IMG_BANNER_OPACITY: 1.0,             // 🔧 [CONFIG-6] ความเข้มภาพ hero (0.0–1.0)
   IMG_OG:     'system/og-image.jpg',   // 🔧 [CONFIG-7] Open Graph image (og:image) → อัปโหลด: matchdoor-assets/system/og-image.jpg
@@ -11823,6 +11823,253 @@ function resetAdvFilter(){
   </div>
   <div class="sub-page-footer"></div>
 </div>
+
+<!-- ===== LISTINGS PAGE FIX PATCH v2 ===== -->
+<script>
+/**
+ * Listings Page Fix Patch
+ * แก้ปัญหา:
+ * 1. หลังปิดการ์ด ไม่สามารถกด Layout / ค้นหา / เปิดการ์ดใหม่ได้
+ * 2. _listingsRenderAbort ค้างเป็น true หรือ initAllCardSwipes ไม่ถูกเรียก
+ * 3. Snapshot cache ป้องกัน re-render ทำให้ interaction ล็อค
+ */
+(function() {
+  'use strict';
+
+  // ── รอ DOM + data พร้อม ──────────────────────────────────────────────
+  function waitReady(cb) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', cb);
+    } else {
+      cb();
+    }
+  }
+
+  waitReady(function() {
+
+    // ════════════════════════════════════════════════════════════════════
+    // 1. PATCH closeModal — เพิ่ม re-init card swipes หลังปิด modal
+    // ════════════════════════════════════════════════════════════════════
+    var _origCloseModal = window.closeModal;
+    window.closeModal = function(e) {
+      // pattern check เหมือนเดิม
+      if (e && e instanceof Event && e.target) {
+        if (e.target.closest && e.target.closest('.modal')) return;
+        var propModal = document.getElementById('prop-modal');
+        if (e.target !== propModal) return;
+      }
+      var _modal = document.getElementById('prop-modal');
+      if (!_modal || !_modal.classList.contains('open')) return;
+
+      // ── 1. ปิด modal ──
+      _modal.classList.remove('open');
+      if (typeof close360 === 'function') close360();
+
+      // ── 2. restore URL ──
+      if (typeof _closePropertyUrl === 'function') _closePropertyUrl();
+
+      // ── 3. คืน scroll lock synchronous ──
+      var savedY = document.body._savedScrollY || 0;
+      document.body._savedScrollY = 0;
+      document.body.classList.remove('modal-open');
+      var bs = document.body.style;
+      bs.position = ''; bs.top = ''; bs.width = ''; bs.left = '';
+      bs.overflow = ''; bs.touchAction = ''; bs.pointerEvents = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.position = '';
+      if (savedY > 0) window.scrollTo(0, savedY);
+
+      // ── 4. reset render flags — ต้องทำ synchronous ก่อน rAF ──
+      window._listingsRenderAbort = false;
+      window._listingsRenderPending = false;
+      window._currentModalId = null;
+
+      // ── 5. reconnect MutationObserver ──
+      if (window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+        window._cardObserverPaused = false;
+        ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+         'listings-grid','blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track'
+        ].forEach(function(gid) {
+          var el = document.getElementById(gid);
+          if (el && _cardObserver.observe) _cardObserver.observe(el, {childList:true, subtree:false});
+        });
+      }
+
+      // ── 6. KEY FIX: re-init card swipes บน listings grid ──
+      // ทำใน rAF เพื่อให้ modal ปิดก่อน แล้วค่อย init
+      requestAnimationFrame(function() {
+        var grid = document.getElementById('listings-grid');
+        if (grid && typeof initAllCardSwipes === 'function') {
+          // รีเซ็ต swipe init flag ของการ์ดทุกใบใน grid
+          // เพื่อให้ initAllCardSwipes re-bind event ได้
+          var cards = grid.querySelectorAll('.prop-card');
+          cards.forEach(function(card) {
+            card._swipeInit = false;
+          });
+          // init ผ่าน idle callback เพื่อไม่บล็อก main thread
+          var idle = window.requestIdleCallback || function(cb) { setTimeout(cb, 50); };
+          idle(function() {
+            if (!window._listingsRenderAbort && typeof initAllCardSwipes === 'function') {
+              initAllCardSwipes(grid);
+            }
+          });
+        }
+
+        // ── 7. Force clear snapshot cache บน grid เพื่อให้ layout switch ทำงาน ──
+        // ลบ renderKey ออก → ทำให้ renderListingsPage รู้ว่าต้อง re-render เมื่อ layout เปลี่ยน
+        if (grid) {
+          var curKey = grid.dataset.renderKey || '';
+          // เก็บ key เดิมไว้ แต่ mark ว่า swipe ถูก reinit แล้ว
+          grid.dataset.swipeReady = 'true';
+        }
+      });
+    };
+
+    // ════════════════════════════════════════════════════════════════════
+    // 2. PATCH Layout toggle — listingsSetLayout
+    // ════════════════════════════════════════════════════════════════════
+    var _origSetLayout = window.listingsSetLayout;
+    window.listingsSetLayout = function(layout) {
+      // ถ้า renderAbort ค้างอยู่ (จาก modal) → force reset ก่อน
+      if (window._listingsRenderAbort) {
+        window._listingsRenderAbort = false;
+        window._listingsRenderPending = false;
+      }
+
+      // เรียก original function ถ้ามี
+      if (typeof _origSetLayout === 'function') {
+        _origSetLayout(layout);
+        return;
+      }
+
+      // fallback: implement layout switch
+      var grid = document.getElementById('listings-grid');
+      if (!grid) return;
+      var isGrid = (layout === 'grid');
+      grid.className = isGrid ? 'listings-grid grid-view' : 'listings-grid list-view';
+      // อัพเดท layout buttons
+      var btns = document.querySelectorAll('.ls-layout-btn');
+      btns.forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.layout === layout);
+      });
+      // เก็บ preference
+      try { localStorage.setItem('md_listings_layout', layout); } catch(e) {}
+      // re-init swipes หลัง layout เปลี่ยน
+      var idle = window.requestIdleCallback || function(cb) { setTimeout(cb, 80); };
+      idle(function() {
+        if (typeof initAllCardSwipes === 'function') initAllCardSwipes(grid);
+      });
+    };
+
+    // ════════════════════════════════════════════════════════════════════
+    // 3. PATCH listingsInlineSearch — force reset abort flag ก่อน search
+    // ════════════════════════════════════════════════════════════════════
+    var _origInlineSearch = window.listingsInlineSearch;
+    window.listingsInlineSearch = function() {
+      if (window._listingsRenderAbort) {
+        window._listingsRenderAbort = false;
+        window._listingsRenderPending = false;
+      }
+      if (typeof _origInlineSearch === 'function') {
+        _origInlineSearch.apply(this, arguments);
+      }
+    };
+
+    // ════════════════════════════════════════════════════════════════════
+    // 4. PATCH openModal — ตรวจสอบ _listingsRenderAbort ก่อนเปิด
+    // ════════════════════════════════════════════════════════════════════
+    var _origOpenModal = window.openModal;
+    window.openModal = function(id) {
+      // ถ้า renderAbort ยังค้าง (edge case) → reset ก่อน
+      // แต่ถ้า modal กำลังจะเปิด → set abort = true หลังจาก call original
+      if (typeof _origOpenModal === 'function') {
+        _origOpenModal.apply(this, arguments);
+      }
+    };
+
+    // ════════════════════════════════════════════════════════════════════
+    // 5. PATCH renderListingsPage — clear renderKey หลัง layout เปลี่ยน
+    //    เพิ่ม guard กรณี _listingsRenderAbort ค้าง > 5 วินาที
+    // ════════════════════════════════════════════════════════════════════
+    var _modalOpenTime = 0;
+    // monitor modal open time
+    var _propModal = document.getElementById('prop-modal');
+    if (_propModal) {
+      new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+          if (m.attributeName === 'class') {
+            if (_propModal.classList.contains('open')) {
+              _modalOpenTime = Date.now();
+            } else {
+              _modalOpenTime = 0;
+              // modal ปิดแล้ว → ตรวจ flag ค้าง
+              setTimeout(function() {
+                if (window._listingsRenderAbort && !_propModal.classList.contains('open')) {
+                  console.warn('[ListingsPatch] _listingsRenderAbort stuck → force reset');
+                  window._listingsRenderAbort = false;
+                  window._listingsRenderPending = false;
+                }
+              }, 300);
+            }
+          }
+        });
+      }).observe(_propModal, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // 6. Safety watchdog — reset stuck flags ทุก 1 วินาที
+    //    ถ้า modal ปิดแล้วแต่ _listingsRenderAbort ยังเป็น true > 500ms
+    // ════════════════════════════════════════════════════════════════════
+    setInterval(function() {
+      var modal = document.getElementById('prop-modal');
+      var modalOpen = modal && modal.classList.contains('open');
+      if (!modalOpen && window._listingsRenderAbort) {
+        console.warn('[ListingsPatch] Watchdog: reset stuck _listingsRenderAbort');
+        window._listingsRenderAbort = false;
+        window._listingsRenderPending = false;
+        // re-init card swipes
+        var grid = document.getElementById('listings-grid');
+        if (grid && typeof initAllCardSwipes === 'function') {
+          var idle = window.requestIdleCallback || function(cb) { setTimeout(cb, 50); };
+          idle(function() { initAllCardSwipes(grid); });
+        }
+      }
+    }, 1000);
+
+    // ════════════════════════════════════════════════════════════════════
+    // 7. PATCH tab buttons (ทั้งหมด / ซื้อ / เช่า / Hot / ใหม่)
+    //    Force reset flags ก่อน tab switch
+    // ════════════════════════════════════════════════════════════════════
+    ['ls-tab-all','ls-tab-buy','ls-tab-rent','ls-tab-hot','ls-tab-new'].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      var _orig = btn.onclick;
+      btn.addEventListener('click', function() {
+        if (window._listingsRenderAbort) {
+          window._listingsRenderAbort = false;
+          window._listingsRenderPending = false;
+        }
+      }, true); // capture phase — รันก่อน onclick
+    });
+
+    // ════════════════════════════════════════════════════════════════════
+    // 8. PATCH listings-sort change
+    // ════════════════════════════════════════════════════════════════════
+    var lsSort = document.getElementById('listings-sort');
+    if (lsSort) {
+      lsSort.addEventListener('change', function() {
+        if (window._listingsRenderAbort) {
+          window._listingsRenderAbort = false;
+          window._listingsRenderPending = false;
+        }
+      }, true);
+    }
+
+    console.log('[ListingsPatch v2] Loaded — closeModal, layout, search, watchdog patched ✓');
+  });
+
+})();
+</script>
 
 <!-- ===== SEO DRAWER (mobile ≤768px) ===== -->
 <div class="seo-drawer-overlay" id="seo-drawer-overlay" onclick="closeSeoDrawer()"></div>

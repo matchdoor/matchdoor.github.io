@@ -5043,7 +5043,32 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
       if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
     }
   }
+  // ── Periodic check หลังปิด modal — จับ iOS Safari race condition ที่เกิดช้า ──
+  // ตรวจทุก 300ms เป็นเวลา 2 วินาทีหลัง prop-modal ปิด
+  var _modalCloseTimer = null;
+  document.addEventListener('DOMContentLoaded', function(){
+    var propModal = document.getElementById('prop-modal');
+    if(propModal){
+      new MutationObserver(function(mutations){
+        mutations.forEach(function(m){
+          if(m.attributeName === 'class'){
+            var isOpen = propModal.classList.contains('open');
+            if(!isOpen) {
+              // modal เพิ่งปิด → ตรวจ periodic
+              clearInterval(_modalCloseTimer);
+              var checks = 0;
+              _modalCloseTimer = setInterval(function(){
+                _safetyCheck();
+                if(++checks >= 7) clearInterval(_modalCloseTimer);
+              }, 300);
+            }
+          }
+        });
+      }).observe(propModal, {attributes:true, attributeFilter:['class']});
+    }
+  });
   document.addEventListener('touchstart',  _safetyCheck, {passive:true, capture:true});
+  document.addEventListener('touchend',    _safetyCheck, {passive:true, capture:true});
   document.addEventListener('pointerdown', _safetyCheck, {passive:true, capture:true});
   document.addEventListener('click',       _safetyCheck, {capture:true});
 })();
@@ -5305,6 +5330,35 @@ function renderListingsPage() {
       const FIRST_BATCH = 8;
       const firstCards = pageData.slice(0, FIRST_BATCH);
       const restCards  = pageData.slice(FIRST_BATCH);
+
+      // ── ถ้า grid มีการ์ดอยู่แล้ว (จาก partial render) และ renderKey base เหมือนกัน
+      // → ไม่ต้อง clear grid ใหม่ ป้องกัน flash ขาว บนมือถือหลังปิด modal ──
+      const _existingKey = grid.dataset.renderKey || '';
+      const _existingBase = _existingKey.replace(':partial','');
+      const _existingCards = grid.querySelector('.prop-card:not(.loading-sk)');
+      if(_existingCards && _existingBase === _renderKey) {
+        // renderKey base ตรง → เพียงแค่ append ส่วนที่ขาด (restCards) แล้วทำ complete
+        if(restCards.length && _existingKey.endsWith(':partial')) {
+          const frag = document.createDocumentFragment();
+          restCards.forEach(p => {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = propCard(p);
+            frag.appendChild(tmp.firstChild);
+          });
+          grid.appendChild(frag);
+          grid.dataset.renderKey = _renderKey;
+          _listingsRenderPending = false;
+          if(!window._listingsRenderAbort && typeof initAllCardSwipes==='function'){
+            _idleSwipe(() => { if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
+          }
+        } else {
+          // complete แล้ว → ไม่ต้องทำอะไร
+          _listingsRenderPending = false;
+        }
+        return;
+      }
+
+      // ── render ใหม่ทั้งหมด (data เปลี่ยน หรือ grid ว่าง) ──
       grid.innerHTML = firstCards.map(propCard).join('');
       grid.dataset.renderKey = _renderKey + ':partial';
       // ── release throttle lock ทันที — ให้ user กดได้ทันที ──
@@ -6164,24 +6218,26 @@ function closeModal(e){
   _listingsRenderPending = false;
 
   // ── restore body scroll/pointer events ทันที — ให้กดได้ทันทีหลังปิด ──
+  // เรียก 2 ครั้ง: ทันที + หลัง rAF เพื่อ flush iOS Safari layout ให้ครบ
   _forceRestoreBody();
-
-  // ── re-render listings grid เฉพาะกรณีที่จำเป็นจริงๆ ──
-  // ตรวจว่าหน้า listings active อยู่ AND grid เป็น :partial (render ยังไม่สมบูรณ์)
-  // ไม่ re-render ถ้า grid มีการ์ดครบแล้ว (สถานะ complete) — ป้องกันหน้าค้างและโหลดช้า
-  var _lsPage = document.getElementById('page-listings');
-  var _lsGrid = document.getElementById('listings-grid');
-  var _lsIsActive = _lsPage && _lsPage.classList.contains('active');
-  var _lsIsPartial = _lsGrid && (_lsGrid.dataset.renderKey||'').endsWith(':partial');
-  if(_lsIsActive && _lsIsPartial){
-    // ใช้ rAF เดียว — ไม่ setTimeout ป้องกันหน้าค้างระหว่างรอ
-    requestAnimationFrame(function(){
-      if(!window._listingsRenderAbort && typeof renderListingsPage==='function'){
-        renderListingsPage();
-      }
-    });
-  }
-  // ถ้า grid สมบูรณ์แล้ว (ไม่ใช่ :partial) → ไม่ re-render เลย ป้องกันโหลดซ้ำ
+  requestAnimationFrame(function(){
+    // ตรวจซ้ำ: ถ้า body ยัง fixed อยู่ → force restore อีกครั้ง (iOS Safari race condition)
+    if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden') {
+      _forceRestoreBody();
+    }
+    // ── re-render listings grid เฉพาะกรณีที่จำเป็นจริงๆ ──
+    // ตรวจว่าหน้า listings active อยู่ AND grid เป็น :partial (render ยังไม่สมบูรณ์)
+    // ไม่ re-render ถ้า grid มีการ์ดครบแล้ว (สถานะ complete) — ป้องกันหน้าค้างและโหลดช้า
+    var _lsPage = document.getElementById('page-listings');
+    var _lsGrid = document.getElementById('listings-grid');
+    var _lsIsActive = _lsPage && _lsPage.classList.contains('active');
+    var _lsHasCards = _lsGrid && _lsGrid.querySelector('.prop-card:not(.loading-sk)') !== null;
+    var _lsIsPartial = _lsGrid && (_lsGrid.dataset.renderKey||'').endsWith(':partial');
+    if(_lsIsActive && _lsIsPartial && !window._listingsRenderAbort && typeof renderListingsPage==='function'){
+      renderListingsPage();
+    }
+    // ถ้า grid สมบูรณ์แล้ว (ไม่ใช่ :partial) → ไม่ re-render เลย ป้องกันโหลดซ้ำ
+  });
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {

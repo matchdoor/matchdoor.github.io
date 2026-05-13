@@ -4765,23 +4765,13 @@ function _closePropertyUrl() {
     const prevPage = window._pageBeforeModal || 'listings';
     const route = PAGE_ROUTES[prevPage] || PAGE_ROUTES['listings'] || PAGE_ROUTES['home'];
     const path = route ? route.path : '/listings';
-    // ── guard: ป้องกัน popstate จาก replaceState บน iOS Safari ──
-    // ใช้ flag + timestamp แทน timeout เพื่อรองรับ iOS ทุกเวอร์ชัน
-    window._closingModal = true;
-    window._closingModalTime = Date.now();
     history.replaceState({ type: 'page', name: prevPage }, '', location.origin + path);
-    // reset flag หลัง 80ms — เพียงพอสำหรับ iOS Safari ทุกเวอร์ชัน
-    setTimeout(function() { window._closingModal = false; window._closingModalTime = 0; }, 80);
     if (route) _updateMeta(route.title, route.desc, 'https://matchdoor.co' + path);
   }
 }
 
 // Handle browser Back/Forward
 window.addEventListener('popstate', function(e) {
-  // guard 1: _closingModal flag — ป้องกัน popstate จาก replaceState ขณะปิด modal
-  if (window._closingModal) return;
-  // guard 2: timestamp — iOS Safari บางเวอร์ชัน fire popstate ช้ามาก แต่ flag อาจ reset แล้ว
-  if (window._closingModalTime && (Date.now() - window._closingModalTime) < 80) return;
   const state = e.state;
   if (!state) { _silentShowPage('home'); return; }
   if (state.type === 'property') {
@@ -4789,15 +4779,12 @@ window.addEventListener('popstate', function(e) {
   } else if (state.type === 'page') {
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      // ปิด modal — restore scroll lock และคืน scroll position
       propModal.classList.remove('open');
       if (typeof close360 === 'function') close360();
-      if (typeof _forceRestoreBody === 'function') _forceRestoreBody();
-      // ถ้าหน้าเป้าหมายกับหน้าที่ active ตรงกัน → ไม่ต้องทำอะไรเพิ่ม
+      _forceRestoreBody();
       const _activePageEl = document.querySelector('.page.active');
       const _activeName = _activePageEl ? _activePageEl.id.replace('page-', '') : '';
       if (_activeName === state.name) return;
-      // หน้าต่างกัน → navigate
       _silentShowPage(state.name, true);
     } else {
       _silentShowPage(state.name);
@@ -4808,31 +4795,11 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // ── early return: ถ้า modal เพิ่งปิดและเรากลับมาหน้าเดิม → ไม่ re-render grid ──
-  // ป้องกัน popstate ที่ delay บน iOS ทำให้ re-render listings ทั้งหมด
-  if (window._closingModal || (window._closingModalTime && (Date.now() - window._closingModalTime) < 80)) {
-    const _curActive = document.querySelector('.page.active');
-    const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
-    if (_curName === name) {
-      // หน้าเดิม → restore body lock (สำคัญมาก!) แล้ว return
-      if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
-      return;
-    }
+  // ── restore body scroll lock ถ้าเปิดอยู่ ──
+  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
+    _forceRestoreBody();
   }
-  // ── restore body จาก scroll lock (กรณีที่ถูกเรียกขณะ modal เปิดอยู่) ──
-  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden') {
-    if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
-  } else {
-    document.body.classList.remove('modal-open');
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.left = '';
-    document.body.style.overflow = '';
-    document.body.style.touchAction = '';
-    document.body.style.pointerEvents = '';
-  }
-  // reset render flags ทุกครั้งที่เปลี่ยนหน้า
+  // reset render flags
   window._listingsRenderAbort = false;
   window._listingsRenderPending = false;
   // ── ตรวจก่อนว่า listings active อยู่หรือไม่ — ต้องอ่านก่อน remove active ──
@@ -4861,24 +4828,17 @@ function _silentShowPage(name, skipScrollTop) {
     if (!_wasListingsActive) {
       window._lsSeoSidebarRendered = false;
     }
-    // ── ตรวจ grid และ cards ──
+    // ถ้า listings active อยู่แล้ว + มีการ์ดจริง → ไม่ re-render เพราะ grid ยังอยู่ครบ
     const _grid = document.getElementById('listings-grid');
     const _hasCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
-
     if (_wasListingsActive && _hasCards) {
-      // listings active อยู่แล้ว + มีการ์ดครบ → ไม่ต้อง re-render (modal ปิด → กลับมา)
-      window._listingsRenderAbort = false;
-      window._listingsRenderPending = false;
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
         const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
         idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
       }
       return;
     }
-    // listings active อยู่แล้วแต่ grid ว่าง (mobile batch ยังไม่ render, หรือ _listingsRenderAbort ขวางไว้)
-    // หรือ listings ไม่ active (navigate มาจากหน้าอื่น) → render เลย
-    window._listingsRenderAbort = false;
-    window._listingsRenderPending = false;
+    // listings ไม่ active หรือ grid ว่าง → render
     if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
     if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
@@ -4980,26 +4940,13 @@ window.closeModal = function(e) {
   _origCloseModal(e);
   const _modalIsNowClosed = !document.getElementById('prop-modal')?.classList.contains('open');
   if (_modalWasOpen && _modalIsNowClosed) {
-    // ── reset flags ทันที (synchronous) — ป้องกัน renderListingsPage ถูก abort ──
+    // reset flags ทันที synchronous
     window._listingsRenderAbort = false;
     window._listingsRenderPending = false;
+    // restore URL กลับไปหน้า listings (ไม่ push history ใหม่)
     _closePropertyUrl();
-    // ── re-render listings ถ้า grid ว่าง หรือ batch ยังไม่เสร็จ (mobile :partial) ──
-    // ใช้ setTimeout(0) เพื่อให้ DOM update เสร็จก่อน แต่ไม่ block นานเหมือน rAF chain
-    setTimeout(function() {
-      // ตรวจซ้ำว่า modal ปิดจริงและ listings active อยู่
-      var _isListingsActive = document.getElementById('page-listings')?.classList.contains('active');
-      if (!_isListingsActive) return;
-      var _grid = document.getElementById('listings-grid');
-      // นับ prop-card จริง (ไม่นับ loading-sk skeleton)
-      var _hasRealCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
-      // ตรวจว่า batch ยังไม่เสร็จ (key ลงท้าย :partial)
-      var _isPartialRender = _grid && (_grid.dataset.renderKey || '').endsWith(':partial');
-      if ((!_hasRealCards || _isPartialRender) && window._listingsDataReady && typeof renderListingsPage === 'function') {
-        window._listingsRenderAbort = false; // ยืนยัน flag ก่อน render
-        renderListingsPage();
-      }
-    }, 0);
+    // _forceRestoreBody ถูกเรียกจาก _origCloseModal → closeModal เดิมแล้ว
+    // ไม่ต้อง re-render listings ที่นี่ — _silentShowPage จัดการผ่าน _wasListingsActive check
   }
 };
 
@@ -5260,14 +5207,13 @@ function renderListingsPage() {
   if (_grid) {
     const _sortValChk = document.getElementById('listings-sort')?.value || 'default';
     const _cacheKey = String(_listingsCurPage) + '|' + String(_listingsData.length) + '|' + String(_listingsTxFilter||'ALL') + '|' + _sortValChk;
-    const _hasCards = _grid.querySelector('.prop-card') !== null;
+    const _hasCards = _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
     // ถ้า renderKey ลงท้าย ':partial' = batch ยังไม่เสร็จ → ไม่ใช้ cache → render ต่อ
     const _isPartialKey = (_grid.dataset.renderKey || '').endsWith(':partial');
     if (_hasCards && !_isPartialKey && _grid.dataset.renderKey === _cacheKey) return;
   }
 
   _listingsRenderPending = true;
-  const _doRender = () => {
   _listingsRenderPending = false;
   if(window._listingsRenderAbort) { _listingsRenderPending = false; return; }
 
@@ -5365,7 +5311,7 @@ function renderListingsPage() {
         requestAnimationFrame(()=>initAllCardSwipes(grid));
       }
 
-      const idle = window.requestIdleCallback || (cb => setTimeout(cb, 16));
+      const idle = (cb) => setTimeout(cb, 0);
 
       if(secondBatch.length){
         idle(()=>{
@@ -5463,10 +5409,6 @@ function renderListingsPage() {
   // render pagination
   const _totalPg = Math.max(1, Math.ceil(_listingsData.length / _listingsPerPage));
   if(typeof renderListingsPagination==='function') renderListingsPagination(_totalPg);
-  }; // end _doRender
-
-  // ใช้ requestAnimationFrame เพื่อไม่บล็อก paint ก่อน render
-  requestAnimationFrame(_doRender);
 }
 
 function renderListingsPagination(totalPages) {
@@ -6163,12 +6105,12 @@ function goSlide(i){ slide_cur=i; renderSlider(); }
 // ── utility: force-clear body scroll lock — เรียกได้จากทุก path ──
 function _forceRestoreBody() {
   var savedY = document.body._savedScrollY || 0;
-  // 1. reset flags synchronously ก่อน (ป้องกัน race กับ popstate / rAF)
+  // reset flags synchronously
   document.body._savedScrollY = 0;
   window._listingsRenderAbort = false;
   window._listingsRenderPending = false;
   window._currentModalId = null;
-  // 2. ลบ class + style ทั้งหมดใน batch เดียว
+  // ลบ scroll lock ทั้งหมดใน batch เดียว
   document.body.classList.remove('modal-open');
   var bs = document.body.style;
   bs.position = '';
@@ -6178,33 +6120,19 @@ function _forceRestoreBody() {
   bs.overflow = '';
   bs.touchAction = '';
   bs.pointerEvents = '';
-  // 3. scroll restore synchronous (iOS Safari ต้องการ synchronous call ทันที)
+  // scroll restore ทันที (iOS Safari ต้องการ synchronous)
   if(savedY > 0) window.scrollTo(0, savedY);
-  // 4. setTimeout(0): ตรวจซ้ำและ scroll อีกครั้ง + reconnect observer (เร็วกว่า rAF บน mobile)
-  setTimeout(function() {
-    var propModal = document.getElementById('prop-modal');
-    var isOpen = propModal && propModal.classList.contains('open');
-    // scroll restore อีกครั้งถ้า modal ปิดจริง
-    if(!isOpen && savedY > 0) window.scrollTo(0, savedY);
-    // safety: ตรวจ body stuck อีกครั้ง
-    if(!isOpen && document.body.style.position === 'fixed') {
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.overflow = '';
-      document.body.classList.remove('modal-open');
-    }
-    // reconnect MutationObserver — เฉพาะเมื่อ modal ปิดจริงแล้ว
-    if(!isOpen && window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
-      window._cardObserverPaused = false;
-      ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
-       'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
-       'listings-grid'
-      ].forEach(function(gid){
-        var el = document.getElementById(gid);
-        if(el) _cardObserver.observe(el, {childList:true, subtree:false});
-      });
-    }
-  }, 0);
+  // reconnect MutationObserver ถ้าเคย disconnect ไว้
+  if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+    window._cardObserverPaused = false;
+    ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+     'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track',
+     'listings-grid'
+    ].forEach(function(gid){
+      var el = document.getElementById(gid);
+      if(el) _cardObserver.observe(el, {childList:true, subtree:false});
+    });
+  }
 }
 
 function closeModal(e){

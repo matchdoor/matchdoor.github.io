@@ -239,9 +239,9 @@ a,button,input,select,textarea,
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* body.modal-open: CSS จัดการ overflow:hidden — ไม่ใช้ position:fixed อีกต่อไป
-     touch-action:none ป้องกัน iOS scroll ผ่าน overlay */
-  /* body.modal-open CSS rule อยู่ที่ด้านล่าง section นี้ */
+  /* body.modal-open: JS จัดการ position:fixed + overflow:hidden ทั้งหมด
+     CSS ไม่ใส่ overflow:hidden ที่นี่เพราะจะทำให้ JS ลบ overflow ไม่ได้ (specificity ชนะ) */
+  /* body.modal-open{ overflow:hidden!important } — ลบออกแล้ว ป้องกัน stuck scroll บน mobile */
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
     -webkit-overflow-scrolling:touch;
@@ -340,8 +340,6 @@ img{max-width:100%;height:auto}
 /* ── ป้องกัน .ov ที่ไม่เปิดอยู่บัง interaction ──────────────────── */
 .ov:not(.open){pointer-events:none!important}
 .ov.open{pointer-events:auto}
-/* ── body.modal-open: ล็อค scroll ด้วย CSS — ไม่ใช้ position:fixed ── */
-body.modal-open{overflow:hidden!important;touch-action:none}
 /* ── listings-grid min-height: แสดง layout ทันที ก่อนการ์ดโหลด ─── */
 #listings-grid{min-height:300px}
 #rec-sec, #blog-sec, #price-sec, #port-sec, #agents-sec, #osrv-sec, #new-sec{
@@ -3340,7 +3338,7 @@ footer::after{
 </div>
 
 <div class="ov" id="prop-modal" onclick="closeModal(event)"><div class="modal"><div class="mhd"><h2 id="m-title"></h2><div style="display:flex;align-items:center;gap:8px"><button onclick="(function(){const url=location.href;if(navigator.share)navigator.share({title:document.title,url});else navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅'));})()" style="width:34px;height:34px;border-radius:50%;background:var(--lt);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--p);font-size:14px" title="แชร์"><i class="fas fa-share-nodes"></i></button><button id="m-fav-btn" onclick="toggleModalFav()" class="modal-fav-btn" title="เพิ่มรายการโปรด"><i class="far fa-heart"></i></button><span class="mclose" onclick="closeModal()">×</span></div></div><div class="mbody"><div class="mslider-wrap"><div class="mslider"><div class="slides" id="slides"></div></div><button class="sarr prev" onclick="slide(-1)"><i class="fas fa-chevron-left"></i></button><button class="sarr next" onclick="slide(1)"><i class="fas fa-chevron-right"></i></button><div class="sdots" id="sdots"></div></div><div id="m-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div><div class="modal-price" id="m-price"></div><div class="modal-loc" id="m-loc"></div><div class="specs" id="m-specs"></div><div id="m-extras"></div><div class="agent-box" id="m-agent"><div class="ag-av" id="m-ag-av"></div><div><div id="m-ag-name" style="font-weight:700"></div><div id="m-ag-role" style="font-size:12px;color:var(--gr)"></div></div></div><div class="modal-desc" id="m-desc"></div><div id="m-chips" style="margin-bottom:10px"></div><div id="m-map" style="margin-bottom:16px"></div><div id="m-360-wrap" style="margin-bottom:16px"><button id="m-360-toggle-btn" onclick="toggle360()" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#0f1e3a,#1b3a6b);color:#fff;border:none;border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-street-view" style="font-size:18px;opacity:.9"></i><span id="m-360-label">มุมมอง 360°</span><span class="tour360-badge">Virtual Tour</span><i id="m-360-chevron" class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.7;transition:transform .3s"></i></button><div id="m-360-viewer-wrap" style="display:none;margin-top:8px"><div id="m-360-viewer" class="tour360-viewer"><canvas id="tour360-canvas"></canvas><div class="tour360-hint"><i class="fas fa-hand-pointer"></i> <span id="m-drag-hint">ลากเพื่อหมุน</span></div><button class="tour360-close" onclick="toggle360()"><i class="fas fa-times"></i></button></div></div></div><div id="m-nearby" style="margin-bottom:14px"></div><div class="cta-row"><a class="btn-cta cta-ln" id="m-ln" href="#" target="_blank"><i class="fab fa-line"></i> <span id="m-ln-label">แชท Line</span></a><a class="btn-cta cta-tel" id="m-tel" href="#"><i class="fas fa-mobile-alt"></i> <span id="m-tel-label">โทรสอบถาม</span></a></div></div></div></div>
-<div class="ov" id="all-modal" onclick="if(event.target===this){this.classList.remove('open');document.body.classList.remove('modal-open');document.body.style.overflow='';window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="document.getElementById('all-modal').classList.remove('open');document.body.classList.remove('modal-open');document.body.style.overflow='';window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
+<div class="ov" id="all-modal" onclick="if(event.target===this){this.classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="document.getElementById('all-modal').classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
 <div class="ov" id="srv-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="srv-title2"></h2><span class="mclose" onclick="document.getElementById('srv-modal').classList.remove('open')">×</span></div><div class="mbody" id="srv-body"></div></div></div>
 <div class="ov" id="blog-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="blog-title"></h2><span class="mclose" onclick="document.getElementById('blog-modal').classList.remove('open')">×</span></div><div class="mbody" id="blog-body"></div></div></div>
 <div class="ov" id="port-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="port-title"></h2><span class="mclose" onclick="document.getElementById('port-modal').classList.remove('open')">×</span></div><div class="mbody" id="port-body"></div></div></div>
@@ -4804,8 +4802,8 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // ── restore body scroll lock ถ้าเปิดอยู่ — ต้องเป็นอันดับแรก ──
-  if(document.body.classList.contains('modal-open') || document.body.style.overflow === 'hidden') {
+  // ── restore body scroll lock ถ้าเปิดอยู่ — ต้องเป็นอันดับแรก เพื่อให้ user กดได้ทันที ──
+  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
     _forceRestoreBody();
   }
   // reset render flags — แต่ _listingsRenderAbort ให้ closeModal จัดการ (ผ่าน rAF)
@@ -5468,7 +5466,7 @@ let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
   // ── reset body scroll lock ก่อนเสมอ — กรณีถูกเรียกจาก all-modal หรือ overlay อื่น ──
-  if(document.body.classList.contains('modal-open') || document.body.style.overflow === 'hidden') {
+  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
     if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
   }
 
@@ -6015,10 +6013,12 @@ function openModal(id){
   }
   $('prop-modal').classList.add('open');
 
-  // ── scroll-lock: บันทึก scrollY แล้ว class เท่านั้น ──
-  // ไม่ใช้ position:fixed เพราะ body กระโดดและค้างบน iOS Safari
+  // ── iOS scroll-lock v3: ไม่ใช้ position:fixed (ทำให้ body กระโดดบน iOS Safari) ──
+  // ใช้ overflow:hidden บน html+body แทน ปลอดภัยกว่า ไม่มี layout shift
   const _scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
   document.body._savedScrollY = _scrollY;
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.overflow = 'hidden';
   document.body.classList.add('modal-open');
   // scroll modal กลับบนสุด
   const modalEl = $('prop-modal').querySelector('.modal');
@@ -6172,29 +6172,29 @@ function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+sl
 function goSlide(i){ slide_cur=i; renderSlider(); }
 // ── utility: force-clear body scroll lock — เรียกได้จากทุก path ──
 function _forceRestoreBody() {
+  // ── อ่าน savedY ก่อนลบ ──
   var savedY = document.body._savedScrollY || 0;
-  document.body._savedScrollY = 0;
 
-  // ── ลบ class และ style ทุกตัวที่อาจทำให้หน้าค้าง ──
+  // ── ลบ scroll lock ทั้งหมด — ไม่มี position:fixed อีกต่อไป ──
   document.body.classList.remove('modal-open');
-  document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.left = '';
-  document.body.style.width = '';
-  document.body.style.height = '';
-  document.body.style.touchAction = '';
-  document.body.style.pointerEvents = '';
+  var bs = document.body.style;
+  bs.overflow = '';
+  bs.position = '';
+  bs.top = '';
+  bs.width = '';
+  bs.left = '';
+  bs.touchAction = '';
+  bs.pointerEvents = '';
   document.documentElement.style.overflow = '';
   document.documentElement.style.position = '';
-  document.documentElement.style.touchAction = '';
 
-  // ── scroll กลับตำแหน่งเดิมเสมอ (ไม่มี guard savedY > 0) ──
+  // ── scroll กลับตำแหน่งเดิม ──
+  document.body._savedScrollY = 0;
   window.scrollTo(0, savedY);
 
   // ── reset flags ──
   window._listingsRenderAbort = false;
-  if(typeof _listingsRenderPending !== 'undefined') _listingsRenderPending = false;
+  _listingsRenderPending = false;
   window._currentModalId = null;
 
   // ── reconnect MutationObserver ──
@@ -6210,29 +6210,66 @@ function _forceRestoreBody() {
 }
 
 function closeModal(e){
+  // pattern 1: closeModal()      — ปุ่ม × เรียกตรง → ปิดเสมอ
+  // pattern 2: closeModal(event) — overlay onclick → ปิดเฉพาะเมื่อ click บน overlay พื้นหลัง
   if(e && e instanceof Event && e.target) {
     if(e.target.closest && e.target.closest('.modal')) return;
     if(e.target !== document.getElementById('prop-modal')) return;
   }
-  var _modal = document.getElementById('prop-modal');
+  var _modal = $('prop-modal');
   if(!_modal || !_modal.classList.contains('open')) return;
 
-  // ── 1. ปิด modal ──
+  // ── 1. บันทึก savedY ก่อนลบ style — ต้องอ่านก่อนเสมอ ──
+  var savedY = document.body._savedScrollY || 0;
+  document.body._savedScrollY = 0;
+
+  // ── 2. ปิด modal ──
   _modal.classList.remove('open');
   if(typeof close360 === 'function') close360();
 
-  // ── 2. restore URL ──
+  // ── 3. restore URL ──
   if(typeof _closePropertyUrl === 'function') _closePropertyUrl();
 
-  // ── 3. release scroll lock ทั้งหมด ──
-  _forceRestoreBody();
+  // ── 4. ลบ scroll lock ทั้งหมด ──
+  document.body.classList.remove('modal-open');
+  var bs = document.body.style;
+  bs.overflow = '';
+  bs.position = '';
+  bs.top = '';
+  bs.width = '';
+  bs.left = '';
+  bs.touchAction = '';
+  bs.pointerEvents = '';
+  document.documentElement.style.overflow = '';
+  document.documentElement.style.position = '';
 
-  // ── 4. re-init card swipes บน listings-grid ใน idle ──
-  requestAnimationFrame(function(){
+  // ── 5. scroll กลับตำแหน่งเดิม ──
+  window.scrollTo(0, savedY);
+
+  // ── 6. reset render flags ──
+  window._listingsRenderAbort = false;
+  _listingsRenderPending = false;
+  window._currentModalId = null;
+
+  // ── 7. reconnect MutationObserver ──
+  if(window._cardObserverPaused && typeof _cardObserver !== 'undefined' && _cardObserver) {
+    window._cardObserverPaused = false;
+    ['all-grid','rec-grid','new-grid','new-track','fav-page-grid',
+     'blog-track','blog-grid','port-grid','agent-grid','osrv-track','gc-track'
+    ].forEach(function(gid){
+      var el = document.getElementById(gid);
+      if(el) _cardObserver.observe(el, {childList:true, subtree:false});
+    });
+  }
+
+  // ── 8. re-init card swipes บน listings-grid ──
+  requestAnimationFrame(function() {
     var grid = document.getElementById('listings-grid');
-    if(grid && typeof initAllCardSwipes === 'function'){
+    if(grid && typeof initAllCardSwipes === 'function') {
       var idle = window.requestIdleCallback || function(cb){ setTimeout(cb, 50); };
-      idle(function(){ if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
+      idle(function(){
+        if(!window._listingsRenderAbort) initAllCardSwipes(grid);
+      });
     }
   });
 }
@@ -11825,94 +11862,49 @@ function resetAdvFilter(){
     <button class="adv-apply-btn" onclick="applyAdvFilter()"><i class="fas fa-search"></i> ค้นหาผลลัพธ์</button>
   </div>
 </div>
-
-<!-- ===== MODAL UNLOCK SAFETY SYSTEM ===== -->
+<!-- ===== SCROLL-LOCK SAFETY WATCHDOG ===== -->
 <script>
+/* แก้ปัญหาหน้าค้างหลังปิดการ์ด — ตรวจ body.style ทุก 800ms
+   ถ้า modal ปิดแล้วแต่ scroll lock ยังค้าง → force release */
 (function(){
-  'use strict';
-
-  // ── ฟังก์ชัน release ทุก scroll lock ──────────────────────────────────
-  function releaseAll(){
-    var savedY = (document.body._savedScrollY) || 0;
-    document.body._savedScrollY = 0;
-    document.body.classList.remove('modal-open');
-    // ลบ inline style ทุกตัวที่อาจค้าง
-    ['overflow','position','top','left','width','height','touchAction','pointerEvents']
-      .forEach(function(p){ document.body.style[p] = ''; });
-    document.documentElement.style.overflow = '';
-    document.documentElement.style.position = '';
-    document.documentElement.style.touchAction = '';
-    window.scrollTo(0, savedY);
-    // reset listings flags
-    window._listingsRenderAbort = false;
-    if(typeof _listingsRenderPending !== 'undefined') _listingsRenderPending = false;
-  }
-
-  // ── ตรวจสอบ prop-modal ทุกครั้งที่ class เปลี่ยน ──────────────────────
-  var propModal = document.getElementById('prop-modal');
-  if(propModal){
-    new MutationObserver(function(muts){
-      muts.forEach(function(m){
-        if(m.attributeName !== 'class') return;
-        var isOpen = propModal.classList.contains('open');
-        if(!isOpen){
-          // modal ปิดแล้ว — force release ใน rAF เพื่อให้ CSS repaint ก่อน
-          requestAnimationFrame(function(){
-            requestAnimationFrame(function(){
-              // ตรวจว่า modal ยังปิดอยู่ก่อน release
-              if(!propModal.classList.contains('open')){
-                releaseAll();
-                // re-init card swipes
-                var grid = document.getElementById('listings-grid');
-                if(grid && typeof initAllCardSwipes === 'function'){
-                  var idle = window.requestIdleCallback || function(cb){ setTimeout(cb,60); };
-                  idle(function(){ if(!window._listingsRenderAbort) initAllCardSwipes(grid); });
-                }
-              }
-            });
-          });
-        }
-      });
-    }).observe(propModal, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  // ── Watchdog: ตรวจทุก 600ms — ถ้า modal ปิดแต่ body ยังล็อค ──────────
   setInterval(function(){
     var modal = document.getElementById('prop-modal');
-    var modalOpen = modal && modal.classList.contains('open');
-    if(modalOpen) return; // modal เปิดอยู่ — ถูกต้อง ไม่ต้องทำอะไร
-
-    var hasClass = document.body.classList.contains('modal-open');
-    var hasOverflow = document.body.style.overflow === 'hidden';
-    var hasFixed = document.body.style.position === 'fixed';
-    var htmlOverflow = document.documentElement.style.overflow === 'hidden';
-
-    if(hasClass || hasOverflow || hasFixed || htmlOverflow){
-      console.warn('[ModalFix] Watchdog: releasing stuck body lock');
-      releaseAll();
+    var isOpen = modal && modal.classList.contains('open');
+    if(!isOpen){
+      var bodyFixed = document.body.style.position === 'fixed';
+      var bodyHidden = document.body.style.overflow === 'hidden';
+      var htmlHidden = document.documentElement.style.overflow === 'hidden';
+      var hasClass = document.body.classList.contains('modal-open');
+      if(bodyFixed || bodyHidden || htmlHidden || hasClass){
+        // Force release everything
+        var savedY = document.body._savedScrollY || 0;
+        document.body._savedScrollY = 0;
+        document.body.classList.remove('modal-open');
+        document.body.style.cssText = document.body.style.cssText
+          .replace(/position\s*:[^;]+;?/gi,'')
+          .replace(/top\s*:[^;]+;?/gi,'')
+          .replace(/width\s*:\s*100%\s*;?/gi,'')
+          .replace(/left\s*:\s*0[^;]*;?/gi,'')
+          .replace(/overflow\s*:[^;]+;?/gi,'')
+          .replace(/touch-action\s*:[^;]+;?/gi,'')
+          .replace(/pointer-events\s*:[^;]+;?/gi,'');
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.position = '';
+        window.scrollTo(0, savedY);
+        // reset listings flags
+        window._listingsRenderAbort = false;
+        if(typeof _listingsRenderPending !== 'undefined') _listingsRenderPending = false;
+        // re-init card swipes
+        requestAnimationFrame(function(){
+          var grid = document.getElementById('listings-grid');
+          if(grid && typeof initAllCardSwipes === 'function'){
+            var idle = window.requestIdleCallback || function(cb){setTimeout(cb,50);};
+            idle(function(){ initAllCardSwipes(grid); });
+          }
+        });
+      }
     }
-  }, 600);
-
-  // ── ESC key: ปิด modal + release ──────────────────────────────────────
-  document.addEventListener('keydown', function(e){
-    if(e.key !== 'Escape') return;
-    var modal = document.getElementById('prop-modal');
-    if(modal && modal.classList.contains('open')){
-      modal.classList.remove('open');
-      releaseAll();
-    }
-  });
-
-  // ── VisibilityChange: เมื่อ tab กลับมา force release ถ้า modal ปิด ──
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState !== 'visible') return;
-    var modal = document.getElementById('prop-modal');
-    var modalOpen = modal && modal.classList.contains('open');
-    if(!modalOpen && document.body.classList.contains('modal-open')){
-      releaseAll();
-    }
-  });
-
+  }, 800);
 })();
 </script>
 

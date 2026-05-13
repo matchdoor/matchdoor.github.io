@@ -285,23 +285,22 @@ a,button,input,select,textarea,
     grid-column:1/-1;
   }
 }
-/* ── z-index ให้เป็นระบบ (ทุก device) ────────────────────────
-   nav=1000 | dd-mobile-overlay=1001 | dd-panel=1050 | modal=3200 | sheet=1500 | toast=9999 */
-nav{z-index:1000!important}
-/* dd-panel อยู่เหนือ nav */
-.dd-panel,.qs-dd-panel{z-index:1050!important}
-/* items ภายใน dd-panel ต้องกดได้เสมอ */
+/* ── z-index system เป็นระเบียบ (ทุก device) ─────────────────
+   Layer stack:
+   nav=100 | nav-dd=200 | autocomplete=300 | modal=500 | sheets=600 | toast=9999 */
+nav{z-index:100!important}
+.dd-panel,.qs-dd-panel{z-index:200!important}
 .dd-panel *,.qs-dd-panel *{pointer-events:auto}
-.ov,.loading-overlay{z-index:3200!important}
-.seo-drawer-overlay,.adv-sheet-overlay{z-index:3300!important}
-.adv-desktop-overlay{z-index:3490!important}
-.adv-sheet,.seo-drawer,.adv-fp{z-index:3400!important}
-.adv-filter-panel{z-index:3500!important;pointer-events:auto!important}
+.qs-group .qs-dd-panel{z-index:200!important}
+/* autocomplete อยู่เหนือ nav-dd และ card grid เสมอ */
+.ac-list{z-index:300!important}
+#ls-ac-list{z-index:300!important}
+.ov,.loading-overlay{z-index:500!important}
+.seo-drawer-overlay,.adv-sheet-overlay{z-index:580!important}
+.adv-desktop-overlay{z-index:590!important}
+.adv-sheet,.seo-drawer,.adv-fp{z-index:600!important}
+.adv-filter-panel{z-index:610!important;pointer-events:auto!important}
 .toast{z-index:9999!important}
-/* search autocomplete อยู่เหนือ dropdown */
-.ac-list{z-index:1100!important}
-/* quick-search panel */
-.qs-group .qs-dd-panel{z-index:1060!important}
 </style>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -5698,6 +5697,84 @@ const listingsInlineSearchDebounced = (function(){
   return function(){ clearTimeout(_t); _t = setTimeout(listingsInlineSearch, 350); };
 })();
 
+// ── ls-kw Autocomplete Dropdown ──────────────────────────────────────────
+// แสดง dropdown เมื่อพิมพ์ — ไม่ trigger search ทันที รอกดปุ่ม "ค้นหา"
+(function(){
+  var _lsAcTimer = null;
+
+  window.lsKwShowDropdown = function(val) {
+    clearTimeout(_lsAcTimer);
+    var list = document.getElementById('ls-ac-list');
+    if(!list) return;
+    var kw = (val||'').trim();
+    if(!kw || kw.length < 1) { list.style.display = 'none'; return; }
+    _lsAcTimer = setTimeout(function(){
+      var kwl = kw.toLowerCase();
+      // match จาก props: title + location + province
+      var matches = (typeof props !== 'undefined' ? props : [])
+        .filter(function(p){
+          return (p.title||'').toLowerCase().includes(kwl)
+              || (p.location||'').toLowerCase().includes(kwl)
+              || (p.province||'').toLowerCase().includes(kwl);
+        })
+        .slice(0, 8);
+
+      if(!matches.length){ list.style.display='none'; return; }
+
+      // render items
+      list.innerHTML = matches.map(function(p){
+        var hl = typeof highlight === 'function' ? highlight(p.title, kw) : p.title;
+        var icon = typeof typeIcon === 'function' ? typeIcon(p.type) : '🏠';
+        var loc = p.location || p.province || '';
+        return '<div class="ls-ac-item" '
+          + 'style="padding:9px 13px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;'
+          + 'border-bottom:1px solid #EDE8DF;color:#1A1A2E;background:#fff" '
+          + 'onmousedown="lsKwSelectItem(event,\'' + String(p.id) + '\',\'' + (p.title||'').replace(/'/g,"\\'") + '\')" '
+          + 'onmouseover="this.style.background=\'#F5F0E8\'" '
+          + 'onmouseout="this.style.background=\'#fff\'">'
+          + '<span style="font-size:16px;flex-shrink:0">' + icon + '</span>'
+          + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + hl + '</span>'
+          + (loc ? '<span style="font-size:11px;color:#8A8070;margin-left:auto;white-space:nowrap;flex-shrink:0">' + loc + '</span>' : '')
+          + '</div>';
+      }).join('');
+      list.style.display = 'block';
+    }, 200);
+  };
+
+  // เลือก item จาก dropdown → ใส่ค่าใน input แล้วซ่อน dropdown (ยังไม่ search)
+  window.lsKwSelectItem = function(e, id, title) {
+    e.preventDefault(); // ป้องกัน blur ก่อน mousedown เสร็จ
+    var inp = document.getElementById('ls-kw');
+    var list = document.getElementById('ls-ac-list');
+    if(inp) inp.value = title;
+    if(list) list.style.display = 'none';
+    // focus กลับ input เพื่อให้ user กด Enter หรือกดปุ่ม "ค้นหา" ต่อได้
+    if(inp) inp.focus();
+  };
+
+  // keyboard: Enter → search + ปิด dropdown, Escape → ปิด dropdown
+  window.lsKwKeydown = function(e) {
+    var list = document.getElementById('ls-ac-list');
+    if(e.key === 'Escape') {
+      if(list) list.style.display = 'none';
+    } else if(e.key === 'Enter') {
+      if(list) list.style.display = 'none';
+      listingsInlineSearch();
+      _scrollToListingsResults();
+    }
+  };
+
+  // ปิด dropdown เมื่อ click นอก input
+  document.addEventListener('click', function(e){
+    var inp = document.getElementById('ls-kw');
+    var list = document.getElementById('ls-ac-list');
+    if(!list) return;
+    if(inp && (e.target === inp || inp.contains(e.target))) return;
+    if(list.contains(e.target)) return;
+    list.style.display = 'none';
+  }, true);
+})();
+
 // ฟิลเตอร์ประเภทอสังหาโดยตรงจาก SEO sidebar
 // (ไม่ผ่าน ls-type select เพราะ select มี option จำกัด)
 function listingsFilterByType(typeVal) {
@@ -6150,10 +6227,10 @@ function closeModal(e){
   _modal.classList.remove('open');
   if(typeof close360==='function') close360();
 
-  // ── 2. restore URL (รวม logic จาก _origCloseModal patch ไว้ที่นี่เลย) ──
-  _closePropertyUrl();
+  // ── 2. restore URL ──
+  if(typeof _closePropertyUrl === 'function') _closePropertyUrl();
 
-  // ── 3. คืน scroll lock ทั้งหมด synchronous ทันที ──
+  // ── 3. คืน scroll lock synchronous ทันที — ไม่มี rAF ไม่มี delay ──
   var savedY = document.body._savedScrollY || 0;
   document.body._savedScrollY = 0;
   document.body.classList.remove('modal-open');
@@ -6179,29 +6256,8 @@ function closeModal(e){
       if(el) _cardObserver.observe(el, {childList:true, subtree:false});
     });
   }
-
-  // ── 6. re-render listings grid ใน rAF ──
-  // ล้าง renderKey ก่อนเสมอ เพื่อ bypass snapshot cache ที่ทำให้ skip render
-  requestAnimationFrame(function(){
-    // iOS Safari safety: clear fixed อีกครั้งถ้าค้าง
-    if(document.body.style.position === 'fixed'){
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.left = '';
-      document.body.style.overflow = '';
-      document.body.classList.remove('modal-open');
-      window._listingsRenderAbort = false;
-      _listingsRenderPending = false;
-    }
-    var _lsPage = document.getElementById('page-listings');
-    var _lsGrid = document.getElementById('listings-grid');
-    if(_lsPage && _lsPage.classList.contains('active') && _lsGrid){
-      // ล้าง renderKey เพื่อบังคับ renderListingsPage ทำงานจริง (ไม่ hit snapshot cache)
-      _lsGrid.dataset.renderKey = '';
-      if(typeof renderListingsPage === 'function') renderListingsPage();
-    }
-  });
+  // ── 6. ไม่ re-render listings grid — การ์ดยังอยู่ใน DOM เดิม ไม่ต้องสร้างใหม่
+  // grid จะ re-render ก็ต่อเมื่อ filter/search เปลี่ยนเท่านั้น
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -11537,7 +11593,7 @@ function resetAdvFilter(){
 <!-- ===== LISTINGS PAGE ===== -->
 <div class="page" id="page-listings">
   <!-- Hero Banner -->
-  <div style="background:linear-gradient(135deg,#0A1628 0%,#1B3A6B 60%,#0F2548 100%);padding:24px 20px 20px;position:relative;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0A1628 0%,#1B3A6B 60%,#0F2548 100%);padding:24px 20px 20px;position:relative;overflow:visible">
     <div style="max-width:1320px;margin:0 auto">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
         <button id="ls-back-btn" onclick="showPage('home')" class="back-btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fas fa-arrow-left"></i> กลับ</button>
@@ -11546,11 +11602,12 @@ function resetAdvFilter(){
         <button id="listings-map-toggle-btn" onclick="toggleListingsMapPanel()" style="margin-left:auto;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(200,146,42,.4)"><i class="fas fa-map-marked-alt"></i> ค้นหาด้วยแผนที่</button>
       </div>
       <!-- Search Bar -->
-      <div id="listings-filter-bar" style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12)">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
-          <div>
+      <div id="listings-filter-bar" style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12);overflow:visible">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;overflow:visible" class="listings-search-sf">
+          <div style="position:relative;z-index:301">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
-            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
+            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit" autocomplete="off" oninput="lsKwShowDropdown(this.value)" onkeydown="lsKwKeydown(event)">
+            <div id="ls-ac-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--bd);border-top:none;border-radius:0 0 10px 10px;z-index:300;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(27,58,107,.22)"></div>
           </div>
           <div>
             <label id="ls-label-tx" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-exchange-alt"></i> ซื้อ/เช่า</label>
@@ -11606,7 +11663,7 @@ function resetAdvFilter(){
               <option value="100000000">100M</option>
             </select>
           </div>
-          <button onclick="listingsInlineSearch()" style="background:var(--a);color:#1A1A2E;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px"><i class="fas fa-search"></i> ค้นหา</button>
+          <button onclick="(function(){var l=document.getElementById('ls-ac-list');if(l)l.style.display='none';listingsInlineSearch();_scrollToListingsResults();})()" style="background:var(--a);color:#1A1A2E;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px"><i class="fas fa-search"></i> ค้นหา</button>
           <button onclick="listingsResetSearch()" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:9px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px" title="รีเซ็ตการค้นหา"><i class="fas fa-undo"></i> Reset</button>
         </div>
         <!-- Filter tags row -->

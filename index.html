@@ -5479,6 +5479,11 @@ let _listingsTxFilter = 'ALL';
 let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
+  // ── reset body scroll lock ก่อนเสมอ — กรณีถูกเรียกจาก all-modal หรือ overlay อื่น ──
+  if(document.body.style.position === 'fixed' || document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')) {
+    if(typeof _forceRestoreBody === 'function') _forceRestoreBody();
+  }
+
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
                      (props && props.length ? [...props] :
@@ -5907,7 +5912,13 @@ function renderFavPage(){
 function shareFavs(){ const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length)return toast('ไม่มีรายการโปรด'); const url = location.origin + '/favorites'; if(navigator.share){ navigator.share({title:'รายการโปรด Matchdoor',text:`อสังหาฯ ที่น่าสนใจ ${fp.length} รายการ`,url}); } else { navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅')); } }
 
 function openModal(id){
-  if($('all-modal').classList.contains('open')) $('all-modal').classList.remove('open');
+  if($('all-modal').classList.contains('open')) {
+    $('all-modal').classList.remove('open');
+    // reset overflow ที่ all-modal set ไว้ — openModal จะ re-lock ด้วย position:fixed แทน
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+    window._modalCurrentType = null;
+  }
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);

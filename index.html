@@ -4783,6 +4783,15 @@ window.addEventListener('popstate', function(e) {
       if (_activeName === state.name) return;
       _silentShowPage(state.name, true);
     } else {
+      // modal ปิดอยู่แล้ว: ถ้าหน้า listings active + grid สมบูรณ์ → ไม่ต้อง re-render
+      const _activePageEl2 = document.querySelector('.page.active');
+      const _activeName2 = _activePageEl2 ? _activePageEl2.id.replace('page-', '') : '';
+      if (_activeName2 === state.name && state.name === 'listings') {
+        const _grid2 = document.getElementById('listings-grid');
+        const _hasCards2 = _grid2 && _grid2.querySelector('.prop-card:not(.loading-sk)') !== null;
+        const _isPartial2 = _grid2 && (_grid2.dataset.renderKey||'').endsWith(':partial');
+        if (_hasCards2 && !_isPartial2) return; // grid สมบูรณ์ → ไม่โหลดซ้ำ
+      }
       _silentShowPage(state.name);
     }
   }
@@ -4840,9 +4849,11 @@ function _silentShowPage(name, skipScrollTop) {
       return;
     }
     // render หน้า listings — ต้องรอ 1 rAF เพื่อให้ _listingsRenderAbort=false (set ใน closeModal)
+    // ตรวจ _listingsRenderAbort อีกครั้งใน rAF ก่อน render เพื่อป้องกัน double-render
     if(window._listingsDataReady && typeof renderListingsPage === 'function') {
       requestAnimationFrame(function(){
-        if(!window._listingsRenderAbort) renderListingsPage();
+        // ตรวจ render flag อีกครั้งหลัง frame — ป้องกัน race กับ closeModal
+        if(!window._listingsRenderAbort && !_listingsRenderPending) renderListingsPage();
       });
     }
     if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
@@ -4945,10 +4956,11 @@ window.closeModal = function(e) {
   _origCloseModal(e);
   const _modalIsNowClosed = !document.getElementById('prop-modal')?.classList.contains('open');
   if (_modalWasOpen && _modalIsNowClosed) {
-    // restore URL กลับไปหน้า listings (ไม่ push history ใหม่)
+    // restore URL กลับไปหน้า listings โดยใช้ replaceState เงียบๆ
+    // ไม่ trigger popstate → ไม่มีการ re-render ซ้ำจาก popstate listener
     _closePropertyUrl();
-    // _forceRestoreBody ถูกเรียกจาก _origCloseModal → closeModal เดิมแล้ว
-    // _listingsRenderAbort จะถูก reset ใน rAF ถัดไปจาก closeModal
+    // หมายเหตุ: _forceRestoreBody และ render จัดการโดย _origCloseModal แล้ว
+    // ไม่ต้องเรียก renderListingsPage ซ้ำที่นี่
   }
 };
 
@@ -6089,7 +6101,7 @@ function goSlide(i){ slide_cur=i; renderSlider(); }
 // ── utility: force-clear body scroll lock — เรียกได้จากทุก path ──
 function _forceRestoreBody() {
   var savedY = document.body._savedScrollY || 0;
-  // reset flags synchronously
+  // reset flags synchronously — ต้องก่อน style changes ทุกอย่าง
   document.body._savedScrollY = 0;
   window._listingsRenderAbort = false;
   window._listingsRenderPending = false;
@@ -6104,6 +6116,9 @@ function _forceRestoreBody() {
   bs.overflow = '';
   bs.touchAction = '';
   bs.pointerEvents = '';
+  // เพิ่ม: ลบ overflow จาก html element ด้วย — บาง browser ใช้ html แทน body
+  document.documentElement.style.overflow = '';
+  document.documentElement.style.position = '';
   // scroll restore ทันที (iOS Safari ต้องการ synchronous)
   if(savedY > 0) window.scrollTo(0, savedY);
   // reconnect MutationObserver ถ้าเคย disconnect ไว้
@@ -6128,20 +6143,34 @@ function closeModal(e){
   }
   var _modal = $('prop-modal');
   if(!_modal || !_modal.classList.contains('open')) return;
+
+  // ── ปิด modal ทันที (synchronous) — ให้ user เห็นผลทันที ──
   _modal.classList.remove('open');
   if(typeof close360==='function') close360();
-  // ── คืนสิทธิ์ render ทันที synchronous ก่อน restore body ──
+
+  // ── reset render flags ก่อน _forceRestoreBody เพื่อป้องกัน race condition ──
   window._listingsRenderAbort = false;
   _listingsRenderPending = false;
-  // ── restore body scroll/pointer ทันที — ให้กดได้ทันที ──
+
+  // ── restore body scroll/pointer events ทันที — ให้กดได้ทันทีหลังปิด ──
   _forceRestoreBody();
-  // ── re-render listings grid ถ้าเป็น partial (batch render ยังไม่สมบูรณ์) ──
+
+  // ── re-render listings grid เฉพาะกรณีที่จำเป็นจริงๆ ──
+  // ตรวจว่าหน้า listings active อยู่ AND grid เป็น :partial (render ยังไม่สมบูรณ์)
+  // ไม่ re-render ถ้า grid มีการ์ดครบแล้ว (สถานะ complete) — ป้องกันหน้าค้างและโหลดช้า
+  var _lsPage = document.getElementById('page-listings');
   var _lsGrid = document.getElementById('listings-grid');
-  if(_lsGrid && (_lsGrid.dataset.renderKey||'').endsWith(':partial')){
+  var _lsIsActive = _lsPage && _lsPage.classList.contains('active');
+  var _lsIsPartial = _lsGrid && (_lsGrid.dataset.renderKey||'').endsWith(':partial');
+  if(_lsIsActive && _lsIsPartial){
+    // ใช้ rAF เดียว — ไม่ setTimeout ป้องกันหน้าค้างระหว่างรอ
     requestAnimationFrame(function(){
-      if(typeof renderListingsPage==='function') renderListingsPage();
+      if(!window._listingsRenderAbort && typeof renderListingsPage==='function'){
+        renderListingsPage();
+      }
     });
   }
+  // ถ้า grid สมบูรณ์แล้ว (ไม่ใช่ :partial) → ไม่ re-render เลย ป้องกันโหลดซ้ำ
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {

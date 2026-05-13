@@ -4792,7 +4792,8 @@ window.addEventListener('popstate', function(e) {
         const _grid2 = document.getElementById('listings-grid');
         const _hasCards2 = _grid2 && _grid2.querySelector('.prop-card:not(.loading-sk)') !== null;
         const _isPartial2 = _grid2 && (_grid2.dataset.renderKey||'').endsWith(':partial');
-        if (_hasCards2 && !_isPartial2) return; // grid สมบูรณ์ → ไม่โหลดซ้ำ
+        const _renderKeyEmpty2 = _grid2 && !(_grid2.dataset.renderKey||'').replace(':partial','');
+        if (_hasCards2 && !_isPartial2 && !_renderKeyEmpty2) return; // grid สมบูรณ์ → ไม่โหลดซ้ำ
       }
       _silentShowPage(state.name);
     }
@@ -4840,10 +4841,12 @@ function _silentShowPage(name, skipScrollTop) {
       }
     }
     // ถ้า listings active อยู่แล้ว + มีการ์ดจริง + ไม่ใช่ partial → ไม่ re-render
+    // ยกเว้น: ถ้า modal เพิ่งถูกปิด (_listingsRenderAbort เพิ่ง reset) → ต้องให้ closeModal จัดการ
     const _grid = document.getElementById('listings-grid');
     const _hasCards = _grid && _grid.querySelector('.prop-card:not(.loading-sk)') !== null;
     const _isPartial = _grid && (_grid.dataset.renderKey||'').endsWith(':partial');
-    if (_wasListingsActive && _hasCards && !_isPartial) {
+    const _renderKeyEmpty = _grid && !(_grid.dataset.renderKey||'').replace(':partial','');
+    if (_wasListingsActive && _hasCards && !_isPartial && !_renderKeyEmpty) {
       if(typeof renderListingsSeoSidebar === 'function' && !window._lsSeoSidebarRendered){
         const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
         idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
@@ -5049,7 +5052,14 @@ function openLine(){ window.open(lineUrl(C.LINE),'_blank'); }
         if(lsPage && lsPage.classList.contains('active') && lsGrid) {
           var hasCards = lsGrid.querySelector('.prop-card:not(.loading-sk)') !== null;
           var isComplete = hasCards && !(lsGrid.dataset.renderKey||'').endsWith(':partial');
-          if(!isComplete && typeof renderListingsPage === 'function') renderListingsPage();
+          var renderKeyEmpty = !(lsGrid.dataset.renderKey||'').replace(':partial','');
+          if(!isComplete || renderKeyEmpty) {
+            // force clear cache key ก่อน render
+            lsGrid.dataset.renderKey = '';
+            window._listingsRenderAbort = false;
+            _listingsRenderPending = false;
+            if(typeof renderListingsPage === 'function') renderListingsPage();
+          }
         }
       });
     }
@@ -6231,12 +6241,27 @@ function closeModal(e){
   if(typeof close360==='function') close360();
 
   // ── 2. restore body scroll + reset ALL flags (synchronous) ──
-  // _forceRestoreBody จะ reset _listingsRenderAbort=false ด้วย
   _forceRestoreBody();
 
-  // ── 3. ใน rAF ถัดไป: ตรวจ iOS stuck + re-render grid ──
+  // ── 3. force clear body lock อีกรอบแบบ synchronous ก่อน rAF ──
+  // ป้องกัน iOS Safari race condition ที่ position:fixed ค้าง
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.left = '';
+  document.body.style.overflow = '';
+  document.body.style.touchAction = '';
+  document.body.style.pointerEvents = '';
+  document.body.classList.remove('modal-open');
+  document.documentElement.style.overflow = '';
+  document.documentElement.style.position = '';
+  // reset render abort flag ทันที — ให้ render ได้เลย
+  window._listingsRenderAbort = false;
+  _listingsRenderPending = false;
+
+  // ── 4. re-render listings grid ใน rAF — ไม่ตรวจ cache เพราะต้องการให้แสดงผลแน่นอน ──
   requestAnimationFrame(function(){
-    // safety: iOS Safari อาจยัง fixed อยู่ → clear inline style อีกครั้ง
+    // safety อีกครั้ง: iOS อาจ re-apply fixed ระหว่าง paint cycle
     if(document.body.style.position === 'fixed') {
       document.body.style.position = '';
       document.body.style.top = '';
@@ -6244,16 +6269,17 @@ function closeModal(e){
       document.body.style.left = '';
       document.body.style.overflow = '';
       document.body.classList.remove('modal-open');
+      window._listingsRenderAbort = false;
+      _listingsRenderPending = false;
     }
-    // ── re-render listings grid เสมอถ้าหน้า listings active ──
-    // ไม่ตรวจ :partial อย่างเดียว เพราะ grid อาจว่างเลยถ้า abort ค้างไว้
+    // ── ALWAYS re-render listings grid เมื่อ listings active ──
+    // ไม่ตรวจ _hasCards / _isComplete เพราะนั่นคือต้นเหตุที่ทำให้ค้าง
     var _lsPage = document.getElementById('page-listings');
     var _lsGrid = document.getElementById('listings-grid');
     if(_lsPage && _lsPage.classList.contains('active') && _lsGrid) {
-      var _hasRealCards = _lsGrid.querySelector('.prop-card:not(.loading-sk)') !== null;
-      var _isComplete = _hasRealCards && !(_lsGrid.dataset.renderKey||'').endsWith(':partial');
-      // render เฉพาะเมื่อยังไม่ complete
-      if(!_isComplete && typeof renderListingsPage === 'function') {
+      // force clear renderKey เพื่อให้ renderListingsPage ไม่ skip ผ่าน snapshot cache
+      _lsGrid.dataset.renderKey = '';
+      if(typeof renderListingsPage === 'function') {
         renderListingsPage();
       }
     }

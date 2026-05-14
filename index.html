@@ -3444,15 +3444,15 @@ footer::after{
 </div>
 
 <div class="ov" id="prop-modal" onclick="closeModal(event)"><div class="modal"><div class="mhd"><h2 id="m-title"></h2><div style="display:flex;align-items:center;gap:8px"><button onclick="(function(){const url=location.href;if(navigator.share)navigator.share({title:document.title,url});else navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅'));})()" style="width:34px;height:34px;border-radius:50%;background:var(--lt);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--p);font-size:14px" title="แชร์"><i class="fas fa-share-nodes"></i></button><button id="m-fav-btn" onclick="toggleModalFav()" class="modal-fav-btn" title="เพิ่มรายการโปรด"><i class="far fa-heart"></i></button><span class="mclose" onclick="closeModal()">×</span></div></div><div class="mbody"><div class="mslider-wrap"><div class="mslider"><div class="slides" id="slides"></div></div><button class="sarr prev" onclick="slide(-1)"><i class="fas fa-chevron-left"></i></button><button class="sarr next" onclick="slide(1)"><i class="fas fa-chevron-right"></i></button><div class="sdots" id="sdots"></div></div><div id="m-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div><div class="modal-price" id="m-price"></div><div class="modal-loc" id="m-loc"></div><div class="specs" id="m-specs"></div><div id="m-extras"></div><div class="agent-box" id="m-agent"><div class="ag-av" id="m-ag-av"></div><div><div id="m-ag-name" style="font-weight:700"></div><div id="m-ag-role" style="font-size:12px;color:var(--gr)"></div></div></div><div class="modal-desc" id="m-desc"></div><div id="m-chips" style="margin-bottom:10px"></div><div id="m-map" style="margin-bottom:16px"></div><div id="m-360-wrap" style="margin-bottom:16px"><button id="m-360-toggle-btn" onclick="toggle360()" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#0f1e3a,#1b3a6b);color:#fff;border:none;border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-street-view" style="font-size:18px;opacity:.9"></i><span id="m-360-label">มุมมอง 360°</span><span class="tour360-badge">Virtual Tour</span><i id="m-360-chevron" class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.7;transition:transform .3s"></i></button><div id="m-360-viewer-wrap" style="display:none;margin-top:8px"><div id="m-360-viewer" class="tour360-viewer"><canvas id="tour360-canvas"></canvas><div class="tour360-hint"><i class="fas fa-hand-pointer"></i> <span id="m-drag-hint">ลากเพื่อหมุน</span></div><button class="tour360-close" onclick="toggle360()"><i class="fas fa-times"></i></button></div></div></div><div id="m-nearby" style="margin-bottom:14px"></div><div class="cta-row"><a class="btn-cta cta-ln" id="m-ln" href="#" target="_blank"><i class="fab fa-line"></i> <span id="m-ln-label">แชท Line</span></a><a class="btn-cta cta-tel" id="m-tel" href="#"><i class="fas fa-mobile-alt"></i> <span id="m-tel-label">โทรสอบถาม</span></a></div></div></div></div>
-<div class="ov" id="all-modal" onclick="if(event.target===this){this.classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="document.getElementById('all-modal').classList.remove('open');document.body.style.overflow='';document.body.classList.remove('modal-open');window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
-<div class="ov" id="srv-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="srv-title2"></h2><span class="mclose" onclick="document.getElementById('srv-modal').classList.remove('open')">×</span></div><div class="mbody" id="srv-body"></div></div></div>
-<div class="ov" id="blog-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="blog-title"></h2><span class="mclose" onclick="document.getElementById('blog-modal').classList.remove('open')">×</span></div><div class="mbody" id="blog-body"></div></div></div>
-<div class="ov" id="port-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="port-title"></h2><span class="mclose" onclick="document.getElementById('port-modal').classList.remove('open')">×</span></div><div class="mbody" id="port-body"></div></div></div>
-<div class="ov" id="ag-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="mhd"><h2 id="ag-title"></h2><span class="mclose" onclick="document.getElementById('ag-modal').classList.remove('open')">×</span></div><div class="mbody" id="ag-body"></div></div></div>
-<div class="ov" id="login-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal" style="max-width:400px"><div class="mhd"><h2><i class="fas fa-sign-in-alt" style="color:var(--p)"></i> เข้าสู่ระบบ</h2><span class="mclose" onclick="document.getElementById('login-modal').classList.remove('open')">×</span></div><div class="mbody"><p style="margin-bottom:16px;color:var(--tx2);font-size:13px">กรุณาเข้าสู่ระบบก่อนส่งข้อมูลฝากทรัพย์หรือฝากความต้องการ</p><div class="login-btns"><button class="login-provider" onclick="loginWith('google')"><i class="fab fa-google" style="color:#DB4437"></i> เข้าสู่ระบบด้วย Google</button><button class="login-provider" onclick="loginWith('facebook')"><i class="fab fa-facebook" style="color:var(--fb)"></i> เข้าสู่ระบบด้วย Facebook</button></div><div class="login-sep">หรือ</div><input class="login-field" type="email" id="login-email" placeholder="อีเมล"><input class="login-field" type="password" id="login-pw" placeholder="รหัสผ่าน"><button class="btn-sub" onclick="loginEmail()"><i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ</button><div style="margin-top:12px;text-align:center;font-size:12px">ยังไม่มีบัญชี? <a href="#" onclick="showSignup()" style="color:var(--a)">สมัครสมาชิก</a></div></div></div></div>
-<div class="ov" id="signup-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal" style="max-width:400px"><div class="mhd"><h2><i class="fas fa-user-plus" style="color:var(--p)"></i> สมัครสมาชิก</h2><span class="mclose" onclick="document.getElementById('signup-modal').classList.remove('open')">×</span></div><div class="mbody"><div class="login-btns"><button class="login-provider" onclick="loginWith('google')"><i class="fab fa-google" style="color:#DB4437"></i> สมัครด้วย Google</button><button class="login-provider" onclick="loginWith('facebook')"><i class="fab fa-facebook" style="color:var(--fb)"></i> สมัครด้วย Facebook</button></div><div class="login-sep">หรือสมัครด้วยอีเมล</div><input class="login-field" type="email" id="su-email" placeholder="อีเมล"><input class="login-field" type="password" id="su-pw" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)"><button class="btn-sub" onclick="signupEmail()"><i class="fas fa-user-plus"></i> สมัครสมาชิก</button><div style="margin-top:12px;text-align:center;font-size:12px">มีบัญชีแล้ว? <a href="#" onclick="showLogin()" style="color:var(--a)">เข้าสู่ระบบ</a></div></div></div></div>
+<div class="ov" id="all-modal" onclick="if(event.target===this){_closeModal('all-modal');window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="_closeModal('all-modal');window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
+<div class="ov" id="srv-modal" onclick="if(event.target===this)_closeModal('srv-modal')"><div class="modal"><div class="mhd"><h2 id="srv-title2"></h2><span class="mclose" onclick="_closeModal('srv-modal')">×</span></div><div class="mbody" id="srv-body"></div></div></div>
+<div class="ov" id="blog-modal" onclick="if(event.target===this)_closeModal('blog-modal')"><div class="modal"><div class="mhd"><h2 id="blog-title"></h2><span class="mclose" onclick="_closeModal('blog-modal')">×</span></div><div class="mbody" id="blog-body"></div></div></div>
+<div class="ov" id="port-modal" onclick="if(event.target===this)_closeModal('port-modal')"><div class="modal"><div class="mhd"><h2 id="port-title"></h2><span class="mclose" onclick="_closeModal('port-modal')">×</span></div><div class="mbody" id="port-body"></div></div></div>
+<div class="ov" id="ag-modal" onclick="if(event.target===this)_closeModal('ag-modal')"><div class="modal"><div class="mhd"><h2 id="ag-title"></h2><span class="mclose" onclick="_closeModal('ag-modal')">×</span></div><div class="mbody" id="ag-body"></div></div></div>
+<div class="ov" id="login-modal" onclick="if(event.target===this)_closeModal('login-modal')"><div class="modal" style="max-width:400px"><div class="mhd"><h2><i class="fas fa-sign-in-alt" style="color:var(--p)"></i> เข้าสู่ระบบ</h2><span class="mclose" onclick="_closeModal('login-modal')">×</span></div><div class="mbody"><p style="margin-bottom:16px;color:var(--tx2);font-size:13px">กรุณาเข้าสู่ระบบก่อนส่งข้อมูลฝากทรัพย์หรือฝากความต้องการ</p><div class="login-btns"><button class="login-provider" onclick="loginWith('google')"><i class="fab fa-google" style="color:#DB4437"></i> เข้าสู่ระบบด้วย Google</button><button class="login-provider" onclick="loginWith('facebook')"><i class="fab fa-facebook" style="color:var(--fb)"></i> เข้าสู่ระบบด้วย Facebook</button></div><div class="login-sep">หรือ</div><input class="login-field" type="email" id="login-email" placeholder="อีเมล"><input class="login-field" type="password" id="login-pw" placeholder="รหัสผ่าน"><button class="btn-sub" onclick="loginEmail()"><i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ</button><div style="margin-top:12px;text-align:center;font-size:12px">ยังไม่มีบัญชี? <a href="#" onclick="showSignup()" style="color:var(--a)">สมัครสมาชิก</a></div></div></div></div>
+<div class="ov" id="signup-modal" onclick="if(event.target===this)_closeModal('signup-modal')"><div class="modal" style="max-width:400px"><div class="mhd"><h2><i class="fas fa-user-plus" style="color:var(--p)"></i> สมัครสมาชิก</h2><span class="mclose" onclick="_closeModal('signup-modal')">×</span></div><div class="mbody"><div class="login-btns"><button class="login-provider" onclick="loginWith('google')"><i class="fab fa-google" style="color:#DB4437"></i> สมัครด้วย Google</button><button class="login-provider" onclick="loginWith('facebook')"><i class="fab fa-facebook" style="color:var(--fb)"></i> สมัครด้วย Facebook</button></div><div class="login-sep">หรือสมัครด้วยอีเมล</div><input class="login-field" type="email" id="su-email" placeholder="อีเมล"><input class="login-field" type="password" id="su-pw" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)"><button class="btn-sub" onclick="signupEmail()"><i class="fas fa-user-plus"></i> สมัครสมาชิก</button><div style="margin-top:12px;text-align:center;font-size:12px">มีบัญชีแล้ว? <a href="#" onclick="showLogin()" style="color:var(--a)">เข้าสู่ระบบ</a></div></div></div></div>
 
-<div class="ov" id="cookie-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal" style="max-width:450px"><div class="mhd"><h2><i class="fas fa-cookie-bite" style="color:var(--a)"></i> นโยบายการใช้คุกกี้</h2><span class="mclose" onclick="closeCookieModal()">×</span></div><div class="mbody"><p style="margin-bottom:12px;color:var(--tx2);font-size:14px">เว็บไซต์ของเราใช้คุกกี้เพื่อพัฒนาประสบการณ์การใช้งานของคุณ คุกกี้ช่วยให้เราจดจำการตั้งค่าและวิเคราะห์การเข้าใช้งาน เพื่อนำเสนอเนื้อหาที่ตรงกับความสนใจของคุณ</p><p style="margin-bottom:20px;color:var(--tx2);font-size:14px">คุณสามารถเลือกยอมรับหรือปฏิเสธคุกกี้ที่ไม่จำเป็นได้ โดยการตั้งค่าเบราว์เซอร์ของคุณ</p><div class="cta-row" style="gap:12px"><button class="btn-cta cta-ln" id="cookie-accept" style="background:var(--p);">ยอมรับ</button><button class="btn-cta cta-tel" id="cookie-decline" style="background:var(--gr);">ปฏิเสธ</button></div></div></div></div>
+<div class="ov" id="cookie-modal" onclick="if(event.target===this)_closeModal('cookie-modal')"><div class="modal" style="max-width:450px"><div class="mhd"><h2><i class="fas fa-cookie-bite" style="color:var(--a)"></i> นโยบายการใช้คุกกี้</h2><span class="mclose" onclick="closeCookieModal()">×</span></div><div class="mbody"><p style="margin-bottom:12px;color:var(--tx2);font-size:14px">เว็บไซต์ของเราใช้คุกกี้เพื่อพัฒนาประสบการณ์การใช้งานของคุณ คุกกี้ช่วยให้เราจดจำการตั้งค่าและวิเคราะห์การเข้าใช้งาน เพื่อนำเสนอเนื้อหาที่ตรงกับความสนใจของคุณ</p><p style="margin-bottom:20px;color:var(--tx2);font-size:14px">คุณสามารถเลือกยอมรับหรือปฏิเสธคุกกี้ที่ไม่จำเป็นได้ โดยการตั้งค่าเบราว์เซอร์ของคุณ</p><div class="cta-row" style="gap:12px"><button class="btn-cta cta-ln" id="cookie-accept" style="background:var(--p);">ยอมรับ</button><button class="btn-cta cta-tel" id="cookie-decline" style="background:var(--gr);">ปฏิเสธ</button></div></div></div></div>
 
 <!-- ===== COOKIE BANNER ===== -->
 <div id="cookie-banner" role="dialog" aria-label="นโยบายคุกกี้" aria-live="polite">
@@ -3470,11 +3470,11 @@ footer::after{
   </div>
 </div>
 
-<div class="ov" id="privacy-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="ov" id="privacy-modal" onclick="if(event.target===this)_closeModal('privacy-modal')">
   <div class="modal" style="max-width:640px">
     <div class="mhd">
       <h2><i class="fas fa-shield-alt" style="color:var(--p)"></i> นโยบายความเป็นส่วนตัว (Privacy Policy)</h2>
-      <span class="mclose" onclick="document.getElementById('privacy-modal').classList.remove('open')">×</span>
+      <span class="mclose" onclick="_closeModal('privacy-modal')">×</span>
     </div>
     <div class="mbody privacy-modal-body">
       <div class="highlight-box" style="margin-bottom:16px">
@@ -3564,11 +3564,11 @@ footer::after{
   </div>
 </div>
 
-<div class="ov" id="terms-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="ov" id="terms-modal" onclick="if(event.target===this)_closeModal('terms-modal')">
   <div class="modal" style="max-width:640px">
     <div class="mhd">
       <h2><i class="fas fa-file-contract" style="color:var(--p)"></i> ข้อตกลงและเงื่อนไขการใช้งาน (Terms of Service)</h2>
-      <span class="mclose" onclick="document.getElementById('terms-modal').classList.remove('open')">×</span>
+      <span class="mclose" onclick="_closeModal('terms-modal')">×</span>
     </div>
     <div class="mbody privacy-modal-body">
       <div class="highlight-box" style="margin-bottom:16px">
@@ -3654,11 +3654,11 @@ footer::after{
   </div>
 </div>
 
-<div class="ov" id="acceptable-use-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="ov" id="acceptable-use-modal" onclick="if(event.target===this)_closeModal('acceptable-use-modal')">
   <div class="modal" style="max-width:640px">
     <div class="mhd">
       <h2><i class="fas fa-check-circle" style="color:var(--g)"></i> นโยบายการใช้งานที่ยอมรับได้ (Acceptable Use Policy)</h2>
-      <span class="mclose" onclick="document.getElementById('acceptable-use-modal').classList.remove('open')">×</span>
+      <span class="mclose" onclick="_closeModal('acceptable-use-modal')">×</span>
     </div>
     <div class="mbody privacy-modal-body">
       <div class="highlight-box" style="margin-bottom:16px">
@@ -3719,11 +3719,11 @@ footer::after{
   </div>
 </div>
 
-<div class="ov" id="buysell-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="ov" id="buysell-modal" onclick="if(event.target===this)_closeModal('buysell-modal')">
   <div class="modal" style="max-width:640px">
     <div class="mhd">
       <h2><i class="fas fa-handshake" style="color:var(--a2)"></i> เงื่อนไขการซื้อ-ขายและใช้งานเว็บไซต์</h2>
-      <span class="mclose" onclick="document.getElementById('buysell-modal').classList.remove('open')">×</span>
+      <span class="mclose" onclick="_closeModal('buysell-modal')">×</span>
     </div>
     <div class="mbody privacy-modal-body">
       <div class="highlight-box" style="margin-bottom:16px">
@@ -4001,29 +4001,59 @@ function hideCookieBanner(){
   const b=document.getElementById('cookie-banner');
   if(b){ b.classList.remove('show'); setTimeout(()=>b.style.display='none',500); }
 }
+/* ══════════════════════════════════════════════════════════════
+   MODAL HELPER — ทุก modal ต้องผ่าน 2 ฟังก์ชันนี้เท่านั้น
+   _openModal(id)  → add 'open' + lock scroll
+   _closeModal(id) → remove 'open' + unlock scroll
+   ไม่มีข้อยกเว้น — ห้าม classList.add/remove('open') ตรงๆ
+   กับ modal ใดก็ตาม นอกจากผ่าน helper นี้
+══════════════════════════════════════════════════════════════ */
+function _openModal(id){
+  const m = document.getElementById(id);
+  if(!m) return;
+  m.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
+}
+function _closeModal(id){
+  const m = document.getElementById(id);
+  if(!m) return;
+  m.classList.remove('open');
+  /* unlock scroll เฉพาะเมื่อไม่มี modal อื่นเปิดอยู่ */
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open');
+  if(!stillOpen){
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+  }
+}
+function _closeModalEl(el){
+  /* ปิด modal จาก element reference แทน id */
+  if(!el) return;
+  el.classList.remove('open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open');
+  if(!stillOpen){
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+  }
+}
+
 function closeCookieModal(){
-  const m=document.getElementById('cookie-modal');
-  if(m) m.classList.remove('open');
+  _closeModal('cookie-modal');
 }
 function openCookieModal(){
-  const m=document.getElementById('cookie-modal');
-  if(m) m.classList.add('open');
+  _openModal('cookie-modal');
 }
 function openPrivacyModal(){
-  const m=document.getElementById('privacy-modal');
-  if(m) m.classList.add('open');
+  _openModal('privacy-modal');
 }
 function openTermsModal(){
-  const m=document.getElementById('terms-modal');
-  if(m) m.classList.add('open');
+  _openModal('terms-modal');
 }
 function openAcceptableUseModal(){
-  const m=document.getElementById('acceptable-use-modal');
-  if(m) m.classList.add('open');
+  _openModal('acceptable-use-modal');
 }
 function openBuySellModal(){
-  const m=document.getElementById('buysell-modal');
-  if(m) m.classList.add('open');
+  _openModal('buysell-modal');
 }
 function getAnalyticsConsent(){
   try{ const c=JSON.parse(localStorage.getItem('md_cookie_consent')||'{}'); return c.analytics===true; }
@@ -4078,8 +4108,8 @@ function initAuthListener(){
     renderAuthUI();
     updateFormBtns();
     if(_event === 'SIGNED_IN'){
-      document.getElementById('login-modal')?.classList.remove('open');
-      document.getElementById('signup-modal')?.classList.remove('open');
+      _closeModal('login-modal');
+      _closeModal('signup-modal');
       toast('เข้าสู่ระบบสำเร็จ ✅');
     }
     if(_event === 'SIGNED_OUT'){
@@ -4090,8 +4120,8 @@ function initAuthListener(){
     }
   });
 }
-function renderAuthUI(){ const el=$('auth-ui'); const elD=$('auth-ui-desktop'); let html=''; if(user){ const init=(user.email||'U')[0].toUpperCase(); html=`<div class="user-nav"><div class="user-av">${init}</div><div class="user-email">${user.email.split('@')[0]}</div><button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button></div>`; } else { html=`<button class="btn-login" onclick="$('login-modal').classList.add('open')"><i class="fas fa-sign-in-alt"></i> LogIn</button>`; } if(el)el.innerHTML=html; if(elD)elD.innerHTML=html; }
-function updateFormBtns(){ const logged=!!user; const deps=[['dep-btn','submitDep','ส่งข้อมูลฝากทรัพย์'],['wish-btn','submitWish','ส่งความต้องการ']]; deps.forEach(([id,fn,label])=>{ const b=$(id); if(!b)return; if(logged){ b.innerHTML=`<i class="fas fa-paper-plane btn-icon"></i><span class="btn-spinner"></span> ${sanitize(label)}`; b.onclick=window[fn]; } else{ b.innerHTML='<i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> เข้าสู่ระบบเพื่อส่งข้อมูล'; b.onclick=()=>$('login-modal').classList.add('open'); } }); }
+function renderAuthUI(){ const el=$('auth-ui'); const elD=$('auth-ui-desktop'); let html=''; if(user){ const init=(user.email||'U')[0].toUpperCase(); html=`<div class="user-nav"><div class="user-av">${init}</div><div class="user-email">${user.email.split('@')[0]}</div><button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button></div>`; } else { html=`<button class="btn-login" onclick="_openModal('login-modal')"><i class="fas fa-sign-in-alt"></i> LogIn</button>`; } if(el)el.innerHTML=html; if(elD)elD.innerHTML=html; }
+function updateFormBtns(){ const logged=!!user; const deps=[['dep-btn','submitDep','ส่งข้อมูลฝากทรัพย์'],['wish-btn','submitWish','ส่งความต้องการ']]; deps.forEach(([id,fn,label])=>{ const b=$(id); if(!b)return; if(logged){ b.innerHTML=`<i class="fas fa-paper-plane btn-icon"></i><span class="btn-spinner"></span> ${sanitize(label)}`; b.onclick=window[fn]; } else{ b.innerHTML='<i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> เข้าสู่ระบบเพื่อส่งข้อมูล'; b.onclick=()=>_openModal('login-modal'); } }); }
 async function loginWith(p){
   if(!sb){ toast('ระบบยังไม่ได้เชื่อมต่อ Supabase',true); return; }
   const btn = document.querySelector(`#login-modal .login-provider[onclick*="${p}"]`);
@@ -4116,7 +4146,7 @@ async function loginEmail(){
     const msg = error.message.includes('Invalid login')?'อีเมลหรือรหัสผ่านไม่ถูกต้อง':error.message;
     toast(msg,true);
   } else {
-    document.getElementById('login-modal').classList.remove('open');
+    _closeModal('login-modal');
     await checkAuth();
     toast('เข้าสู่ระบบสำเร็จ ✅');
   }
@@ -4133,15 +4163,15 @@ async function signupEmail(){
   const {error}=await sb.auth.signUp({email:e,password:p});
   if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> สมัครสมาชิก'; }
   if(error){ toast(error.message,true); }
-  else{ document.getElementById('signup-modal').classList.remove('open'); toast('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยัน ✅'); }
+  else{ _closeModal('signup-modal'); toast('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยัน ✅'); }
 }
 async function logout(){
   if(!sb) return;
   await sb.auth.signOut();
   user=null; renderAuthUI(); updateFormBtns();
 }
-function showSignup(){ $('login-modal').classList.remove('open'); $('signup-modal').classList.add('open'); }
-function showLogin(){ $('signup-modal').classList.remove('open'); $('login-modal').classList.add('open'); }
+function showSignup(){ _closeModal('login-modal'); _openModal('signup-modal'); }
+function showLogin(){ _closeModal('signup-modal'); _openModal('login-modal'); }
 
 const MOCK = {
   props: [
@@ -5997,7 +6027,7 @@ function renderFavPage(){
 function shareFavs(){ const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length)return toast('ไม่มีรายการโปรด'); const url = location.origin + '/favorites'; if(navigator.share){ navigator.share({title:'รายการโปรด Matchdoor',text:`อสังหาฯ ที่น่าสนใจ ${fp.length} รายการ`,url}); } else { navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅')); } }
 
 function openModal(id){
-  if($('all-modal').classList.contains('open')) $('all-modal').classList.remove('open');
+  if($('all-modal').classList.contains('open')) _closeModal('all-modal');
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
@@ -6281,12 +6311,12 @@ function openAllModal(type){
   else if(type==='services'){
     title=ui('modal.srv.title');
     const html=`<div class="osrv-grid">${services.map(s=>`<div class="osrv-card" onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon}"></i></div><div class="osrv-name">${ui('srv.'+s.id+'.name')||s.name}</div><div class="osrv-desc">${ui('srv.'+s.id+'.desc')||s.short_desc}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`).join('')}</div>`;
-    t.textContent=title; b.innerHTML=html; m.classList.add('open'); document.body.style.overflow='hidden'; b.scrollTop=0; return;
+    t.textContent=title; b.innerHTML=html; _openModal('all-modal'); b.scrollTop=0; return;
   }
   else if(type==='blog'){
     title=ui('modal.blog.title');
     const html=`<div class="blog-grid">${blogs.map(bg=>blogCardFull(bg)).join('')}</div>`;
-    t.textContent=title; b.innerHTML=html; m.classList.add('open'); document.body.style.overflow='hidden'; b.scrollTop=0; return;
+    t.textContent=title; b.innerHTML=html; _openModal('all-modal'); b.scrollTop=0; return;
   }
   else return;
   // For rec / new: show in modal with sort + link to full listings page
@@ -6301,13 +6331,13 @@ function openAllModal(type){
         <option value="oldest">${ui('modal.sort.old')}</option>
         <option value="alpha">${ui('modal.sort.alpha')}</option>
       </select>
-      <button onclick="document.getElementById('all-modal').classList.remove('open');showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>
+      <button onclick="_closeModal('all-modal');showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>
     </div>
   </div>`;
   window._modalTypeData = {type, data};
   t.textContent=title;
   b.innerHTML=sortHtml+`<div class="prop-grid" id="modal-prop-grid">${data.map(propCard).join('')}</div>`;
-  m.classList.add('open'); document.body.classList.add('modal-open'); document.body.style.overflow='hidden'; b.scrollTop=0;
+  _openModal('all-modal'); b.scrollTop=0;
   setTimeout(initAllCardSwipes, 50);
 }
 
@@ -6328,7 +6358,7 @@ function renderServices(){
   // keep osrv-grid if exists for compatibility
   if($('osrv-grid')) $('osrv-grid').innerHTML = services.map(s=>`<div class="osrv-card" onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon}"></i></div><div class="osrv-name">${ui('srv.'+s.id+'.name')||s.name}</div><div class="osrv-desc">${ui('srv.'+s.id+'.desc')||s.short_desc}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`).join('');
 }
-function showSrvDetail(id){ const s=services.find(x=>String(x.id)===String(id)); if(!s)return; $('srv-title2').textContent=s.name; $('srv-body').innerHTML=`<div style="text-align:center;margin-bottom:16px"><i class="fas ${s.icon}" style="font-size:52px;color:var(--p)"></i></div><p style="margin-bottom:12px;color:var(--tx2)">${s.full_desc}</p><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('srv.detail.price')}:</strong> ${ui('srv.'+s.id+'.price')||s.price}</div><div><strong>${ui('srv.detail.dur')}:</strong> ${ui('srv.'+s.id+'.dur')||s.duration}</div></div><div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> ${ui('srv.detail.chat')}</a><a class="btn-cta cta-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; $('srv-modal').classList.add('open'); }
+function showSrvDetail(id){ const s=services.find(x=>String(x.id)===String(id)); if(!s)return; $('srv-title2').textContent=s.name; $('srv-body').innerHTML=`<div style="text-align:center;margin-bottom:16px"><i class="fas ${s.icon}" style="font-size:52px;color:var(--p)"></i></div><p style="margin-bottom:12px;color:var(--tx2)">${s.full_desc}</p><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('srv.detail.price')}:</strong> ${ui('srv.'+s.id+'.price')||s.price}</div><div><strong>${ui('srv.detail.dur')}:</strong> ${ui('srv.'+s.id+'.dur')||s.duration}</div></div><div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> ${ui('srv.detail.chat')}</a><a class="btn-cta cta-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; _openModal('srv-modal'); }
 function showSrvDetailNav(id){ _silentShowPage('home',true); setTimeout(()=>{ showSrvDetail(id); scrollToEl('osrv-sec'); },60); }
 function openSrvFromDD(id){
   closeAllDD();
@@ -6407,7 +6437,7 @@ function showBlogDetail(blog){
     window.blogGoSlide = i => { blogSlideCur=i; renderBlogSlider(); };
     renderBlogSlider();
   }
-  $('blog-modal').classList.add('open');
+  _openModal('blog-modal');
 }
 
 function renderPortfolio(filter){ let list=port; if(filter!=='all'){if(filter==='SOLD'||filter==='RENTED')list=list.filter(p=>p.status===filter);else list=list.filter(p=>p.type===filter);} $('sold-cnt').textContent=port.filter(p=>p.status==='SOLD').length; $('rent-cnt').textContent=port.filter(p=>p.status==='RENTED').length; $('happy-cnt').textContent=port.length; $('port-grid').innerHTML=list.length?list.map(p=>{
@@ -6471,7 +6501,7 @@ function showPortDetail(p){
     window.portGoSlide = i => { portSlideCur=i; renderPortSlider(); };
     renderPortSlider();
   }
-  $('port-modal').classList.add('open');
+  _openModal('port-modal');
 }
 
 function renderAgents(){
@@ -6507,7 +6537,7 @@ function showAgentDetail(a){
     <div style="margin-bottom:16px">
       <div style="font-size:11px;font-weight:800;color:var(--p);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="fas fa-home" style="color:var(--a)"></i> ทรัพย์ที่ดูแล (${myProps.length} รายการ)</div>
       <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;-ms-overflow-style:none;scrollbar-width:none" class="agent-props-scroll">
-        ${myProps.map(p=>`<div class="nearby-mini-card" onclick="$('ag-modal').classList.remove('open');setTimeout(()=>openModal('${p.id}'),200)" style="flex-shrink:0;cursor:pointer">
+        ${myProps.map(p=>`<div class="nearby-mini-card" onclick="_closeModal('ag-modal');setTimeout(()=>openModal('${p.id}'),200)" style="flex-shrink:0;cursor:pointer">
           <div class="nearby-mini-img">${p.photos?.[0]?`<img src="${p.photos[0]}">`:`<span style="font-size:22px">${p.icon||typeIcon(p.type)}</span>`}</div>
           <div class="nearby-mini-body">
             <div class="nearby-mini-price">${fmtPrice(p.price,p.tx)}</div>
@@ -6518,7 +6548,7 @@ function showAgentDetail(a){
       </div>
     </div>` : '';
   $('ag-body').innerHTML=`<div style="text-align:center;margin-bottom:16px">${a.avatar_url?`<img src="${a.avatar_url}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--pastel5);box-shadow:0 4px 16px rgba(124,111,205,.2)">`:`<div style="width:100px;height:100px;border-radius:50%;background:${a.color||'#7c6fcd'};display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;margin:0 auto">${a.initials||a.name[0]}</div>`}</div><div style="text-align:center;margin-bottom:14px"><div style="font-size:18px;font-weight:700">${a.name}</div><div style="color:var(--gr)">${a.title}</div></div><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('ag.detail.phone')}:</strong> ${a.phone}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.line')}:</strong> ${a.lineId}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.props')}:</strong> ${myProps.length}</div><div><strong>${ui('ag.detail.deals')}:</strong> ${port.length}</div></div>${a.bio?`<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${a.bio}</p>`:''}${propsHtml}<div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(a.lineId)}" target="_blank"><i class="fab fa-line"></i> ${ui('cta.line')}</a><a class="btn-cta cta-tel" href="tel:${a.phone}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; 
-  $('ag-modal').classList.add('open'); 
+  _openModal('ag-modal');
 }
 
 // Sanitize: strip HTML tags to prevent XSS injection
@@ -6569,7 +6599,7 @@ async function submitDep(){
   // Cooldown check
   if(isOnCooldown('dep')) { toast('กรุณารอสักครู่ก่อนส่งอีกครั้ง', true); return; }
   // Auth check
-  if(!user){ toast('กรุณาเข้าสู่ระบบก่อนฝากทรัพย์', true); $('login-modal').classList.add('open'); return; }
+  if(!user){ toast('กรุณาเข้าสู่ระบบก่อนฝากทรัพย์', true); _openModal('login-modal'); return; }
 
   // Clear previous errors
   ['d-name','d-phone','d-price'].forEach(id=>{ const el=$(id); if(el){el.classList.remove('invalid','valid');} });
@@ -6672,7 +6702,7 @@ async function submitWish(){
   // Cooldown check
   if(isOnCooldown('wish')) { toast('กรุณารอสักครู่ก่อนส่งอีกครั้ง', true); return; }
   // Auth check
-  if(!user){ toast('กรุณาเข้าสู่ระบบก่อน', true); $('login-modal').classList.add('open'); return; }
+  if(!user){ toast('กรุณาเข้าสู่ระบบก่อน', true); _openModal('login-modal'); return; }
 
   const nameRaw = $('w-name').value.trim();
   const phoneRaw = $('w-phone').value.trim();
@@ -6989,6 +7019,7 @@ function openQsSheet(panelId, btn){
   if(overlay2) overlay2.style.display='block';
   requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
   document.body.style.overflow='hidden';
+  document.body.classList.add('modal-open');
   panel.classList.add('open');
   if(btn) btn.classList.add('qs-open');
 }
@@ -6997,8 +7028,12 @@ function closeQsSheet(){
   const overlay2 = document.getElementById('qs-mob-overlay');
   if(sheet) sheet.style.transform='translateY(100%)';
   if(overlay2) overlay2.style.display='none';
-  document.body.style.overflow='';
   closeQsDDs();
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  if(!stillOpen){
+    document.body.style.overflow='';
+    document.body.classList.remove('modal-open');
+  }
 }
 function closeQsDDs() {
   document.querySelectorAll('.qs-dd-panel.open').forEach(p => p.classList.remove('open'));
@@ -9766,17 +9801,35 @@ function applyLang(){
 function openApplyModal(type){
   closeAllDD();
   const ov = document.getElementById('apply-'+type+'-overlay');
-  if(ov){ ov.classList.add('open'); document.body.style.overflow='hidden'; }
+  if(ov){ ov.classList.add('open'); document.body.style.overflow='hidden'; document.body.classList.add('modal-open'); }
 }
 function closeApplyModal(type){
   const ov = document.getElementById('apply-'+type+'-overlay');
-  if(ov){ ov.classList.remove('open'); document.body.style.overflow=''; }
+  if(ov){ ov.classList.remove('open'); }
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  if(!stillOpen){ document.body.style.overflow=''; document.body.classList.remove('modal-open'); }
 }
 
 // Close on ESC
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){
+    // ปิด apply modals
     closeApplyModal('agent'); closeApplyModal('other');
+    // ปิด modal ทั่วไปผ่าน helper (scroll restore อัตโนมัติ)
+    ['srv-modal','blog-modal','port-modal','ag-modal',
+     'login-modal','signup-modal','cookie-modal',
+     'privacy-modal','terms-modal','acceptable-use-modal','buysell-modal',
+     'all-modal'].forEach(function(id){
+      const m = document.getElementById(id);
+      if(m && m.classList.contains('open')) _closeModal(id);
+    });
+    // ปิด prop-modal ผ่าน closeModal (มี logic พิเศษ scroll-restore)
+    const pm = document.getElementById('prop-modal');
+    if(pm && pm.classList.contains('open')) closeModal();
+    // ปิด sheet/drawer
+    closeAdvFilter();
+    closeSeoDrawer();
+    closeQsSheet();
   }
 });
 
@@ -10171,6 +10224,7 @@ function openAdvPanel(btn){
   panel.classList.add('open');
   if(desktopOverlay) desktopOverlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
   // Init bubble positions after panel is visible
   requestAnimationFrame(function(){
     ['af-land-min','af-land-max','af-area-min','af-area-max'].forEach(function(id){
@@ -10194,6 +10248,7 @@ function openAdvSheet(){
   if(sheet) sheet.classList.add('open');
   if(overlay) overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
   // Re-init range bubbles in the cloned sheet
   setTimeout(function(){
     sheetBody.querySelectorAll('input[type=range]').forEach(function(inp){
@@ -10223,7 +10278,11 @@ function closeAdvFilter(){
   if(sheet) sheet.classList.remove('open');
   if(overlay) overlay.classList.remove('open');
   if(desktopOverlay) desktopOverlay.classList.remove('open');
-  document.body.style.overflow = '';
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  if(!stillOpen){
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+  }
   document.removeEventListener('click', _advOutsideClick, true);
 }
 function advRangeUpdate(el, bubbleId, summaryId, type){
@@ -10445,13 +10504,18 @@ function openSeoDrawer(){
   if(overlay) overlay.classList.add('open');
   if(drawer) drawer.classList.add('open');
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
 }
 function closeSeoDrawer(){
   const overlay = document.getElementById('seo-drawer-overlay');
   const drawer = document.getElementById('seo-drawer');
   if(overlay) overlay.classList.remove('open');
   if(drawer) drawer.classList.remove('open');
-  document.body.style.overflow = '';
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  if(!stillOpen){
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+  }
 }
 
 function resetAdvFilter(){

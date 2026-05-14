@@ -4902,7 +4902,12 @@ window.addEventListener('popstate', function(e) {
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
         _silentShowPage(state.name, true);
-        setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+        setTimeout(function(){
+          window._listingsRenderAbort = false;
+          // FIX MOBILE: reset pending flag ด้วย เพื่อให้ render ผ่านหลัง popstate
+          _listingsRenderPending = false;
+          window._listingsRenderQueued = false;
+        }, 200);
       });
     } else {
       _silentShowPage(state.name);
@@ -5264,7 +5269,16 @@ function renderListingsPage() {
     // ถ้ามีข้อมูลแล้ว (afterLoad เรียกมา) ให้ force reset throttle แล้ว render
     const _hasProps = (typeof props !== 'undefined' && props && props.length);
     if(!_hasProps) return; // ยังไม่มีข้อมูล → skip ได้
-    _listingsRenderPending = false; // force reset เพื่อให้ render ผ่าน
+    // FIX MOBILE: อย่า skip silently — queue ไว้แทน เพราะอาจเป็น render หลัง modal ปิด
+    if(!window._listingsRenderQueued) {
+      window._listingsRenderQueued = true;
+      setTimeout(function(){
+        window._listingsRenderQueued = false;
+        _listingsRenderPending = false;
+        renderListingsPage();
+      }, 80);
+    }
+    return;
   }
   _listingsRenderPending = true;
   const _doRender = () => {
@@ -5368,16 +5382,23 @@ function renderListingsPage() {
         idle(function(){
           // ตรวจ abort — ถ้า modal กำลังเปิด/ปิดอยู่ ให้ข้ามไป
           if(window._listingsRenderAbort) {
-            // retry หลัง abort เสร็จ
-            setTimeout(function(){
-              if(!window._listingsRenderAbort && grid.children.length < FIRST_BATCH + 1) {
-                const frag = document.createDocumentFragment();
-                const tmp = document.createElement('div');
-                tmp.innerHTML = secondBatch.map(propCard).join('');
-                while(tmp.firstChild) frag.appendChild(tmp.firstChild);
-                grid.appendChild(frag);
+            // FIX MOBILE: เมื่อ abort เคลียร์แล้ว ให้ re-render ทั้งหมดแทนการ append บางส่วน
+            // เพราะ grid อาจมีแค่ firstBatch และไม่รู้ว่า abort จะเคลียร์เมื่อไหร่
+            var _retryCount = 0;
+            var _retryBatch = function() {
+              if(window._listingsRenderAbort && _retryCount < 15) {
+                _retryCount++;
+                setTimeout(_retryBatch, 100);
+                return;
               }
-            }, 300);
+              // abort เคลียร์แล้ว — re-render ทั้งหน้าเพื่อความแน่ใจ
+              if(typeof renderListingsPage === 'function') {
+                _listingsRenderPending = false;
+                window._listingsRenderQueued = false;
+                requestAnimationFrame(function(){ renderListingsPage(); });
+              }
+            };
+            setTimeout(_retryBatch, 100);
             return;
           }
           const frag = document.createDocumentFragment();
@@ -5389,7 +5410,20 @@ function renderListingsPage() {
 
           if(restBatch.length){
             idle(function(){
-              if(window._listingsRenderAbort) return;
+              if(window._listingsRenderAbort) {
+                // FIX MOBILE: retry restBatch เหมือน secondBatch
+                var _retryRest = function() {
+                  if(window._listingsRenderAbort) { setTimeout(_retryRest, 100); return; }
+                  const frag2r = document.createDocumentFragment();
+                  const tmp2r = document.createElement('div');
+                  tmp2r.innerHTML = restBatch.map(propCard).join('');
+                  while(tmp2r.firstChild) frag2r.appendChild(tmp2r.firstChild);
+                  grid.appendChild(frag2r);
+                  if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
+                };
+                setTimeout(_retryRest, 100);
+                return;
+              }
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
@@ -6175,14 +6209,41 @@ function closeModal(e){
 
     // ── scroll restore: ใช้ rAF เพื่อให้ browser paint ก่อนแล้วค่อย scroll ──
     // สำคัญมาก: ถ้า scroll ทันทีใน sync จะทำให้ iOS กระตุก
+    const _afterModalClose = function() {
+      window._listingsRenderAbort = false;
+      // ── FIX MOBILE: หลัง abort reset ให้ตรวจ listings grid ว่าโหลดครบหรือยัง ──
+      // ถ้า card ใน grid น้อยกว่าข้อมูลที่ควรแสดง (เช่น batch ถูก abort ระหว่างโหลด)
+      // ให้ force re-render ใหม่ทั้งหมด
+      const listingsPage = document.getElementById('page-listings');
+      if(listingsPage && listingsPage.classList.contains('active')) {
+        const grid = document.getElementById('listings-grid');
+        const vw = window.innerWidth;
+        const isMob = vw <= 768;
+        const isTablet = vw > 768 && vw <= 1024;
+        const FIRST_BATCH = isMob ? 4 : (isTablet ? 6 : 8);
+        // ถ้า card ที่ render ไปน้อยกว่า batch แรก หรือน้อยกว่าข้อมูลที่มี
+        const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+        const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
+          ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
+          : 0;
+        if(grid && expectedCards > 0 && renderedCards < expectedCards) {
+          // Re-render ทั้งหน้า — ต้อง reset pending ก่อน
+          _listingsRenderPending = false;
+          window._listingsRenderQueued = false;
+          if(typeof renderListingsPage === 'function') {
+            requestAnimationFrame(function(){ renderListingsPage(); });
+          }
+        }
+      }
+    };
     if(savedY > 0) {
       requestAnimationFrame(function() {
         window.scrollTo(0, savedY);
-        // reset abort flag หลัง scroll เพื่อให้ batch render ต่อได้
-        setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+        // reset abort flag หลัง scroll + ตรวจ listings grid
+        setTimeout(_afterModalClose, 200);
       });
     } else {
-      setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+      setTimeout(_afterModalClose, 200);
     }
   } 
 }

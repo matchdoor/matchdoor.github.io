@@ -4024,7 +4024,7 @@ function _closeModal(id){
   if(!m) return;
   m.classList.remove('open');
   /* unlock scroll เฉพาะเมื่อไม่มี modal อื่นเปิดอยู่ */
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.overflow = '';
     document.body.classList.remove('modal-open');
@@ -4034,7 +4034,7 @@ function _closeModalEl(el){
   /* ปิด modal จาก element reference แทน id */
   if(!el) return;
   el.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.overflow = '';
     document.body.classList.remove('modal-open');
@@ -4959,6 +4959,10 @@ function _silentShowPage(name, skipScrollTop) {
   document.body.style.left = '';
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
+  // reset render flags — ป้องกัน abort ค้างจาก modal ปิดก่อนหน้า
+  window._listingsRenderAbort = false;
+  _listingsRenderPending = false;
+  window._listingsRenderQueued = false;
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
@@ -7065,6 +7069,8 @@ function closeQsSheet(){
   const overlay2 = document.getElementById('qs-mob-overlay');
   if(sheet) sheet.style.transform='translateY(100%)';
   if(overlay2) overlay2.style.display='none';
+  // ลบ .open จาก panel ที่ openQsSheet เพิ่มไว้ เพื่อให้ stillOpen query ถูกต้อง
+  document.querySelectorAll('.qs-dd-panel.open').forEach(p => p.classList.remove('open'));
   closeQsDDs();
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
@@ -10021,11 +10027,15 @@ document.addEventListener('DOMContentLoaded', function ensureHomeVisible(){
 });
 init();
 
-// ── Emergency unlock: ถ้า body ค้าง modal-open แต่ไม่มี .ov.open จริงๆ
-// จะ auto-reset ทุก 1 วินาที (กัน edge case ทุกรูปแบบ)
+// ── Emergency unlock: ถ้า body ค้าง modal-open แต่ไม่มี modal/overlay เปิดจริงๆ
+// ครอบ .ov, [id$="-overlay"].open, apply-overlay.open และ qs-mob-sheet
 setInterval(function(){
-  const anyOpen = document.querySelector('.ov.open');
-  if(!anyOpen && document.body.classList.contains('modal-open')) {
+  const anyOpen = document.querySelector(
+    '.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open'
+  );
+  const qsSheet = document.getElementById('qs-mob-sheet');
+  const qsVisible = qsSheet && qsSheet.style.transform !== 'translateY(100%)' && qsSheet.style.transform !== '';
+  if(!anyOpen && !qsVisible && document.body.classList.contains('modal-open')) {
     document.body.style.overflow = '';
     document.body.style.position = '';
     document.body.style.top = '';

@@ -222,8 +222,8 @@ body.modal-open{
   overflow:hidden!important;
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
-/* Safety: ถ้า .ov ทุกตัวปิดหมดแล้ว ให้ body ไม่มี scroll lock เสมอ */
-body:not(:has(.ov.open)).modal-open{
+/* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
+body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)).modal-open{
   overflow:auto!important;
 }
 
@@ -262,8 +262,7 @@ body:not(:has(.ov.open)).modal-open{
   /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile */
   *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* modal overlay: ปิดทันทีบน mobile ไม่มี fade */
-  .ov{transition:none!important}
+  /* modal overlay: display:none/flex แล้ว — ไม่มี transition ค้างให้ override */
   #prop-modal .modal{transition:none!important}
   .prop-title{font-size:13px!important}
   /* Image optimization on mobile */
@@ -656,17 +655,19 @@ nav{
 
 .ov{
   position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;
-  display:flex;align-items:center;justify-content:center;padding:16px;
+  /* display:none — ไม่มี layout box → ไม่ block touch บน iOS/Android */
+  display:none;
+  align-items:center;justify-content:center;padding:16px;
   -webkit-tap-highlight-color:transparent;
-  /* ใช้ visibility+opacity แทน display:none/flex เพื่อหลีกเลี่ยง layout recalc บน iOS */
-  visibility:hidden;opacity:0;pointer-events:none;
-  transition:opacity .15s,visibility .15s;
-  /* iOS safe */
+  /* iOS safe scroll */
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
   overscroll-behavior-y:contain;
 }
-.ov.open{visibility:visible;opacity:1;pointer-events:auto}
+.ov.open{
+  display:flex;
+  pointer-events:auto;
+}
 /* iOS Safari: ต้องใช้ isolation:isolate เพื่อป้องกัน z-index stacking context ค้าง */
 #prop-modal.open{z-index:3300;isolation:isolate}
 #ag-modal.open{z-index:3400;isolation:isolate}
@@ -4016,8 +4017,7 @@ function _openModal(id){
   const m = document.getElementById(id);
   if(!m) return;
   m.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.body.classList.add('modal-open');
+  document.body.classList.add('modal-open'); // overflow:hidden via CSS .modal-open
 }
 function _closeModal(id){
   const m = document.getElementById(id);
@@ -4026,7 +4026,7 @@ function _closeModal(id){
   /* unlock scroll เฉพาะเมื่อไม่มี modal อื่นเปิดอยู่ */
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
-    document.body.style.overflow = '';
+    document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
   }
 }
@@ -4036,7 +4036,7 @@ function _closeModalEl(el){
   el.classList.remove('open');
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
-    document.body.style.overflow = '';
+    document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
   }
 }
@@ -4477,13 +4477,7 @@ function afterLoad(){
       // หรือ page ที่ active ไม่ใช่ที่ถูกต้อง → force navigate
       if(typeof _silentShowPage === 'function') {
         _silentShowPage(targetPage);
-        // _silentShowPage เรียก renderListingsPage อยู่แล้วถ้า _listingsDataReady=true
-        // แต่ให้ call เองด้วยเพื่อป้องกัน edge case
-        if(targetPage === 'listings') {
-          setTimeout(function() {
-            if(typeof renderListingsPage === 'function') renderListingsPage();
-          }, 30);
-        }
+        // _silentShowPage เรียก renderListingsPage อยู่แล้วใน name==='listings' path
       }
     }
   }, 50);
@@ -4924,11 +4918,11 @@ window.addEventListener('popstate', function(e) {
       const savedY = document.body._savedScrollY || 0;
       document.body._savedScrollY = 0;
       // restore scroll lock ก่อน remove modal
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.left = '';
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('top');
+      document.body.style.removeProperty('width');
+      document.body.style.removeProperty('left');
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
@@ -4952,11 +4946,11 @@ window.addEventListener('popstate', function(e) {
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
   // คืน body scroll เสมอ — ปลอดภัยสำหรับทุก device
-  document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  document.body.style.left = '';
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('position');
+  document.body.style.removeProperty('top');
+  document.body.style.removeProperty('width');
+  document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
   // reset render flags — ป้องกัน abort ค้างจาก modal ปิดก่อนหน้า
@@ -5301,12 +5295,8 @@ function listingsSortChange() {
 }
 
 function renderListingsPage() {
-  // ── throttle: ป้องกัน render ซ้อนกัน (เช่น filter + scroll เร็วๆ) ──
+  // ── debounce: ถ้ากำลัง render อยู่แล้ว (pending) ให้ queue ครั้งเดียวเท่านั้น ──
   if(_listingsRenderPending) {
-    // ถ้ามีข้อมูลแล้ว (afterLoad เรียกมา) ให้ force reset throttle แล้ว render
-    const _hasProps = (typeof props !== 'undefined' && props && props.length);
-    if(!_hasProps) return; // ยังไม่มีข้อมูล → skip ได้
-    // FIX MOBILE: อย่า skip silently — queue ไว้แทน เพราะอาจเป็น render หลัง modal ปิด
     if(!window._listingsRenderQueued) {
       window._listingsRenderQueued = true;
       setTimeout(function(){
@@ -5331,6 +5321,8 @@ function renderListingsPage() {
     if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
       grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
     }
+    // reset pending ก่อน retry — ป้องกัน throttle block
+    _listingsRenderPending = false;
     setTimeout(renderListingsPage, 300);
     return;
   }
@@ -5417,27 +5409,7 @@ function renderListingsPage() {
 
       if(secondBatch.length){
         idle(function(){
-          // ตรวจ abort — ถ้า modal กำลังเปิด/ปิดอยู่ ให้ข้ามไป
-          if(window._listingsRenderAbort) {
-            // FIX MOBILE: เมื่อ abort เคลียร์แล้ว ให้ re-render ทั้งหมดแทนการ append บางส่วน
-            // เพราะ grid อาจมีแค่ firstBatch และไม่รู้ว่า abort จะเคลียร์เมื่อไหร่
-            var _retryCount = 0;
-            var _retryBatch = function() {
-              if(window._listingsRenderAbort && _retryCount < 15) {
-                _retryCount++;
-                setTimeout(_retryBatch, 100);
-                return;
-              }
-              // abort เคลียร์แล้ว — re-render ทั้งหน้าเพื่อความแน่ใจ
-              if(typeof renderListingsPage === 'function') {
-                _listingsRenderPending = false;
-                window._listingsRenderQueued = false;
-                requestAnimationFrame(function(){ renderListingsPage(); });
-              }
-            };
-            setTimeout(_retryBatch, 100);
-            return;
-          }
+          if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
@@ -5447,20 +5419,7 @@ function renderListingsPage() {
 
           if(restBatch.length){
             idle(function(){
-              if(window._listingsRenderAbort) {
-                // FIX MOBILE: retry restBatch เหมือน secondBatch
-                var _retryRest = function() {
-                  if(window._listingsRenderAbort) { setTimeout(_retryRest, 100); return; }
-                  const frag2r = document.createDocumentFragment();
-                  const tmp2r = document.createElement('div');
-                  tmp2r.innerHTML = restBatch.map(propCard).join('');
-                  while(tmp2r.firstChild) frag2r.appendChild(tmp2r.firstChild);
-                  grid.appendChild(frag2r);
-                  if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
-                };
-                setTimeout(_retryRest, 100);
-                return;
-              }
+              if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
@@ -6062,8 +6021,7 @@ function openModal(id){
   // เมื่อ remove position:fixed จะ trigger full layout recalc → หน้าค้าง
   const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
-  document.body.style.overflow = 'hidden';
-  // ห้ามตั้ง position, top, left, width บน body ใดๆ ทั้งสิ้น
+  // overflow:hidden ผ่าน CSS class modal-open เท่านั้น — ห้ามใช้ inline style
   document.body.classList.add('modal-open');
 
   // scroll modal กลับบนสุด
@@ -6225,11 +6183,11 @@ function closeModal(e){
 
   // Safety net: ถ้า modal ไม่ได้ open อยู่ ให้ reset lock ทุกอย่างแล้วออก
   if(!modal.classList.contains('open')) {
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.left = '';
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('position');
+    document.body.style.removeProperty('top');
+    document.body.style.removeProperty('width');
+    document.body.style.removeProperty('left');
     document.body.classList.remove('modal-open');
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
@@ -6248,16 +6206,16 @@ function closeModal(e){
   document.body._savedScrollY = 0;
 
   // unlock scroll และปิด modal ใน 1 ชุดคำสั่ง
-  document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  document.body.style.left = '';
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('position');
+  document.body.style.removeProperty('top');
+  document.body.style.removeProperty('width');
+  document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid
+  // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid ว่าโหลดครบไหม
   const _afterModalClose = function() {
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
@@ -6269,10 +6227,9 @@ function closeModal(e){
       const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
         ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
         : 0;
-      if(grid && expectedCards > 0 && renderedCards < expectedCards) {
-        if(typeof renderListingsPage === 'function') {
-          requestAnimationFrame(function(){ renderListingsPage(); });
-        }
+      // re-render เฉพาะเมื่อ card ขาดจริงๆ (batch ถูก abort) และไม่มี render ค้างอยู่
+      if(grid && expectedCards > 0 && renderedCards < expectedCards && !_listingsRenderPending) {
+        requestAnimationFrame(function(){ renderListingsPage(); });
       }
     }
   };
@@ -7059,7 +7016,7 @@ function openQsSheet(panelId, btn){
   if(body) body.innerHTML = panel.innerHTML;
   if(overlay2) overlay2.style.display='block';
   requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
-  document.body.style.overflow='hidden';
+  document.body.classList.add('modal-open'); // overflow via CSS
   document.body.classList.add('modal-open');
   panel.classList.add('open');
   if(btn) btn.classList.add('qs-open');
@@ -7074,7 +7031,7 @@ function closeQsSheet(){
   closeQsDDs();
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
-    document.body.style.overflow='';
+    document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
   }
 }
@@ -9845,13 +9802,13 @@ function applyLang(){
 function openApplyModal(type){
   closeAllDD();
   const ov = document.getElementById('apply-'+type+'-overlay');
-  if(ov){ ov.classList.add('open'); document.body.style.overflow='hidden'; document.body.classList.add('modal-open'); }
+  if(ov){ ov.classList.add('open'); document.body.classList.add('modal-open'); }
 }
 function closeApplyModal(type){
   const ov = document.getElementById('apply-'+type+'-overlay');
   if(ov){ ov.classList.remove('open'); }
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
-  if(!stillOpen){ document.body.style.overflow=''; document.body.classList.remove('modal-open'); }
+  if(!stillOpen){ document.body.style.removeProperty('overflow'); document.body.classList.remove('modal-open'); }
 }
 
 // Close on ESC
@@ -9984,7 +9941,7 @@ function submitApply(type){
   const ok = document.getElementById('apply-'+(type==='agent'?'agent':'other')+'-ok');
   if(content) content.style.display='none';
   if(ok) ok.style.display='block';
-  document.body.style.overflow='';
+  document.body.style.removeProperty('overflow');
   showToast('✅ ส่งใบสมัครสำเร็จ!');
 }
 
@@ -10036,11 +9993,11 @@ setInterval(function(){
   const qsSheet = document.getElementById('qs-mob-sheet');
   const qsVisible = qsSheet && qsSheet.style.transform !== 'translateY(100%)' && qsSheet.style.transform !== '';
   if(!anyOpen && !qsVisible && document.body.classList.contains('modal-open')) {
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.left = '';
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('position');
+    document.body.style.removeProperty('top');
+    document.body.style.removeProperty('width');
+    document.body.style.removeProperty('left');
     document.body.classList.remove('modal-open');
     if(window._listingsRenderAbort) {
       window._listingsRenderAbort = false;
@@ -10290,8 +10247,7 @@ function openAdvPanel(btn){
   // Center popup — no positioning needed (CSS handles it)
   panel.classList.add('open');
   if(desktopOverlay) desktopOverlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.body.classList.add('modal-open');
+  document.body.classList.add('modal-open'); // overflow:hidden via CSS .modal-open
   // Init bubble positions after panel is visible
   requestAnimationFrame(function(){
     ['af-land-min','af-land-max','af-area-min','af-area-max'].forEach(function(id){
@@ -10314,8 +10270,7 @@ function openAdvSheet(){
   if(panelBody && sheetBody) sheetBody.innerHTML = panelBody.innerHTML;
   if(sheet) sheet.classList.add('open');
   if(overlay) overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.body.classList.add('modal-open');
+  document.body.classList.add('modal-open'); // overflow:hidden via CSS .modal-open
   // Re-init range bubbles in the cloned sheet
   setTimeout(function(){
     sheetBody.querySelectorAll('input[type=range]').forEach(function(inp){
@@ -10347,7 +10302,7 @@ function closeAdvFilter(){
   if(desktopOverlay) desktopOverlay.classList.remove('open');
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
-    document.body.style.overflow = '';
+    document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
   }
   document.removeEventListener('click', _advOutsideClick, true);
@@ -10570,8 +10525,7 @@ function openSeoDrawer(){
   }
   if(overlay) overlay.classList.add('open');
   if(drawer) drawer.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.body.classList.add('modal-open');
+  document.body.classList.add('modal-open'); // overflow:hidden via CSS .modal-open
 }
 function closeSeoDrawer(){
   const overlay = document.getElementById('seo-drawer-overlay');
@@ -10580,7 +10534,7 @@ function closeSeoDrawer(){
   if(drawer) drawer.classList.remove('open');
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
-    document.body.style.overflow = '';
+    document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
   }
 }

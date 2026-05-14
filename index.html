@@ -223,7 +223,7 @@ body.modal-open{
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
 /* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
-body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)).modal-open{
+body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
   overflow:auto!important;
 }
 
@@ -258,6 +258,14 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
     -webkit-overflow-scrolling:touch!important;
     overscroll-behavior:contain!important;
     overscroll-behavior-y:contain!important;
+  }
+  /* ป้องกัน iOS freeze เมื่อ modal ปิด — isolate stacking context */
+  #prop-modal{
+    will-change:auto;
+    isolation:isolate;
+  }
+  #prop-modal.open .modal{
+    will-change:transform;
   }
   /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile */
   *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
@@ -830,8 +838,8 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .page{display:none}
 .page.active{display:block}
 
-.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}.hero-banner-img{position:absolute;bottom:0;left:0;width:100%;height:auto;max-height:100%;object-fit:fill;z-index:0;opacity:0;pointer-events:none;filter:blur(0px);mix-blend-mode:screen;}
-@media(max-width:768px){.hero-banner-img{width:100%;height:100%;object-fit:cover;object-position:center 60%;mix-blend-mode:screen;}}
+.hero{background:#080E1D;padding:60px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden}.hero-banner-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;opacity:0;pointer-events:none;filter:blur(0px);}
+@media(max-width:768px){.hero-banner-img{width:100%;height:100%;object-fit:cover;object-position:center 60%;}}
 .hero-bg-clip{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 #hero-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .hero-content{position:relative;z-index:2;padding-bottom:20px}
@@ -2724,7 +2732,7 @@ footer::after{
 <!-- ===== HOME PAGE ===== -->
 <div class="page" id="page-home">
  <section class="hero">
-    <img class="hero-banner-img" src="" alt="" aria-hidden="true" style="display:none">
+    <img class="hero-banner-img" src="" alt="" loading="lazy" aria-hidden="true" style="display:none">
   <div class="hero-bg-clip"><canvas id="hero-canvas"></canvas></div>
   <div class="hero-content">
   <div class="hero-badge"><i class="fas fa-door-open"></i> <span data-i18n="hero.badge">แพลตฟอร์มอสังหาฯ ที่คุณไว้วางใจ ✨</span></div>
@@ -3228,7 +3236,7 @@ footer::after{
        <div class="footer-logo-icon-wrap">
         <div class="logo-img-wrap" style="width:52px;height:52px">
          <div class="logo-door-glow"></div>
-         <img class="logo-img-base" src="LogoWeb.webp" alt="matchdoor logo" style="opacity:1;visibility:visible">
+         <img class="logo-img-base" src="LogoWeb.webp" alt="matchdoor logo" loading="lazy" style="opacity:1;visibility:visible">
          <svg class="logo-cat-walk" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg">
            <ellipse cx="10" cy="13" rx="6" ry="4" fill="rgba(255,255,255,0.95)"/>
            <circle cx="16" cy="9" r="5" fill="rgba(255,255,255,0.95)"/>
@@ -3806,7 +3814,7 @@ footer::after{
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="background:linear-gradient(135deg,#7c6fcd,#f093fb);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700">กำลังโหลด... ✨</div></div>
 
-<script>
+<script defer>
 // ⚠️ SECURITY: ต้องเปิด Row Level Security (RLS) ใน Supabase ก่อน deploy จริง
 // ⚠️ ห้ามใส่ SERVICE ROLE KEY ที่นี่เด็ดขาด — ใช้เฉพาะ anon key เท่านั้น
 // 🔧 จุด CONFIG ทั้งหมด — แก้ไขตรงนี้ที่เดียว
@@ -3863,10 +3871,11 @@ async function loadSystemImages() {
     // Banner hero background — ใช้ไฟล์ local
     document.querySelectorAll('.hero-banner-img').forEach(el => {
       el.src = '/bannerWeb.webp';
-      // บนมือถือไม่มี canvas overlay → ใช้ opacity สูงกว่า desktop เพื่อให้เห็นภาพชัด
+      // บนมือถือ: canvas ปิดอยู่ → ใช้ img tag แสดงภาพแทน
+      // บน desktop: canvas วาดภาพเองแล้ว → ซ่อน img tag ไว้ (opacity 0)
       const isMobile = window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
-      el.style.opacity = isMobile ? '0.55' : String(C.IMG_BANNER_OPACITY || 0.18);
-      el.style.display = 'block';
+      el.style.opacity = isMobile ? '0.72' : '0';
+      el.style.display = isMobile ? 'block' : 'none';
     });
   } catch(e) {
     console.warn('[loadSystemImages]', e);
@@ -4385,7 +4394,7 @@ async function loadData(){
             loadLegalPages().catch(e=>console.warn('[loadLegalPages]',e));
             console.log('✅ Background data loaded');
           } catch(e){ console.warn('[background load]',e); }
-        }, 1200); // เริ่ม background load หลัง 1.2s (ให้ first render เสร็จก่อน)
+        }, 400); // เริ่ม background load หลัง 400ms (ให้ first render เสร็จก่อน)
         return; // ออกจาก loadData — afterLoad ถูกเรียกแล้ว
       }
     } catch(e){ console.error('[loadData error]',e); useMock=true; }
@@ -4460,7 +4469,6 @@ function afterLoad(){
   window._listingsDataReady = true;
 
   // render page ที่ถูกต้องหลังข้อมูลโหลดเสร็จ
-  // timeout เล็กน้อยเพื่อให้ DOMContentLoaded listeners (initRouter, ensureHomeVisible) ทำงานก่อน
   setTimeout(function() {
     var sectionMap = {
       '/listings': 'listings', '/agents': 'agents',
@@ -4470,16 +4478,18 @@ function afterLoad(){
     var ap = document.querySelector('.page.active');
 
     if(ap && ap.id === 'page-listings') {
-      // หน้า listings active อยู่แล้ว (จาก initRouter) → render grid ทันที
+      // หน้า listings active อยู่แล้ว → render ทันที
+      if(typeof renderListingsPage === 'function') renderListingsPage();
+    } else if(window._pendingListingsRender) {
+      // showPage('listings') ถูกเรียกก่อนข้อมูลพร้อม → render ตอนนี้
+      window._pendingListingsRender = false;
       if(typeof renderListingsPage === 'function') renderListingsPage();
     } else if(targetPage) {
-      // initRouter ยังไม่ได้ activate page (เช่น DOM ยังไม่พร้อมตอน initRouter รัน)
-      // หรือ page ที่ active ไม่ใช่ที่ถูกต้อง → force navigate
       if(typeof _silentShowPage === 'function') {
         _silentShowPage(targetPage);
-        // _silentShowPage เรียก renderListingsPage อยู่แล้วใน name==='listings' path
       }
     }
+    window._pendingListingsRender = false;
   }, 50);
 }
 
@@ -4911,8 +4921,12 @@ window.addEventListener('popstate', function(e) {
     // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      // abort pending renders ก่อน
+      // bump generation ทันที + abort pending renders
+      if(typeof window._listingsRenderGen !== 'undefined') {
+        window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+      }
       window._listingsRenderAbort = true;
+      window._listingsBatchInFlight = false;
       if (typeof close360 === 'function') close360();
       // อ่าน savedY ก่อน clear
       const savedY = document.body._savedScrollY || 0;
@@ -4926,7 +4940,7 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // scroll restore + show page ใน rAF
+      // scroll restore + show page ใน rAF — รอ 200ms ให้ batch abort ก่อน
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
         _silentShowPage(state.name, true);
@@ -4934,7 +4948,8 @@ window.addEventListener('popstate', function(e) {
           window._listingsRenderAbort = false;
           _listingsRenderPending = false;
           window._listingsRenderQueued = false;
-        }, 150);
+          window._listingsBatchInFlight = false;
+        }, 80);
       });
     } else {
       _silentShowPage(state.name);
@@ -4953,10 +4968,14 @@ function _silentShowPage(name, skipScrollTop) {
   document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
-  // reset render flags — ป้องกัน abort ค้างจาก modal ปิดก่อนหน้า
+  // bump generation + reset render flags — ป้องกัน abort ค้างและ batch stale จาก modal ก่อนหน้า
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
   window._listingsRenderAbort = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
+  window._listingsBatchInFlight = false;
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
@@ -4978,10 +4997,14 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    window._lsSeoSidebarRendered = false; // reset เพื่อให้ re-render sidebar เมื่อเข้าหน้าใหม่
-    // ถ้า _listingsDataReady === false แสดงว่าข้อมูลยังไม่โหลด → afterLoad() จะ render แทน
-    // ถ้า _listingsDataReady === true แสดงว่าเปิดหน้า listings ปกติ (ไม่ใช่ refresh) → render ทันที
-    if(window._listingsDataReady && typeof renderListingsPage === 'function') renderListingsPage();
+    window._lsSeoSidebarRendered = false;
+    // ถ้า _listingsDataReady → render ทันที
+    // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
+    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
+      renderListingsPage();
+    } else {
+      window._pendingListingsRender = true;
+    }
     if(typeof renderListingsSeoSidebar === 'function'){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
       idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
@@ -5294,6 +5317,10 @@ function listingsSortChange() {
   renderListingsPage();
 }
 
+// render generation counter — เพิ่มทุกครั้งที่ render ใหม่เริ่ม
+// batch idle ที่ค้างจาก render เก่าจะตรวจ generation ก่อน append
+if(typeof window._listingsRenderGen === 'undefined') window._listingsRenderGen = 0;
+
 function renderListingsPage() {
   // ── debounce: ถ้ากำลัง render อยู่แล้ว (pending) ให้ queue ครั้งเดียวเท่านั้น ──
   if(_listingsRenderPending) {
@@ -5308,8 +5335,12 @@ function renderListingsPage() {
     return;
   }
   _listingsRenderPending = true;
+  // เพิ่ม generation ทุกครั้ง — batch idle เก่าจะ abort ตัวเองทันที
+  window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  const _myGen = window._listingsRenderGen;
   const _doRender = () => {
   _listingsRenderPending = false;
+  window._listingsBatchInFlight = false; // reset ก่อนทุก render — ป้องกันค่าค้างจาก render ก่อน
 
   // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
   const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
@@ -5396,9 +5427,9 @@ function renderListingsPage() {
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
       // render batch แรกทันที (sync) — ให้ first paint เร็ว
+      // ไม่เรียก initAllCardSwipes หลัง batch แรก — MutationObserver จัดการแทน
+      // เรียกครั้งเดียวหลัง batch สุดท้ายเท่านั้น เพื่อไม่ block main thread ซ้ำ
       grid.innerHTML = firstBatch.map(propCard).join('');
-      // init swipe เฉพาะใน grid (scoped) — ไม่ query ทั้งเพจ
-      if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
 
       // batch ถัดไป: ใช้ idle callback ป้องกัน main thread block
       // delay มากขึ้นบน mobile/tablet เพื่อให้ first paint smooth
@@ -5408,25 +5439,34 @@ function renderListingsPage() {
         : function(cb){ setTimeout(cb, idleDelay); };
 
       if(secondBatch.length){
+        window._listingsBatchInFlight = true;
         idle(function(){
-          if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
+          if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
           while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+          if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
           grid.appendChild(frag);
-          if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
+          // ไม่เรียก initAllCardSwipes ตรงนี้ — MutationObserver จัดการแทน
 
           if(restBatch.length){
             idle(function(){
-              if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
+              if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
               while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
+              if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
               grid.appendChild(frag2);
-              if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
+              // เรียก initAllCardSwipes ครั้งเดียวหลัง batch สุดท้ายเสร็จ
+              if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ if(window._listingsRenderGen===_myGen) initAllCardSwipes(grid); });
+              window._listingsBatchInFlight = false;
             });
+          } else {
+            // ไม่มี restBatch → เรียก initAllCardSwipes หลัง secondBatch แทน
+            if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ if(window._listingsRenderGen===_myGen) initAllCardSwipes(grid); });
+            window._listingsBatchInFlight = false;
           }
         });
       }
@@ -5481,8 +5521,8 @@ function renderListingsPage() {
           </div>
         </div>`;
     }
-    // init swipe สำหรับ batch แรก (ถ้ายังไม่ได้ init ใน batch แยก)
-    if(pageData.length <= 4) setTimeout(initAllCardSwipes, 80);
+    // init swipe สำหรับ batch แรก (ถ้าไม่มี secondBatch/restBatch)
+    if(pageData.length <= 4) setTimeout(function(){ if(typeof initAllCardSwipes==='function') initAllCardSwipes(grid); }, 80);
   }
   // scroll ขึ้นเฉพาะกรณีเปลี่ยนหน้า (ไม่ใช่ filter ใหม่บนหน้าเดิม)
   if(window._listingsScrollOnRender){
@@ -5977,7 +6017,7 @@ function clearFavs(){
   toast('ล้างรายการโปรดแล้ว ❤️');
 }
 function updateFavUI(){ const c=favs.length;$('fav-badge').textContent=c;$('fav-count-pill').textContent=c; }
-function renderFavDropdown(){ const el=$('fav-list'); const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length){el.innerHTML='<div class="fav-empty"><i class="far fa-heart"></i><p>ยังไม่มีรายการโปรด</p></div>';return;} el.innerHTML=fp.slice(0,5).map(p=>`<div class="fav-item" onclick="openModal('${p.id}');closeAllDD()"><div class="fav-img">${p.photos?.[0]?`<img src="${p.photos[0]}">`:(p.icon||typeIcon(p.type))}</div><div class="fav-info"><div class="fav-title">${p.title}</div><div class="fav-loc"><i class="fas fa-map-marker-alt"></i> ${p.location}</div><div class="fav-price">${fmtPrice(p.price,p.tx)}</div></div><div class="fav-rm" onclick="event.stopPropagation();toggleFav('${p.id}')"><i class="fas fa-times"></i></div></div>`).join(''); if(fp.length>5)el.innerHTML+=`<div style="text-align:center;padding:10px;color:var(--gr);font-size:12px">และอีก ${fp.length-5} รายการ</div>`; }
+function renderFavDropdown(){ const el=$('fav-list'); const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length){el.innerHTML='<div class="fav-empty"><i class="far fa-heart"></i><p>ยังไม่มีรายการโปรด</p></div>';return;} el.innerHTML=fp.slice(0,5).map(p=>`<div class="fav-item" onclick="openModal('${p.id}');closeAllDD()"><div class="fav-img">${p.photos?.[0]?`<img src="${p.photos[0]}" loading="lazy">`:(p.icon||typeIcon(p.type))}</div><div class="fav-info"><div class="fav-title">${p.title}</div><div class="fav-loc"><i class="fas fa-map-marker-alt"></i> ${p.location}</div><div class="fav-price">${fmtPrice(p.price,p.tx)}</div></div><div class="fav-rm" onclick="event.stopPropagation();toggleFav('${p.id}')"><i class="fas fa-times"></i></div></div>`).join(''); if(fp.length>5)el.innerHTML+=`<div style="text-align:center;padding:10px;color:var(--gr);font-size:12px">และอีก ${fp.length-5} รายการ</div>`; }
 function animFavCounters(total, buy, rent) {
   animateCounter($('fav-total'), total, 1200);
   animateCounter($('fav-buy'),   buy,   1200);
@@ -5997,6 +6037,13 @@ function openModal(id){
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
+
+  // ── bump generation ทันที — หยุด batch idle ที่กำลัง render listings อยู่ ──
+  // (ป้องกัน batch append เข้า grid หลังจาก modal เปิดและ user กลับมาหน้า listings)
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
+  window._listingsBatchInFlight = false;
 
   // ── แสดง modal ทันทีก่อน เพื่อให้ user เห็น response ไว ──
   // clear content เก่าก่อน
@@ -6192,11 +6239,17 @@ function closeModal(e){
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
     return;
   }
 
-  // abort pending idle batch renders ก่อนทุกอย่าง
+  // ── abort pending idle batch renders ทันที — ก่อนทุกอย่าง ──
+  // เพิ่ม generation ทันที เพื่อให้ batch ที่ค้างอยู่ abort ตัวเองโดยไม่ต้องรอ flag
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
   window._listingsRenderAbort = true;
+  window._listingsBatchInFlight = false; // idle batch จะ return ทันทีเมื่อเจอ abort/generation
 
   // ปิด 360 viewer ก่อน
   if(typeof close360==='function') close360();
@@ -6216,19 +6269,24 @@ function closeModal(e){
   window._currentModalId = null;
 
   // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid ว่าโหลดครบไหม
+  // delay 80ms เพียงพอให้ idle batch เก่า abort ก่อน โดยไม่บล็อก UI นาน
   const _afterModalClose = function() {
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
     const listingsPage = document.getElementById('page-listings');
     if(listingsPage && listingsPage.classList.contains('active')) {
       const grid = document.getElementById('listings-grid');
-      const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+      // ── GUARD: ถ้ามีการ์ด visible อยู่แล้ว ไม่ต้อง re-render ──
+      // ป้องกัน race condition ที่ทำให้หน้าค้างบน mobile
+      const visibleCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+      if(visibleCards > 0) return; // การ์ดยังอยู่ครบ — ไม่ต้อง render ซ้ำ
+      // re-render เฉพาะเมื่อ card หายไปจริงๆ และไม่มี render/batch อื่น active
       const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
-        ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
+        ? Math.min(_listingsData.length - ((_listingsCurPage-1) * _listingsPerPage), _listingsPerPage)
         : 0;
-      // re-render เฉพาะเมื่อ card ขาดจริงๆ (batch ถูก abort) และไม่มี render ค้างอยู่
-      if(grid && expectedCards > 0 && renderedCards < expectedCards && !_listingsRenderPending) {
+      if(grid && expectedCards > 0 && !_listingsRenderPending && !window._listingsBatchInFlight) {
         requestAnimationFrame(function(){ renderListingsPage(); });
       }
     }
@@ -6236,10 +6294,10 @@ function closeModal(e){
   if(savedY > 0) {
     requestAnimationFrame(function() {
       window.scrollTo(0, savedY);
-      setTimeout(_afterModalClose, 150);
+      setTimeout(_afterModalClose, 80);
     });
   } else {
-    setTimeout(_afterModalClose, 150);
+    setTimeout(_afterModalClose, 80);
   }
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -6394,7 +6452,7 @@ function showBlogDetail(blog){
       const sc = $('blog-slides');
       const sd = $('blog-sdots');
       if(!sc) return;
-      sc.innerHTML = photos.map(url=>`<img src="${url}" style="width:100%;height:220px;object-fit:cover;flex-shrink:0">`).join('');
+      sc.innerHTML = photos.map((url,i)=>`<img src="${url}" loading="${i===0?'eager':'lazy'}" style="width:100%;height:220px;object-fit:cover;flex-shrink:0">`).join('');
       sd.innerHTML = photos.map((_,i)=>`<span class="dot ${i===blogSlideCur?'active':''}" onclick="blogGoSlide(${i})"></span>`).join('');
       sc.style.transform = `translateX(-${blogSlideCur*100}%)`;
     };
@@ -6458,7 +6516,7 @@ function showPortDetail(p){
       const sc2 = $('port-slides');
       const sd2 = $('port-sdots');
       if(!sc2) return;
-      sc2.innerHTML = photos.map(url=>`<img src="${url}" style="width:100%;height:220px;object-fit:cover;flex-shrink:0">`).join('');
+      sc2.innerHTML = photos.map((url,i)=>`<img src="${url}" loading="${i===0?'eager':'lazy'}" style="width:100%;height:220px;object-fit:cover;flex-shrink:0">`).join('');
       sd2.innerHTML = photos.map((_,i)=>`<span class="dot ${i===portSlideCur?'active':''}" onclick="portGoSlide(${i})"></span>`).join('');
       sc2.style.transform = `translateX(-${portSlideCur*100}%)`;
     };
@@ -6476,9 +6534,9 @@ function renderAgents(){
     let photoHtml;
     if(allPhotos.length>1){
       const uid='ag'+Math.random().toString(36).slice(2,7);
-      photoHtml=`<div class="card-slides" id="${uid}-slides">${allPhotos.map(u=>`<img class="agent-photo-full" src="${u}" style="object-position:top">`).join('')}</div><button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button><button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button>`;
+      photoHtml=`<div class="card-slides" id="${uid}-slides">${allPhotos.map((u,i)=>`<img class="agent-photo-full" src="${u}" loading="${i===0?'eager':'lazy'}" style="object-position:top">`).join('')}</div><button class="card-sarr prev" onclick="event.stopPropagation();cardSlide('${uid}',-1)"><i class="fas fa-chevron-left"></i></button><button class="card-sarr next" onclick="event.stopPropagation();cardSlide('${uid}',1)"><i class="fas fa-chevron-right"></i></button>`;
     } else if(allPhotos.length===1){
-      photoHtml=`<img class="agent-photo-full" src="${allPhotos[0]}" style="width:100%;height:100%;object-fit:cover;object-position:top">`;
+      photoHtml=`<img class="agent-photo-full" src="${allPhotos[0]}" loading="eager" style="width:100%;height:100%;object-fit:cover;object-position:top">`;
     } else {
       photoHtml=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:700;color:#fff;background:${a.color||'#7c6fcd'}">${a.initials||a.name[0]}</div>`;
     }
@@ -6503,7 +6561,7 @@ function showAgentDetail(a){
       <div style="font-size:11px;font-weight:800;color:var(--p);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="fas fa-home" style="color:var(--a)"></i> ทรัพย์ที่ดูแล (${myProps.length} รายการ)</div>
       <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;-ms-overflow-style:none;scrollbar-width:none" class="agent-props-scroll">
         ${myProps.map(p=>`<div class="nearby-mini-card" onclick="_closeModal('ag-modal');setTimeout(()=>openModal('${p.id}'),200)" style="flex-shrink:0;cursor:pointer">
-          <div class="nearby-mini-img">${p.photos?.[0]?`<img src="${p.photos[0]}">`:`<span style="font-size:22px">${p.icon||typeIcon(p.type)}</span>`}</div>
+          <div class="nearby-mini-img">${p.photos?.[0]?`<img src="${p.photos[0]}" loading="lazy">`:`<span style="font-size:22px">${p.icon||typeIcon(p.type)}</span>`}</div>
           <div class="nearby-mini-body">
             <div class="nearby-mini-price">${fmtPrice(p.price,p.tx)}</div>
             <div class="nearby-mini-title">${p.title}</div>
@@ -6512,7 +6570,7 @@ function showAgentDetail(a){
         </div>`).join('')}
       </div>
     </div>` : '';
-  $('ag-body').innerHTML=`<div style="text-align:center;margin-bottom:16px">${a.avatar_url?`<img src="${a.avatar_url}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--pastel5);box-shadow:0 4px 16px rgba(124,111,205,.2)">`:`<div style="width:100px;height:100px;border-radius:50%;background:${a.color||'#7c6fcd'};display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;margin:0 auto">${a.initials||a.name[0]}</div>`}</div><div style="text-align:center;margin-bottom:14px"><div style="font-size:18px;font-weight:700">${a.name}</div><div style="color:var(--gr)">${a.title}</div></div><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('ag.detail.phone')}:</strong> ${a.phone}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.line')}:</strong> ${a.lineId}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.props')}:</strong> ${myProps.length}</div><div><strong>${ui('ag.detail.deals')}:</strong> ${port.length}</div></div>${a.bio?`<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${a.bio}</p>`:''}${propsHtml}<div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(a.lineId)}" target="_blank"><i class="fab fa-line"></i> ${ui('cta.line')}</a><a class="btn-cta cta-tel" href="tel:${a.phone}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; 
+  $('ag-body').innerHTML=`<div style="text-align:center;margin-bottom:16px">${a.avatar_url?`<img src="${a.avatar_url}" loading="lazy" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--pastel5);box-shadow:0 4px 16px rgba(124,111,205,.2)">`:`<div style="width:100px;height:100px;border-radius:50%;background:${a.color||'#7c6fcd'};display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;margin:0 auto">${a.initials||a.name[0]}</div>`}</div><div style="text-align:center;margin-bottom:14px"><div style="font-size:18px;font-weight:700">${a.name}</div><div style="color:var(--gr)">${a.title}</div></div><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('ag.detail.phone')}:</strong> ${a.phone}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.line')}:</strong> ${a.lineId}</div><div style="margin-bottom:6px"><strong>${ui('ag.detail.props')}:</strong> ${myProps.length}</div><div><strong>${ui('ag.detail.deals')}:</strong> ${port.length}</div></div>${a.bio?`<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${a.bio}</p>`:''}${propsHtml}<div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(a.lineId)}" target="_blank"><i class="fab fa-line"></i> ${ui('cta.line')}</a><a class="btn-cta cta-tel" href="tel:${a.phone}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; 
   _openModal('ag-modal');
 }
 
@@ -7017,7 +7075,6 @@ function openQsSheet(panelId, btn){
   if(overlay2) overlay2.style.display='block';
   requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
   document.body.classList.add('modal-open'); // overflow via CSS
-  document.body.classList.add('modal-open');
   panel.classList.add('open');
   if(btn) btn.classList.add('qs-open');
 }
@@ -7029,7 +7086,7 @@ function closeQsSheet(){
   // ลบ .open จาก panel ที่ openQsSheet เพิ่มไว้ เพื่อให้ stillOpen query ถูกต้อง
   document.querySelectorAll('.qs-dd-panel.open').forEach(p => p.classList.remove('open'));
   closeQsDDs();
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .seo-drawer.open, .adv-sheet.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -7721,10 +7778,11 @@ async function renderNearbyProps(prop, container) {
       const canvasAspect = W / H;
       let dw, dh, dx, dy;
       if(canvasAspect > imgAspect) {
+        // Canvas wider than image → scale by width, center vertically (clamp so no negative offset)
         dw = W; dh = W / imgAspect; dx = 0;
-        // focus 60% down (buildings area) instead of dead center
-        dy = (H - dh) * 0.6;
+        dy = Math.min(0, (H - dh) / 2);
       } else {
+        // Canvas taller than image → scale by height, center horizontally
         dh = H; dw = H * imgAspect;
         dx = (W - dw) / 2; dy = 0;
       }
@@ -9991,7 +10049,9 @@ setInterval(function(){
     '.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open'
   );
   const qsSheet = document.getElementById('qs-mob-sheet');
-  const qsVisible = qsSheet && qsSheet.style.transform !== 'translateY(100%)' && qsSheet.style.transform !== '';
+  // qs-mob-sheet ถือว่า "open" เมื่อ translateY ไม่ใช่ 100% และ display ไม่ใช่ none
+  const qsVisible = qsSheet && qsSheet.style.display !== 'none' &&
+                    qsSheet.style.transform !== '' && qsSheet.style.transform !== 'translateY(100%)';
   if(!anyOpen && !qsVisible && document.body.classList.contains('modal-open')) {
     document.body.style.removeProperty('overflow');
     document.body.style.removeProperty('position');
@@ -9999,11 +10059,14 @@ setInterval(function(){
     document.body.style.removeProperty('width');
     document.body.style.removeProperty('left');
     document.body.classList.remove('modal-open');
-    if(window._listingsRenderAbort) {
-      window._listingsRenderAbort = false;
-      _listingsRenderPending = false;
-      window._listingsRenderQueued = false;
+    // bump generation ด้วยเพื่อ kill batch ที่ค้างอยู่
+    if(typeof window._listingsRenderGen !== 'undefined') {
+      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
     }
+    window._listingsRenderAbort = false;
+    _listingsRenderPending = false;
+    window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
   }
 }, 1000);
 
@@ -10019,7 +10082,7 @@ function renderHomePortfolio(){
     return `
     <div class="blog-card" style="min-width:255px;max-width:280px;cursor:pointer" onclick='showPortDetail(${JSON.stringify(p)})'>
       <div class="blog-thumb" style="background:${p.photo?'#eee':'linear-gradient(135deg,#1B3A6B,#3D7A55)'};position:relative;overflow:hidden">
-        ${p.photo?`<img src="${p.photo}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` :'<i class="fas fa-trophy" style="font-size:44px;color:rgba(255,255,255,.7)"></i>'}
+        ${p.photo?`<img src="${p.photo}" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` :'<i class="fas fa-trophy" style="font-size:44px;color:rgba(255,255,255,.7)"></i>'}
         <span style="position:absolute;top:10px;left:10px;background:${statusColor[p.status]||'#1B3A6B'};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">${statusLabel[p.status]||p.status}</span>
       </div>
       <div class="blog-body">
@@ -10300,7 +10363,7 @@ function closeAdvFilter(){
   if(sheet) sheet.classList.remove('open');
   if(overlay) overlay.classList.remove('open');
   if(desktopOverlay) desktopOverlay.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .seo-drawer.open, .adv-sheet.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -11667,7 +11730,7 @@ function resetAdvFilter(){
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
           <div class="ls-ac-wrap" style="position:relative;z-index:500">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
-            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
+            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,300)">
             <div class="ls-ac-list" id="ls-ac-list" style="display:none"></div>
           </div>
           <div>

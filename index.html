@@ -1213,34 +1213,105 @@ footer::after{
 .listings-main-wrap{display:grid;grid-template-columns:1fr 280px;gap:24px;max-width:1320px;margin:0 auto;padding:20px}
 .listings-seo-sidebar{min-width:0}
 
-/* Tablet: 3 col grid, sidebar stays */
+/* Tablet landscape (1100px): 3 col grid, sidebar stays */
 @media(max-width:1100px){
   .listings-grid-4{grid-template-columns:repeat(3,1fr)!important}
-}
-
-/* Tablet & mobile: 2 col grid, sidebar hidden (goes to drawer) */
-@media(max-width:1100px){
   .listings-search-sf{grid-template-columns:1fr 1fr 1fr 1fr!important}
 }
+
+/* Tablet portrait (900px): 2 col grid, sidebar hidden (goes to drawer) */
 @media(max-width:900px){
   .listings-main-wrap{grid-template-columns:1fr!important;padding:12px!important}
-  .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:10px}
+  .listings-grid-4{grid-template-columns:repeat(3,1fr)!important;gap:10px}
   .listings-seo-sidebar{display:none!important}
   .listings-search-sf{grid-template-columns:1fr 1fr 1fr!important}
 }
+
+/* Mobile large (640px): switch to 2-col filter */
 @media(max-width:640px){
-  .listings-search-sf{grid-template-columns:1fr 1fr!important}
-  #ls-kw{width:100%!important;font-size:16px!important}
-}
-/* Mobile: 2 col card grid always */
-@media(max-width:580px){
   .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px}
-  .listings-main-wrap{padding:8px!important}
   .listings-search-sf{grid-template-columns:1fr 1fr!important}
-  #ls-kw{font-size:16px!important}
+  /* keyword spans full width */
+  .listings-search-sf > div:first-child,.listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  /* search/reset buttons row */
+  .listings-search-sf > button{flex:1;min-width:0}
+  /* two buttons side by side */
+  .ls-btn-row{display:flex;gap:8px;grid-column:1/-1}
+  #ls-kw{width:100%!important;font-size:16px!important;box-sizing:border-box!important}
 }
 
-/* SEO Drawer (mobile) */
+/* Mobile (480px): compact */
+@media(max-width:480px){
+  .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:6px}
+  .listings-main-wrap{padding:6px!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr!important;gap:6px!important}
+  .listings-search-sf > div:first-child,.listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  #ls-kw{font-size:16px!important;box-sizing:border-box!important}
+  /* Shrink filter labels on very small screens */
+  .listings-search-sf label{font-size:10px!important}
+  .listings-search-sf select,.listings-search-sf input{padding:8px 10px!important;font-size:13px!important}
+  /* Map toggle — prevent it from pushing to new row alone */
+  #listings-map-toggle-btn{font-size:11px!important;padding:6px 10px!important}
+  /* TX tabs wrap tighter */
+  #ls-tab-all,#ls-tab-buy,#ls-tab-rent,#ls-tab-hot,#ls-tab-new{padding:4px 10px!important;font-size:11px!important}
+}
+
+/* ── LISTINGS MOBILE PATCHES ── */
+/* Hide scrollbar on tabs row */
+.ls-tabs-row::-webkit-scrollbar{display:none}
+.ls-tabs-row{-ms-overflow-style:none;scrollbar-width:none}
+
+/* Map button: hide text label on very small screens */
+@media(max-width:480px){
+  .ls-map-btn-label{display:none}
+  #listings-map-toggle-btn{padding:8px 10px!important}
+}
+
+/* Buttons in filter grid: on mobile become a 2-col row at bottom */
+@media(max-width:640px){
+  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
+  .ls-btn-row button{flex:1;justify-content:center}
+}
+
+/* SEO rich content grid — better on mobile */
+#listings-seo-rich-content section > div[style*="grid-template-columns"]{
+  display:grid;
+}
+@media(max-width:480px){
+  #listings-seo-rich-content section > div[style*="grid-template-columns"]{
+    grid-template-columns:1fr 1fr!important;
+    gap:10px!important;
+  }
+}
+
+/* Listings toolbar: count left, sort right — stack on mobile */
+@media(max-width:480px){
+  .listings-toolbar{flex-direction:column;align-items:flex-start!important;gap:6px!important}
+  .listings-count{font-size:13px}
+  .sort-select{font-size:12px;padding:5px 8px}
+}
+
+/* Pagination mobile: compact */
+.pagination{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:24px;padding:0 8px}
+.pg-info{width:100%;text-align:center;font-size:12px;color:var(--tx2);margin-bottom:4px}
+.pg-controls{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.pg-btn{min-width:36px;height:36px;padding:0 10px;border-radius:8px;border:1.5px solid var(--bd);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--tx);display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
+.pg-btn:hover:not(.disabled){background:var(--lt);border-color:var(--p);color:var(--p)}
+.pg-btn.active{background:var(--p);color:#fff;border-color:var(--p)}
+.pg-btn.disabled{opacity:.35;cursor:not-allowed}
+.pg-ellipsis{display:inline-flex;align-items:center;padding:0 6px;color:var(--gr);font-size:14px}
+.pg-label{display:inline}
+@media(max-width:480px){
+  .pg-btn{min-width:32px;height:32px;font-size:12px;padding:0 7px}
+  .pg-label{display:none}
+  .pg-first,.pg-last{display:none}
+}
+
+/* Advanced filter sheet mobile footer buttons — bigger touch targets */
+.adv-sheet-foot .adv-apply-btn,.adv-sheet-foot .adv-reset-btn{min-height:48px;font-size:14px}
+
+/* Transit filter on listings page */
+#ls-transit{color:#fff;background:rgba(20,40,80,.85)}
 .seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
 .seo-drawer-overlay.open{display:block}
 .seo-drawer{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);background:#fff;z-index:4001;transform:translateX(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.18)}
@@ -10121,12 +10192,30 @@ function applyAdvFilter(){
   const cnt = countAdvFilters(f);
   const badge = document.getElementById('adv-badge');
   if(badge){ badge.textContent=cnt; badge.classList.toggle('show', cnt>0); }
-  // filter the current filtered set
-  let base = [...props];
-  // apply main search box filters first
-  applyFilters().catch(()=>{});
-  setTimeout(()=>{
-    let res = [...filtered];
+
+  // ── ตรวจสอบว่าอยู่หน้า listings หรือ home ──
+  const isListingsPage = document.getElementById('page-listings')?.classList.contains('active');
+
+  if(isListingsPage){
+    // ── Listings page: filter จาก _listingsBaseData ──
+    let res = [..._listingsBaseData];
+    // apply basic filters จาก search bar ก่อน
+    const kwRaw = (document.getElementById('ls-kw')?.value||'').trim().toLowerCase();
+    const txVal = document.getElementById('ls-tx')?.value||'';
+    const typeVal = document.getElementById('ls-type')?.value||'';
+    const provVal = document.getElementById('ls-prov')?.value||'';
+    const pMin = parseInt(document.getElementById('ls-min')?.value||'0')||0;
+    const pMax = parseInt(document.getElementById('ls-max')?.value||'999000000')||999000000;
+    if(kwRaw) res=res.filter(p=>{
+      const hay=((p.title||'')+(p.location||'')+(p.province||'')+(p.desc||'')+(p.bts||'')+(p.mrt||'')).toLowerCase();
+      return hay.includes(kwRaw);
+    });
+    if(txVal) res=res.filter(p=>p.tx===txVal);
+    if(typeVal) res=res.filter(p=>p.type===typeVal);
+    if(provVal) res=res.filter(p=>p.province===provVal||p.location===provVal);
+    if(pMin>0) res=res.filter(p=>p.price>=pMin);
+    if(pMax<999000000) res=res.filter(p=>p.price<=pMax);
+    // apply advanced filters
     if(f.land_min) res=res.filter(p=>p.land_area>=f.land_min);
     if(f.land_max) res=res.filter(p=>p.land_area<=f.land_max);
     if(f.area_min) res=res.filter(p=>p.area>=f.area_min);
@@ -10140,16 +10229,43 @@ function applyAdvFilter(){
     if(f.price_min) res=res.filter(p=>p.price>=f.price_min);
     if(f.price_max) res=res.filter(p=>p.price<=f.price_max);
     if(f.province) res=res.filter(p=>(p.province||p.location||'').includes(f.province));
-    if(f.bts?.length) res=res.filter(p=>f.bts.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
-    if(f.mrt?.length) res=res.filter(p=>f.mrt.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
-    if(f.uni?.length) res=res.filter(p=>f.uni.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
-    filtered=res; allFiltered=res;
-    const rc=document.getElementById('res-count');
-    if(rc) rc.textContent=`พบ ${res.length} รายการ`;
-    if(typeof renderGrid==='function'){ renderGrid('all-grid',res.slice(0,8)); }
+    if(f.bts?.length) res=res.filter(p=>f.bts.some(s=>(p.bts||p.location||p.transit||p.desc||'').toLowerCase().includes(s.toLowerCase())));
+    if(f.mrt?.length) res=res.filter(p=>f.mrt.some(s=>(p.mrt||p.location||p.transit||p.desc||'').toLowerCase().includes(s.toLowerCase())));
+    if(f.uni?.length) res=res.filter(p=>f.uni.some(s=>(p.location||p.desc||'').toLowerCase().includes(s.toLowerCase())));
+    _listingsData = sortListings(res, document.getElementById('listings-sort')?.value||'default');
+    _listingsCurPage = 1;
     closeAdvFilter();
-    scrollToEl('all-sec');
-  }, 120);
+    renderListingsPage();
+    _scrollToListingsResults();
+  } else {
+    // ── Home page: original logic ──
+    applyFilters().catch(()=>{});
+    setTimeout(()=>{
+      let res = [...filtered];
+      if(f.land_min) res=res.filter(p=>p.land_area>=f.land_min);
+      if(f.land_max) res=res.filter(p=>p.land_area<=f.land_max);
+      if(f.area_min) res=res.filter(p=>p.area>=f.area_min);
+      if(f.area_max) res=res.filter(p=>p.area<=f.area_max);
+      if(f.beds?.length) res=res.filter(p=>f.beds.some(b=>b===4?p.bed>=4:p.bed===b));
+      if(f.baths?.length) res=res.filter(p=>f.baths.some(b=>b===4?p.bath>=4:p.bath===b));
+      if(f.parks?.length) res=res.filter(p=>f.parks.some(b=>b===3?p.parking>=3:p.parking===b));
+      if(f.furniture?.length) res=res.filter(p=>f.furniture.includes(p.furniture));
+      if(f.pets) res=res.filter(p=>p.pets_allowed);
+      if(f.appliances?.length) res=res.filter(p=>f.appliances.every(a=>p.appliances?.includes(a)));
+      if(f.price_min) res=res.filter(p=>p.price>=f.price_min);
+      if(f.price_max) res=res.filter(p=>p.price<=f.price_max);
+      if(f.province) res=res.filter(p=>(p.province||p.location||'').includes(f.province));
+      if(f.bts?.length) res=res.filter(p=>f.bts.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
+      if(f.mrt?.length) res=res.filter(p=>f.mrt.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
+      if(f.uni?.length) res=res.filter(p=>f.uni.some(s=>(p.location||p.desc||p.description||'').toLowerCase().includes(s.toLowerCase())));
+      filtered=res; allFiltered=res;
+      const rc=document.getElementById('res-count');
+      if(rc) rc.textContent=`พบ ${res.length} รายการ`;
+      if(typeof renderGrid==='function'){ renderGrid('all-grid',res.slice(0,8)); }
+      closeAdvFilter();
+      scrollToEl('all-sec');
+    }, 120);
+  }
 }
 // ===== SEO DRAWER (mobile) =====
 function openSeoDrawer(){
@@ -11298,17 +11414,17 @@ function resetAdvFilter(){
   <div style="background:linear-gradient(135deg,#0A1628 0%,#1B3A6B 60%,#0F2548 100%);padding:24px 20px 20px;position:relative;overflow:visible">
     <div style="max-width:1320px;margin:0 auto">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <button id="ls-back-btn" onclick="showPage('home')" class="back-btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fas fa-arrow-left"></i> กลับ</button>
-        <h1 id="listings-page-title" style="font-size:22px;font-weight:800;color:#fff;margin:0">ประกาศทั้งหมด</h1>
+        <button id="ls-back-btn" onclick="showPage('home')" class="back-btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0"><i class="fas fa-arrow-left"></i> กลับ</button>
+        <h1 id="listings-page-title" style="font-size:clamp(16px,4vw,22px);font-weight:800;color:#fff;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</h1>
         <!-- Map toggle button -->
-        <button id="listings-map-toggle-btn" onclick="toggleListingsMapPanel()" style="margin-left:auto;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(200,146,42,.4)"><i class="fas fa-map-marked-alt"></i> ค้นหาด้วยแผนที่</button>
+        <button id="listings-map-toggle-btn" onclick="toggleListingsMapPanel()" style="flex-shrink:0;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(200,146,42,.4)"><i class="fas fa-map-marked-alt"></i> <span class="ls-map-btn-label">ค้นหาด้วยแผนที่</span></button>
       </div>
       <!-- Search Bar -->
       <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12)">
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
           <div class="ls-ac-wrap" style="position:relative;z-index:500">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
-            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
+            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
             <div class="ls-ac-list" id="ls-ac-list" style="display:none"></div>
           </div>
           <div>
@@ -11365,18 +11481,20 @@ function resetAdvFilter(){
               <option value="100000000">100M</option>
             </select>
           </div>
+          <div class="ls-btn-row" style="display:contents">
           <button onclick="listingsDoSearchAndScroll()" style="background:var(--a);color:#1A1A2E;border:none;border-radius:9px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px"><i class="fas fa-search"></i> ค้นหา</button>
           <button onclick="listingsResetSearch()" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:9px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;height:42px" title="รีเซ็ตการค้นหา"><i class="fas fa-undo"></i> Reset</button>
+          </div>
         </div>
         <!-- Filter tags row -->
-        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <button onclick="listingsFilterTx('ALL')" id="ls-tab-all" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.18);color:#fff;cursor:pointer">ทั้งหมด</button>
-          <button onclick="listingsFilterTx('BUY')" id="ls-tab-buy" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer">🏠 ซื้อ</button>
-          <button onclick="listingsFilterTx('RENT')" id="ls-tab-rent" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer">🔑 เช่า</button>
-          <button onclick="listingsFilterHot()" id="ls-tab-hot" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,100,80,.5);background:rgba(255,100,80,.15);color:#ffb3a8;cursor:pointer">🔥 Hot</button>
-          <button onclick="listingsFilterNew()" id="ls-tab-new" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(0,200,150,.4);background:rgba(0,200,150,.12);color:#7dfcd8;cursor:pointer">✨ มาใหม่</button>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-            <button id="ls-adv-filter-btn" onclick="openListingsAdvFilter()" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(200,146,42,.6);background:rgba(200,146,42,.15);color:var(--a2);cursor:pointer;display:flex;align-items:center;gap:5px"><i class="fas fa-sliders-h"></i> Filter เพิ่มเติม</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;flex-wrap:nowrap" class="ls-tabs-row">
+          <button onclick="listingsFilterTx('ALL')" id="ls-tab-all" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;white-space:nowrap">ทั้งหมด</button>
+          <button onclick="listingsFilterTx('BUY')" id="ls-tab-buy" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;white-space:nowrap">🏠 ซื้อ</button>
+          <button onclick="listingsFilterTx('RENT')" id="ls-tab-rent" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;white-space:nowrap">🔑 เช่า</button>
+          <button onclick="listingsFilterHot()" id="ls-tab-hot" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(255,100,80,.5);background:rgba(255,100,80,.15);color:#ffb3a8;cursor:pointer;white-space:nowrap">🔥 Hot</button>
+          <button onclick="listingsFilterNew()" id="ls-tab-new" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(0,200,150,.4);background:rgba(0,200,150,.12);color:#7dfcd8;cursor:pointer;white-space:nowrap">✨ มาใหม่</button>
+          <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;margin-left:4px">
+            <button id="ls-adv-filter-btn" onclick="openListingsAdvFilter()" style="flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid rgba(200,146,42,.6);background:rgba(200,146,42,.15);color:var(--a2);cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap"><i class="fas fa-sliders-h"></i> Filter เพิ่มเติม</button>
           </div>
         </div>
       </div>

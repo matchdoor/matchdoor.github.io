@@ -223,7 +223,7 @@ body.modal-open{
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
 /* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
-body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)).modal-open{
+body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
   overflow:auto!important;
 }
 
@@ -4947,7 +4947,7 @@ window.addEventListener('popstate', function(e) {
           _listingsRenderPending = false;
           window._listingsRenderQueued = false;
           window._listingsBatchInFlight = false;
-        }, 200);
+        }, 80);
       });
     } else {
       _silentShowPage(state.name);
@@ -6262,8 +6262,7 @@ function closeModal(e){
   window._currentModalId = null;
 
   // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid ว่าโหลดครบไหม
-  // หน่วงให้นานพอที่ idle batch เก่าจะ abort ตัวเองก่อน (idle callbacks มักรันใน <16ms)
-  // ใช้ 200ms แทน 150ms เพื่อให้ requestIdleCallback ทุก batch abort สำเร็จก่อน re-render
+  // delay 80ms เพียงพอให้ idle batch เก่า abort ก่อน โดยไม่บล็อก UI นาน
   const _afterModalClose = function() {
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
@@ -6272,14 +6271,15 @@ function closeModal(e){
     const listingsPage = document.getElementById('page-listings');
     if(listingsPage && listingsPage.classList.contains('active')) {
       const grid = document.getElementById('listings-grid');
-      // ตรวจว่า grid มีการ์ดครบตาม page ปัจจุบัน
-      const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+      // ── GUARD: ถ้ามีการ์ด visible อยู่แล้ว ไม่ต้อง re-render ──
+      // ป้องกัน race condition ที่ทำให้หน้าค้างบน mobile
+      const visibleCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+      if(visibleCards > 0) return; // การ์ดยังอยู่ครบ — ไม่ต้อง render ซ้ำ
+      // re-render เฉพาะเมื่อ card หายไปจริงๆ และไม่มี render/batch อื่น active
       const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
         ? Math.min(_listingsData.length - ((_listingsCurPage-1) * _listingsPerPage), _listingsPerPage)
         : 0;
-      // re-render เฉพาะเมื่อ card ขาดจริงๆ และไม่มี render/batch อื่น active
-      if(grid && expectedCards > 0 && renderedCards < expectedCards
-         && !_listingsRenderPending && !window._listingsBatchInFlight) {
+      if(grid && expectedCards > 0 && !_listingsRenderPending && !window._listingsBatchInFlight) {
         requestAnimationFrame(function(){ renderListingsPage(); });
       }
     }
@@ -6287,10 +6287,10 @@ function closeModal(e){
   if(savedY > 0) {
     requestAnimationFrame(function() {
       window.scrollTo(0, savedY);
-      setTimeout(_afterModalClose, 200);
+      setTimeout(_afterModalClose, 80);
     });
   } else {
-    setTimeout(_afterModalClose, 200);
+    setTimeout(_afterModalClose, 80);
   }
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -7068,7 +7068,6 @@ function openQsSheet(panelId, btn){
   if(overlay2) overlay2.style.display='block';
   requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
   document.body.classList.add('modal-open'); // overflow via CSS
-  document.body.classList.add('modal-open');
   panel.classList.add('open');
   if(btn) btn.classList.add('qs-open');
 }
@@ -7080,7 +7079,7 @@ function closeQsSheet(){
   // ลบ .open จาก panel ที่ openQsSheet เพิ่มไว้ เพื่อให้ stillOpen query ถูกต้อง
   document.querySelectorAll('.qs-dd-panel.open').forEach(p => p.classList.remove('open'));
   closeQsDDs();
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .seo-drawer.open, .adv-sheet.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -10356,7 +10355,7 @@ function closeAdvFilter(){
   if(sheet) sheet.classList.remove('open');
   if(overlay) overlay.classList.remove('open');
   if(desktopOverlay) desktopOverlay.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .seo-drawer.open, .adv-sheet.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');

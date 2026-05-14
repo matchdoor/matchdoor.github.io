@@ -206,7 +206,7 @@
 <!-- Supabase: async แต่ critical — priority high เพื่อให้ browser ดึงเร็วขึ้น -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async fetchpriority="high"></script>
 <style>
-/* ══ MOBILE PERFORMANCE PATCH v3 ══════════════════════════════ */
+/* ══ MOBILE PERFORMANCE PATCH v4 — iOS Freeze Fix ══════════════ */
 /* ป้องกัน text render ช้าบน iOS — ทุก device */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* ป้องกัน 300ms tap delay ทุก interactive element */
@@ -214,9 +214,22 @@ a,button,input,select,textarea,
 .prop-card,.cat-card,.price-card,.blog-card,.gal-card,.agent-card,
 [onclick],[role="button"]{touch-action:manipulation}
 
+/* ══ FIX GLOBAL: body.modal-open สำหรับทุก device ══
+   ใช้ overflow:hidden เท่านั้น — ห้ามใช้ position:fixed บน body เด็ดขาด
+   เพราะ position:fixed บน body ทำให้ iOS/iPad ต้อง recalculate layout ทั้งหน้า
+   เมื่อ remove จะทำให้เกิด layout thrash → หน้าค้าง */
+body.modal-open{
+  overflow:hidden!important;
+  /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
+}
+
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
-@media(max-width:768px){
+@media(max-width:1024px){
+  /* ครอบ iPad ด้วย — iPad มักใช้ 768-1024px */
   *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
+
+@media(max-width:768px){
   /* ปิด animation ที่ไม่จำเป็นบน mobile */
   .door-left,.door-right,.pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
   #hero-canvas,#ph-canvas-ag,#ph-canvas-port,.page-hero-canvas{display:none!important}
@@ -224,29 +237,26 @@ a,button,input,select,textarea,
   .prop-card:hover,.price-card:hover,.cat-card:hover,
   .blog-card:hover,.gal-card:hover,.agent-card:hover,
   .osrv-card:hover{transform:none!important;box-shadow:none!important}
-  /* stat-counter-card: ปิด backdrop-filter + ลด shadow */
+  /* stat-counter-card: ลด shadow */
   .stat-counter-card{box-shadow:0 2px 8px rgba(0,0,0,.2)!important}
   /* contain: ลดพื้นที่ repaint ลดการ layout shift */
   .prop-card,.blog-card,.agent-card,.gal-card{
     contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* ══ FIX: body.modal-open — ใช้ overflow:hidden แทน position:fixed ══
-     position:fixed ทำให้ iOS ต้อง layout ใหม่ทั้งหมด → หน้าค้าง */
-  body.modal-open{
-    overflow:hidden!important;
-  }
   /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
+    overscroll-behavior-y:contain;
   }
   .adv-sheet,.seo-drawer,.qs-mob-sheet{
     -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior:contain!important
+    overscroll-behavior:contain!important;
+    overscroll-behavior-y:contain!important;
   }
-  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile — ยกเว้น .ov ที่ใช้ opacity transition */
-  *:not(.ov){transition-duration:.08s!important}
+  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile */
+  *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   /* modal overlay: ปิดทันทีบน mobile ไม่มี fade */
   .ov{transition:none!important}
@@ -259,14 +269,19 @@ a,button,input,select,textarea,
   }
   /* ป้องกัน horizontal scroll leaking */
   .page,.wrap{overflow-x:hidden}
-  /* listings grid: contain เพื่อลด repaint scope */
-  #listings-grid .prop-card{contain:layout style paint}
-  /* listings grid: contain เพื่อลด repaint scope — ลบ will-change:contents ออก
-     เพราะ will-change:contents สร้าง composite layer ขนาดใหญ่ ทำให้ browser ค้างเมื่อ
-     body ถูก remove position:fixed (modal close) และต้อง recalculate layers ใหม่ทั้งหมด */
+
+  /* ══ KEY FIX: listings-grid — ห้ามใช้ contain:layout style ══
+     contain:layout ทำให้ iOS ต้อง recalculate stacking context ใหม่
+     ทุกครั้งที่ modal ปิด → หน้าค้าง ใช้แค่ will-change:auto แทน */
   #listings-grid{
-    contain:layout style;
+    will-change:auto;
+    /* ห้ามใช้ contain:layout หรือ contain:style ใน listings-grid */
   }
+  #listings-grid .prop-card{
+    contain:style paint;
+    /* ลด contain scope — ใช้แค่ style+paint ไม่ใช่ layout */
+  }
+
   /* listings search bar: ลด GPU load บน mobile */
   #page-listings .listings-search-sf{
     grid-template-columns:1fr 1fr!important;
@@ -274,6 +289,20 @@ a,button,input,select,textarea,
   }
   #page-listings .listings-search-sf > div:first-child{
     grid-column:1/-1;
+  }
+}
+
+/* ══ iPad Fix (768-1024px) ══ */
+@media(min-width:769px) and (max-width:1024px){
+  .prop-card,.blog-card,.agent-card,.gal-card{
+    box-shadow:0 2px 12px rgba(0,0,0,.10)!important;
+  }
+  body.modal-open{
+    overflow:hidden!important;
+  }
+  .ov,.modal,.mbody{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
   }
 }
 /* ── z-index ให้เป็นระบบ (ทุก device) ────────────────────────
@@ -353,14 +382,16 @@ img{max-width:100%;height:auto}
 ::-webkit-scrollbar-thumb{background:#c5c9d6;border-radius:3px}
 
 .wrap{max-width:1320px;margin:0 auto;padding:35px 20px}
-/* ── content-visibility: auto — ให้ browser skip render sections นอก viewport ── */
+/* ── content-visibility: auto — ให้ browser skip render sections นอก viewport ──
+   หมายเหตุ: ไม่ใช้กับ listings page elements เพราะทำให้ iOS freeze หลัง modal ปิด */
 #rec-sec, #blog-sec, #price-sec, #port-sec, #agents-sec, #osrv-sec, #new-sec{
   content-visibility:auto;
   contain-intrinsic-size:0 500px;
 }
-/* listings page — sidebar ไม่จำเป็นต้อง render ก่อน */
+/* listings page — ห้ามใช้ content-visibility กับ sidebar บน iOS/iPad
+   เพราะเมื่อ modal ปิด browser ต้อง re-evaluate visibility → freeze */
 .listings-seo-sidebar{
-  content-visibility:auto;
+  /* content-visibility ถูก remove เพื่อป้องกัน iOS freeze */
   contain-intrinsic-size:0 400px;
 }
 .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
@@ -626,11 +657,25 @@ nav{
   /* ใช้ visibility+opacity แทน display:none/flex เพื่อหลีกเลี่ยง layout recalc บน iOS */
   visibility:hidden;opacity:0;pointer-events:none;
   transition:opacity .15s,visibility .15s;
+  /* iOS safe */
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  overscroll-behavior-y:contain;
 }
 .ov.open{visibility:visible;opacity:1;pointer-events:auto}
-#prop-modal.open{z-index:3300}
-#ag-modal.open{z-index:3400}
-.modal{background:#fff;border-radius:var(--rl);max-width:550px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* iOS Safari: ต้องใช้ isolation:isolate เพื่อป้องกัน z-index stacking context ค้าง */
+#prop-modal.open{z-index:3300;isolation:isolate}
+#ag-modal.open{z-index:3400;isolation:isolate}
+.modal{
+  background:#fff;border-radius:var(--rl);
+  max-width:550px;width:100%;
+  max-height:90vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  overscroll-behavior-y:contain;
+  /* ป้องกัน content-visibility conflict บน iOS */
+  will-change:auto;
+}
 /* modal wide ยังคงไว้สำหรับ all-modal และอื่นๆ ที่ต้องการกว้าง */
 .modal.wide{max-width:1000px;width:95vw;max-height:92vh}
 .mhd{padding:16px 20px;border-bottom:1.5px solid var(--lt);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10}
@@ -4838,22 +4883,27 @@ window.addEventListener('popstate', function(e) {
     // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      propModal.classList.remove('open');
+      // abort pending renders ก่อน
+      window._listingsRenderAbort = true;
+      if (typeof close360 === 'function') close360();
+      // อ่าน savedY ก่อน clear
       const savedY = document.body._savedScrollY || 0;
-      document.body.classList.remove('modal-open');
+      document.body._savedScrollY = 0;
+      // restore scroll lock ก่อน remove modal
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.left = '';
-      document.body._savedScrollY = 0;
-      window._listingsRenderAbort = true;
-      setTimeout(() => { window._listingsRenderAbort = false; }, 300);
-      window.scrollTo(0, savedY);
+      document.body.classList.remove('modal-open');
+      propModal.classList.remove('open');
       window._currentModalId = null;
-      if (typeof close360 === 'function') close360();
-      // แสดงหน้าที่ถูกต้องโดยไม่ push history ใหม่
-      _silentShowPage(state.name, true);
+      // scroll restore + show page ใน rAF
+      requestAnimationFrame(function() {
+        if(savedY > 0) window.scrollTo(0, savedY);
+        _silentShowPage(state.name, true);
+        setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+      });
     } else {
       _silentShowPage(state.name);
     }
@@ -4863,7 +4913,7 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
-  // คืน body scroll เสมอ — ไม่ว่าจะ lock ด้วย overflow:hidden หรือ position:fixed
+  // คืน body scroll เสมอ — ปลอดภัยสำหรับทุก device
   document.body.style.overflow = '';
   document.body.style.position = '';
   document.body.style.top = '';
@@ -5170,7 +5220,13 @@ function propCard(p){
 // ===== LISTINGS PAGE =====
 let _listingsData = [];
 let _listingsCurPage = 1;
-const _listingsPerPage = window.innerWidth <= 768 ? 16 : 32;
+// ปรับ perPage ให้ responsive: mobile=12, tablet/iPad=20, desktop=32
+const _listingsPerPage = (function(){
+  const w = window.innerWidth;
+  if(w <= 768) return 12;
+  if(w <= 1024) return 20; // iPad
+  return 32;
+})();
 let _listingsMapInitialized = false;
 let _listingsMapInstance = null;
 let _listingsMarkers = [];
@@ -5286,40 +5342,60 @@ function renderListingsPage() {
   const grid = document.getElementById('listings-grid');
   if(grid) {
     if(pageData.length) {
-      // ── Mobile: batch เล็กลง (4 แรก) เพื่อให้ first paint เร็ว ──────
-      const isMob = window.innerWidth <= 768;
-      const FIRST_BATCH = isMob ? 4 : 8;
-      const SECOND_BATCH = isMob ? 8 : 16;
+      // ── Batch sizes: mobile=4/8, tablet(iPad)=6/10, desktop=8/16 ──
+      const vw = window.innerWidth;
+      const isMob = vw <= 768;
+      const isTablet = vw > 768 && vw <= 1024;
+      const FIRST_BATCH = isMob ? 4 : (isTablet ? 6 : 8);
+      const SECOND_BATCH = isMob ? 8 : (isTablet ? 10 : 16);
       const firstBatch  = pageData.slice(0, FIRST_BATCH);
       const secondBatch = pageData.slice(FIRST_BATCH, FIRST_BATCH + SECOND_BATCH);
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
+      // render batch แรกทันที (sync) — ให้ first paint เร็ว
       grid.innerHTML = firstBatch.map(propCard).join('');
       // init swipe เฉพาะใน grid (scoped) — ไม่ query ทั้งเพจ
-      if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+      if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
 
-      const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
+      // batch ถัดไป: ใช้ idle callback ป้องกัน main thread block
+      // delay มากขึ้นบน mobile/tablet เพื่อให้ first paint smooth
+      const idleDelay = isMob ? 150 : (isTablet ? 120 : 80);
+      const idle = window.requestIdleCallback
+        ? function(cb){ window.requestIdleCallback(cb, {timeout: idleDelay*3}); }
+        : function(cb){ setTimeout(cb, idleDelay); };
 
       if(secondBatch.length){
-        idle(()=>{
-          // ถ้า modal เพิ่งปิด หรือมีการสั่ง abort → skip batch นี้ทิ้ง ไม่ลบ flag
-          if(window._listingsRenderAbort) return;
+        idle(function(){
+          // ตรวจ abort — ถ้า modal กำลังเปิด/ปิดอยู่ ให้ข้ามไป
+          if(window._listingsRenderAbort) {
+            // retry หลัง abort เสร็จ
+            setTimeout(function(){
+              if(!window._listingsRenderAbort && grid.children.length < FIRST_BATCH + 1) {
+                const frag = document.createDocumentFragment();
+                const tmp = document.createElement('div');
+                tmp.innerHTML = secondBatch.map(propCard).join('');
+                while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+                grid.appendChild(frag);
+              }
+            }, 300);
+            return;
+          }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
           while(tmp.firstChild) frag.appendChild(tmp.firstChild);
           grid.appendChild(frag);
-          if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+          if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
 
           if(restBatch.length){
-            idle(()=>{
+            idle(function(){
               if(window._listingsRenderAbort) return;
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
               while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
               grid.appendChild(frag2);
-              if(typeof initAllCardSwipes==='function') requestAnimationFrame(()=>initAllCardSwipes(grid));
+              if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
             });
           }
         });
@@ -5376,12 +5452,12 @@ function renderListingsPage() {
         </div>`;
     }
     // init swipe สำหรับ batch แรก (ถ้ายังไม่ได้ init ใน batch แยก)
-    if(pageData.length <= 4) setTimeout(initAllCardSwipes, 50);
+    if(pageData.length <= 4) setTimeout(initAllCardSwipes, 80);
   }
   // scroll ขึ้นเฉพาะกรณีเปลี่ยนหน้า (ไม่ใช่ filter ใหม่บนหน้าเดิม)
   if(window._listingsScrollOnRender){
     window._listingsScrollOnRender = false;
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    requestAnimationFrame(function(){ window.scrollTo({top: 0, behavior: 'smooth'}); });
   }
   // render pagination
   const _totalPg = Math.max(1, Math.ceil(_listingsData.length / _listingsPerPage));
@@ -5910,11 +5986,13 @@ function openModal(id){
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
   $('prop-modal').classList.add('open');
 
-  // ── iOS scroll-lock: ใช้ overflow:hidden บน body แทน position:fixed ──
-  // position:fixed สร้าง layout recalc ขนาดใหญ่บน iOS
+  // ── iOS scroll-lock: ใช้ overflow:hidden บน body เท่านั้น ──
+  // ห้ามใช้ position:fixed เด็ดขาด — สร้าง layout recalc ขนาดใหญ่บน iOS/iPad
+  // เมื่อ remove position:fixed จะ trigger full layout recalc → หน้าค้าง
   const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
   document.body.style.overflow = 'hidden';
+  // ห้ามตั้ง position, top, left, width บน body ใดๆ ทั้งสิ้น
   document.body.classList.add('modal-open');
 
   // scroll modal กลับบนสุด
@@ -6069,24 +6147,43 @@ function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+sl
 function goSlide(i){ slide_cur=i; renderSlider(); }
 function closeModal(e){ 
   if(!e||e.target.id==='prop-modal') { 
-    $('prop-modal').classList.remove('open');
-    // abort pending idle batch renders
+    const modal = $('prop-modal');
+    if(!modal || !modal.classList.contains('open')) return;
+
+    // ── abort pending idle batch renders ก่อนทุกอย่าง ──
     window._listingsRenderAbort = true;
-    setTimeout(() => { window._listingsRenderAbort = false; }, 300);
-    // restore scroll-lock (ใช้ overflow:hidden แทน position:fixed)
-    document.body.classList.remove('modal-open');
+
+    // ── ปิด 360 viewer ก่อน ──
+    if(typeof close360==='function') close360();
+
+    // ── restore scroll: อ่าน savedY ก่อน remove class ──
+    const savedY = document.body._savedScrollY || 0;
+    document.body._savedScrollY = 0;
+
+    // ── remove modal และ scroll lock พร้อมกันใน 1 frame ──
+    // ลำดับสำคัญมาก: ต้อง remove overflow ก่อน classList ทุกครั้ง
     document.body.style.overflow = '';
-    // position/top/width/left ไม่ได้ set แล้ว แต่ clear ไว้ป้องกัน residual state
     document.body.style.position = '';
     document.body.style.top = '';
     document.body.style.width = '';
     document.body.style.left = '';
-    const savedY = document.body._savedScrollY || 0;
-    document.body._savedScrollY = 0;
-    // scroll กลับ — instant ทั้ง mobile และ desktop
-    window.scrollTo(0, savedY);
+    document.body.classList.remove('modal-open');
+
+    // ── ปิด modal ──
+    modal.classList.remove('open');
     window._currentModalId = null;
-    if(typeof close360==='function') close360();
+
+    // ── scroll restore: ใช้ rAF เพื่อให้ browser paint ก่อนแล้วค่อย scroll ──
+    // สำคัญมาก: ถ้า scroll ทันทีใน sync จะทำให้ iOS กระตุก
+    if(savedY > 0) {
+      requestAnimationFrame(function() {
+        window.scrollTo(0, savedY);
+        // reset abort flag หลัง scroll เพื่อให้ batch render ต่อได้
+        setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+      });
+    } else {
+      setTimeout(function(){ window._listingsRenderAbort = false; }, 150);
+    }
   } 
 }
 // Helper: build SEO-friendly property URL from prop object

@@ -222,6 +222,10 @@ body.modal-open{
   overflow:hidden!important;
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
+/* Safety: ถ้า .ov ทุกตัวปิดหมดแล้ว ให้ body ไม่มี scroll lock เสมอ */
+body:not(:has(.ov.open)).modal-open{
+  overflow:auto!important;
+}
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
 @media(max-width:1024px){
@@ -4934,10 +4938,9 @@ window.addEventListener('popstate', function(e) {
         _silentShowPage(state.name, true);
         setTimeout(function(){
           window._listingsRenderAbort = false;
-          // FIX MOBILE: reset pending flag ด้วย เพื่อให้ render ผ่านหลัง popstate
           _listingsRenderPending = false;
           window._listingsRenderQueued = false;
-        }, 200);
+        }, 150);
       });
     } else {
       _silentShowPage(state.name);
@@ -6209,73 +6212,74 @@ function openModal(id){
 function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transform=`translateX(-${slide_cur*100}%)`; }
 function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; renderSlider(); }
 function goSlide(i){ slide_cur=i; renderSlider(); }
-function closeModal(e){ 
-  if(!e||e.target.id==='prop-modal') { 
-    const modal = $('prop-modal');
-    if(!modal || !modal.classList.contains('open')) return;
+function closeModal(e){
+  // กรณีกด overlay: ต้องกดที่ตัว .ov เท่านั้น ไม่ใช่ content ด้านใน
+  if(e && e.target && e.target.id !== 'prop-modal') return;
 
-    // ── abort pending idle batch renders ก่อนทุกอย่าง ──
-    window._listingsRenderAbort = true;
+  const modal = $('prop-modal');
+  if(!modal) return;
 
-    // ── ปิด 360 viewer ก่อน ──
-    if(typeof close360==='function') close360();
-
-    // ── restore scroll: อ่าน savedY ก่อน remove class ──
-    const savedY = document.body._savedScrollY || 0;
-    document.body._savedScrollY = 0;
-
-    // ── remove modal และ scroll lock พร้อมกันใน 1 frame ──
-    // ลำดับสำคัญมาก: ต้อง remove overflow ก่อน classList ทุกครั้ง
+  // Safety net: ถ้า modal ไม่ได้ open อยู่ ให้ reset lock ทุกอย่างแล้วออก
+  if(!modal.classList.contains('open')) {
     document.body.style.overflow = '';
     document.body.style.position = '';
     document.body.style.top = '';
     document.body.style.width = '';
     document.body.style.left = '';
     document.body.classList.remove('modal-open');
+    window._listingsRenderAbort = false;
+    _listingsRenderPending = false;
+    window._listingsRenderQueued = false;
+    return;
+  }
 
-    // ── ปิด modal ──
-    modal.classList.remove('open');
-    window._currentModalId = null;
+  // abort pending idle batch renders ก่อนทุกอย่าง
+  window._listingsRenderAbort = true;
 
-    // ── scroll restore: ใช้ rAF เพื่อให้ browser paint ก่อนแล้วค่อย scroll ──
-    // สำคัญมาก: ถ้า scroll ทันทีใน sync จะทำให้ iOS กระตุก
-    const _afterModalClose = function() {
-      window._listingsRenderAbort = false;
-      // ── FIX MOBILE: หลัง abort reset ให้ตรวจ listings grid ว่าโหลดครบหรือยัง ──
-      // ถ้า card ใน grid น้อยกว่าข้อมูลที่ควรแสดง (เช่น batch ถูก abort ระหว่างโหลด)
-      // ให้ force re-render ใหม่ทั้งหมด
-      const listingsPage = document.getElementById('page-listings');
-      if(listingsPage && listingsPage.classList.contains('active')) {
-        const grid = document.getElementById('listings-grid');
-        const vw = window.innerWidth;
-        const isMob = vw <= 768;
-        const isTablet = vw > 768 && vw <= 1024;
-        const FIRST_BATCH = isMob ? 4 : (isTablet ? 6 : 8);
-        // ถ้า card ที่ render ไปน้อยกว่า batch แรก หรือน้อยกว่าข้อมูลที่มี
-        const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
-        const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
-          ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
-          : 0;
-        if(grid && expectedCards > 0 && renderedCards < expectedCards) {
-          // Re-render ทั้งหน้า — ต้อง reset pending ก่อน
-          _listingsRenderPending = false;
-          window._listingsRenderQueued = false;
-          if(typeof renderListingsPage === 'function') {
-            requestAnimationFrame(function(){ renderListingsPage(); });
-          }
+  // ปิด 360 viewer ก่อน
+  if(typeof close360==='function') close360();
+
+  // อ่าน savedY ก่อน clear
+  const savedY = document.body._savedScrollY || 0;
+  document.body._savedScrollY = 0;
+
+  // unlock scroll และปิด modal ใน 1 ชุดคำสั่ง
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.left = '';
+  document.body.classList.remove('modal-open');
+  modal.classList.remove('open');
+  window._currentModalId = null;
+
+  // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid
+  const _afterModalClose = function() {
+    window._listingsRenderAbort = false;
+    _listingsRenderPending = false;
+    window._listingsRenderQueued = false;
+    const listingsPage = document.getElementById('page-listings');
+    if(listingsPage && listingsPage.classList.contains('active')) {
+      const grid = document.getElementById('listings-grid');
+      const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
+      const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
+        ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
+        : 0;
+      if(grid && expectedCards > 0 && renderedCards < expectedCards) {
+        if(typeof renderListingsPage === 'function') {
+          requestAnimationFrame(function(){ renderListingsPage(); });
         }
       }
-    };
-    if(savedY > 0) {
-      requestAnimationFrame(function() {
-        window.scrollTo(0, savedY);
-        // reset abort flag หลัง scroll + ตรวจ listings grid
-        setTimeout(_afterModalClose, 200);
-      });
-    } else {
-      setTimeout(_afterModalClose, 200);
     }
-  } 
+  };
+  if(savedY > 0) {
+    requestAnimationFrame(function() {
+      window.scrollTo(0, savedY);
+      setTimeout(_afterModalClose, 150);
+    });
+  } else {
+    setTimeout(_afterModalClose, 150);
+  }
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -10016,6 +10020,25 @@ document.addEventListener('DOMContentLoaded', function ensureHomeVisible(){
   }
 });
 init();
+
+// ── Emergency unlock: ถ้า body ค้าง modal-open แต่ไม่มี .ov.open จริงๆ
+// จะ auto-reset ทุก 1 วินาที (กัน edge case ทุกรูปแบบ)
+setInterval(function(){
+  const anyOpen = document.querySelector('.ov.open');
+  if(!anyOpen && document.body.classList.contains('modal-open')) {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.left = '';
+    document.body.classList.remove('modal-open');
+    if(window._listingsRenderAbort) {
+      window._listingsRenderAbort = false;
+      _listingsRenderPending = false;
+      window._listingsRenderQueued = false;
+    }
+  }
+}, 1000);
 
 // ===== ADVANCED FILTER LOGIC =====
 function renderHomePortfolio(){

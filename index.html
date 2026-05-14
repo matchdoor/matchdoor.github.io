@@ -5883,7 +5883,7 @@ function toggleListingsMapPanel() {
   // Lazy load iframe เฉพาะครั้งแรกที่เปิด — ไม่โหลด Google Maps จนกว่า user จะกดเปิด
   if(!isShown){
     const iframe = document.getElementById('listings-google-map');
-    if(iframe && !iframe.src && iframe.dataset.deferredSrc){
+    if(iframe && !iframe.getAttribute('src') && iframe.dataset.deferredSrc){
       iframe.src = iframe.dataset.deferredSrc;
     }
   }
@@ -6785,7 +6785,23 @@ window.addEventListener('resize', () => {
   if(typeof recCarouselIdx !== 'undefined') _applyRecTranslate(false);
 });
 
-function applyConfig(){ $('hero-sub').textContent=C.HERO_SUB; $('srv-title').textContent=C.SRV_TITLE; $('srv-sub').textContent=C.SRV_SUB; $('footer-addr').textContent=C.ADDR; $('footer-phone').textContent=C.PHONE; $('footer-copy').textContent=C.COPYRIGHT; if($('footer-copy-bottom')) $('footer-copy-bottom').textContent=C.COPYRIGHT; if($('footer-copy-inline')) $('footer-copy-inline').textContent=C.COPYRIGHT; [['fb-link',C.FB],['ftr-fb',C.FB]].forEach(([id,href])=>{$(id)&&($(id).href=href)}); const lnUrl=lineUrl(C.LINE); [['ln-link',lnUrl],['ftr-ln',lnUrl],['f-ln',lnUrl]].forEach(([id,href])=>{$(id)&&($(id).href=href)}); const telHref='tel:'+C.PHONE; [['tel-link',telHref],['ftr-tel',telHref],['f-tel',telHref]].forEach(([id,href])=>{$(id)&&($(id).href=href)});  $('yt-embed').innerHTML=`<iframe src="${C.YT}" allowfullscreen loading="lazy" title="Matchdoor YouTube"></iframe>`; }
+function applyConfig(){ $('hero-sub').textContent=C.HERO_SUB; $('srv-title').textContent=C.SRV_TITLE; $('srv-sub').textContent=C.SRV_SUB; $('footer-addr').textContent=C.ADDR; $('footer-phone').textContent=C.PHONE; $('footer-copy').textContent=C.COPYRIGHT; if($('footer-copy-bottom')) $('footer-copy-bottom').textContent=C.COPYRIGHT; if($('footer-copy-inline')) $('footer-copy-inline').textContent=C.COPYRIGHT; [['fb-link',C.FB],['ftr-fb',C.FB]].forEach(([id,href])=>{$(id)&&($(id).href=href)}); const lnUrl=lineUrl(C.LINE); [['ln-link',lnUrl],['ftr-ln',lnUrl],['f-ln',lnUrl]].forEach(([id,href])=>{$(id)&&($(id).href=href)}); const telHref='tel:'+C.PHONE; [['tel-link',telHref],['ftr-tel',telHref],['f-tel',telHref]].forEach(([id,href])=>{$(id)&&($(id).href=href)});  // YouTube embed — lazy load เมื่อ scroll เข้า viewport
+  const ytWrap = $('yt-embed');
+  if(ytWrap) {
+    ytWrap.setAttribute('data-yt-src', C.YT);
+    if('IntersectionObserver' in window) {
+      const ytObs = new IntersectionObserver((entries) => {
+        if(entries[0].isIntersecting) {
+          ytObs.disconnect();
+          ytWrap.innerHTML = `<iframe src="${C.YT}" allowfullscreen loading="lazy" title="Matchdoor YouTube"></iframe>`;
+        }
+      }, { rootMargin: '200px' });
+      ytObs.observe(ytWrap);
+    } else {
+      ytWrap.innerHTML = `<iframe src="${C.YT}" allowfullscreen loading="lazy" title="Matchdoor YouTube"></iframe>`;
+    }
+  }
+}
 
 const LOC_CATS = [
   { key:'popular', label:'🔥 ยอดนิยม', opts:['สุขุมวิท','สีลม','ลาดพร้าว','รัชดา','อโศก','พระราม 9','จตุจักร','ปิ่นเกล้า','บางนา','มีนบุรี'] },
@@ -6928,7 +6944,11 @@ function initModalSwipe() {
 }
 
 function lazyLoadImages() {
-  if(!('IntersectionObserver' in window)) return;
+  if(!('IntersectionObserver' in window)) {
+    // Fallback: load all data-src immediately
+    $$('img[data-src]').forEach(img => { img.src = img.dataset.src; img.removeAttribute('data-src'); });
+    return;
+  }
   const obs = new IntersectionObserver((entries) => {
     entries.forEach(en => {
       if(en.isIntersecting) {
@@ -6938,7 +6958,20 @@ function lazyLoadImages() {
       }
     });
   }, {rootMargin:'200px'});
+  // Observe existing data-src images
   $$('img[data-src]').forEach(img=>obs.observe(img));
+  // MutationObserver — observe newly injected img[data-src] (e.g. from batch card render)
+  const mutObs = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if(node.nodeType !== 1) return;
+        if(node.tagName === 'IMG' && node.dataset.src) { obs.observe(node); }
+        node.querySelectorAll && node.querySelectorAll('img[data-src]').forEach(img => obs.observe(img));
+      });
+    });
+  });
+  const grid = document.getElementById('listings-grid');
+  if(grid) mutObs.observe(grid, { childList: true, subtree: true });
 }
 
 function animateStatCounters(scope) {
@@ -8269,6 +8302,7 @@ async function init(){
   const idle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
   idle(() => {
     initCounterObserver();
+    lazyLoadImages();
     applyLang();
     // Float bubble — show after 2s, hide after 8s
     setTimeout(()=>{

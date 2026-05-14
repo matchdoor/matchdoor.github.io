@@ -4934,6 +4934,7 @@ window.addEventListener('popstate', function(e) {
           window._listingsRenderAbort = false;
           _listingsRenderPending = false;
           window._listingsRenderQueued = false;
+          window._listingsBatchInFlight = false;
         }, 150);
       });
     } else {
@@ -4957,6 +4958,7 @@ function _silentShowPage(name, skipScrollTop) {
   window._listingsRenderAbort = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
+  window._listingsBatchInFlight = false;
   // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
@@ -5310,6 +5312,7 @@ function renderListingsPage() {
   _listingsRenderPending = true;
   const _doRender = () => {
   _listingsRenderPending = false;
+  window._listingsBatchInFlight = false; // reset ก่อนทุก render — ป้องกันค่าค้างจาก render ก่อน
 
   // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
   const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
@@ -5408,8 +5411,9 @@ function renderListingsPage() {
         : function(cb){ setTimeout(cb, idleDelay); };
 
       if(secondBatch.length){
+        window._listingsBatchInFlight = true; // บอก _afterModalClose ว่ายังทำงานอยู่
         idle(function(){
-          if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
+          if(window._listingsRenderAbort){ window._listingsBatchInFlight = false; return; }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
@@ -5419,14 +5423,17 @@ function renderListingsPage() {
 
           if(restBatch.length){
             idle(function(){
-              if(window._listingsRenderAbort) return; // abort — _afterModalClose จะ re-render ให้
+              if(window._listingsRenderAbort){ window._listingsBatchInFlight = false; return; }
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
               while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
               grid.appendChild(frag2);
               if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ initAllCardSwipes(grid); });
+              window._listingsBatchInFlight = false; // batch ทั้งหมดเสร็จแล้ว
             });
+          } else {
+            window._listingsBatchInFlight = false; // ไม่มี restBatch — เสร็จแล้ว
           }
         });
       }
@@ -6192,11 +6199,13 @@ function closeModal(e){
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
     return;
   }
 
   // abort pending idle batch renders ก่อนทุกอย่าง
   window._listingsRenderAbort = true;
+  window._listingsBatchInFlight = false; // idle batch จะ return ทันทีเมื่อเจอ abort
 
   // ปิด 360 viewer ก่อน
   if(typeof close360==='function') close360();
@@ -6220,15 +6229,19 @@ function closeModal(e){
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
-    const listingsPage = document.getElementById('page-listings');
+    window._listingsBatchInFlight = false;
     if(listingsPage && listingsPage.classList.contains('active')) {
       const grid = document.getElementById('listings-grid');
       const renderedCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
       const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
         ? Math.min(_listingsData.length, (typeof _listingsPerPage !== 'undefined' ? _listingsPerPage : 20))
         : 0;
-      // re-render เฉพาะเมื่อ card ขาดจริงๆ (batch ถูก abort) และไม่มี render ค้างอยู่
-      if(grid && expectedCards > 0 && renderedCards < expectedCards && !_listingsRenderPending) {
+      // re-render เฉพาะเมื่อ:
+      // 1. card ขาดจริงๆ (batch ถูก abort ก่อนทำงาน)
+      // 2. ไม่มี render กำลังทำงานอยู่ (_listingsRenderPending)
+      // 3. ไม่มี idle batch กำลัง append อยู่ (_listingsBatchInFlight)
+      if(grid && expectedCards > 0 && renderedCards < expectedCards
+         && !_listingsRenderPending && !window._listingsBatchInFlight) {
         requestAnimationFrame(function(){ renderListingsPage(); });
       }
     }
@@ -10003,6 +10016,7 @@ setInterval(function(){
       window._listingsRenderAbort = false;
       _listingsRenderPending = false;
       window._listingsRenderQueued = false;
+      window._listingsBatchInFlight = false;
     }
   }
 }, 1000);
@@ -11667,7 +11681,7 @@ function resetAdvFilter(){
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
           <div class="ls-ac-wrap" style="position:relative;z-index:500">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
-            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,280)">
+            <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,300)">
             <div class="ls-ac-list" id="ls-ac-list" style="display:none"></div>
           </div>
           <div>

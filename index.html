@@ -5614,14 +5614,13 @@ let _listingsTxFilter = 'ALL';
 let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
-  // ── FIX: ปิด prop-modal ถ้าค้างเปิดอยู่ก่อนเปลี่ยนหน้า ──
+  // ── ปิด prop-modal ถ้าค้างเปิดอยู่ก่อนเปลี่ยนหน้า ──
   const _pm = document.getElementById('prop-modal');
   if(_pm && _pm.classList.contains('open')) {
     _pm.classList.remove('open');
     window._currentModalId = null;
   }
-  // ── FIX ข้อ 5: ปิด overlay/modal/sheet ทุกตัวที่อาจค้างอยู่ก่อน navigate ──
-  // ครอบคลุม apply-overlay, adv-desktop-overlay, all-modal, ทุก .ov.open
+  // ── ปิด overlay/modal/sheet ทุกตัวที่อาจค้างอยู่ก่อน navigate ──
   document.querySelectorAll('.ov.open').forEach(function(el){ el.classList.remove('open'); });
   ['apply-agent-overlay','apply-other-overlay','adv-desktop-overlay',
    'adv-sheet-overlay','adv-sheet','adv-filter-panel','seo-drawer','seo-drawer-overlay'].forEach(function(id){
@@ -5636,17 +5635,15 @@ function showListingsPage(title, data) {
   document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
-  // ── bump generation + ตั้ง abort=true เพื่อหยุด idle batch (all-grid, listings เก่า) ──
-  // abort จะถูก reset ใน _silentShowPage → renderListingsPage → _doRender
-  // ไม่ reset ที่นี่เพื่อให้ batch ที่รออยู่ใน requestIdleCallback มีโอกาสเห็น abort=true ก่อน
+  // ── bump generation + reset flags ทั้งหมดทันที (เหมือน logic ข้อ 1-4 ใน _silentShowPage) ──
+  // ไม่ set abort=true ก่อน เพราะทำให้ _doRender ที่ถูก schedule ใหม่โดน abort ด้วย
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
-  window._listingsRenderAbort = true;
+  window._listingsRenderAbort = false;
   window._listingsBatchInFlight = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
-  // abort จะถูก reset โดย _silentShowPage ซึ่งจะ bump gen + set abort=false ก่อน renderListingsPage
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
@@ -6329,26 +6326,24 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
-  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
+  // ── ข้อ 6: restore page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
+  // reset flags ทั้งหมดก่อน navigate (ป้องกัน abort flag ค้างทำให้ render ไม่ทำงาน)
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
+  window._listingsRenderAbort = false;
+  _listingsRenderPending = false;
+  window._listingsRenderQueued = false;
+  window._listingsBatchInFlight = false;
   const _prevPage = window._pageBeforeModal || 'home';
-  requestAnimationFrame(function() {
-    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
-    if(typeof window._listingsRenderGen !== 'undefined') {
-      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-    }
-    window._listingsRenderAbort = false;
-    _listingsRenderPending = false;
-    window._listingsRenderQueued = false;
-    window._listingsBatchInFlight = false;
-    // restore scroll position
-    if(savedY > 0) window.scrollTo(0, savedY);
-    // render listings ถ้าเปิดการ์ดมาจากหน้า listings
-    const listingsPage = document.getElementById('page-listings');
-    if(_prevPage === 'listings' && listingsPage && listingsPage.classList.contains('active')) {
-      if(typeof renderListingsPage === 'function') renderListingsPage();
-    }
-  });
+  if(_prevPage === 'listings') {
+    // กลับหน้า listings: เรียก _silentShowPage โดยตรง เหมือน logic ข้อ 1-4
+    // skipScrollTop=true เพื่อ restore scroll position ที่บันทึกไว้
+    _silentShowPage('listings', true);
+    if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
+  } else {
+    _silentShowPage(_prevPage);
+  }
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {

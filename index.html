@@ -254,9 +254,11 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
   }
   #prop-modal{will-change:auto;isolation:isolate}
   #prop-modal.open .modal{will-change:transform}
-  *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
+  *:not(.ov):not(#prop-modal):not(.gc-card):not(.gc-track):not(.card-slides):not(#slides){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   #prop-modal .modal{transition:none!important}
+  /* carousel + slide transitions must keep their own duration on mobile */
+  .gallery-track,.gc-card,.card-slides,#slides{transition-duration:unset!important}
   .prop-title{font-size:13px!important}
   .prop-thumb img,.blog-thumb img{image-rendering:auto;decoding:async}
   .page,.wrap{overflow-x:hidden}
@@ -650,7 +652,8 @@ nav{
 .mclose{font-size:22px;cursor:pointer;color:var(--gr);line-height:1}
 .mbody{padding:20px;overflow-y:auto}
 .mslider-wrap{position:relative;margin-bottom:14px}
-.mslider{overflow:hidden;border-radius:var(--r);height:220px}
+.mslider{overflow:hidden;border-radius:var(--r);height:220px;touch-action:pan-y pinch-zoom}
+#slides{display:flex;transition:transform .32s cubic-bezier(.22,1,.36,1);will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .slides{display:flex;transition:transform .3s;height:100%}
 .slides>*{width:100%;height:220px;object-fit:cover;flex-shrink:0}
 .slide-ph{display:flex;align-items:center;justify-content:center;font-size:60px;background:#e8edf5}
@@ -1368,13 +1371,13 @@ footer::after{
 .fb-ico{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.15);font-size:20px}
 .float-main{width:54px;height:54px;border-radius:50%;background:var(--a);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(233,69,96,.4)}
 
-.mslider{cursor:grab;user-select:none}
+.mslider{cursor:grab;user-select:none;touch-action:pan-y pinch-zoom;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .mslider.dragging{cursor:grabbing}
 
 .prop-thumb{position:relative;overflow:hidden}
 /* เมื่อ .prop-thumb มี .card-slides ต้องไม่ใช้ flex (เพราะ flex จะทำให้ card-slides ไม่ fill เต็ม height) */
 .prop-thumb:has(.card-slides){display:block}
-.card-slides{display:flex;flex-flow:row nowrap;width:100%;height:100%;transition:transform .35s cubic-bezier(.25,.46,.45,.94);will-change:transform;position:absolute;inset:0}
+.card-slides{display:flex;flex-flow:row nowrap;width:100%;height:100%;transition:transform .32s cubic-bezier(.22,1,.36,1);will-change:transform;position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 /* ทุก child ของ card-slides = 1 slide เต็มความกว้าง ไม่หด */
 .card-slides>img,.card-slides>.slide-ph-card{flex:0 0 100%;min-width:100%;width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;display:block}
 /* placeholder slide */
@@ -1382,7 +1385,7 @@ footer::after{
 /* container ทุกตัวต้อง clip + relative */
 .card-slider-wrap,.blog-thumb,.agent-photo-wrap,.gal-img{overflow:hidden!important;position:relative!important}
 /* grab cursor */
-.prop-thumb:has(.card-slides),.card-slider-wrap:has(.card-slides),.blog-thumb:has(.card-slides),.agent-photo-wrap:has(.card-slides),.gal-img:has(.card-slides){cursor:grab}
+.prop-thumb:has(.card-slides),.card-slider-wrap:has(.card-slides),.blog-thumb:has(.card-slides),.agent-photo-wrap:has(.card-slides),.gal-img:has(.card-slides){cursor:grab;touch-action:pan-y pinch-zoom}
 .prop-thumb.dragging,.card-slider-wrap.dragging,.blog-thumb.dragging,.agent-photo-wrap.dragging,.gal-img.dragging{cursor:grabbing!important}
 .card-sarr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.42);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:15;font-size:11px;transition:.15s;border:none;line-height:1}
 .card-sarr:hover{background:rgba(0,0,0,.7)}
@@ -2146,17 +2149,18 @@ footer::after{
 }
 .gallery-nav-btn:hover{background:var(--p);color:#fff;border-color:var(--p);}
 .gallery-track-wrap{
-  overflow:visible;
+  overflow:hidden;
   cursor:grab;user-select:none;
   perspective:1200px;
   padding:24px 0 32px;
   position:relative;
+  touch-action:pan-y pinch-zoom;
 }
 .gallery-track-wrap.dragging{cursor:grabbing;}
 .gallery-track{
   display:flex;gap:20px;
   will-change:transform;
-  transition:transform .5s cubic-bezier(.25,.46,.45,.94);
+  transition:transform .45s cubic-bezier(.22,1,.36,1);
   align-items:center;
 }
 .gc-card{
@@ -2167,20 +2171,22 @@ footer::after{
   overflow:hidden;
   border:2px solid var(--bd);
   cursor:pointer;
-  transition:transform .4s cubic-bezier(.25,.46,.45,.94), box-shadow .4s, opacity .4s, border-color .3s;
-  transform:scale(0.85);
+  transition:transform .45s cubic-bezier(.22,1,.36,1), box-shadow .45s cubic-bezier(.22,1,.36,1), opacity .35s ease, border-color .3s;
+  transform:scale(0.85) translateZ(0);
   opacity:0.6;
   position:relative;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
 }
 .gc-card.gc-active{
-  transform:scale(1.08);
+  transform:scale(1.08) translateZ(0);
   opacity:1;
   box-shadow:0 20px 60px rgba(124,111,205,.35),0 8px 24px rgba(0,0,0,.15);
   border-color:var(--a);
   z-index:10;
 }
 .gc-card.gc-adjacent{
-  transform:scale(0.93);
+  transform:scale(0.93) translateZ(0);
   opacity:0.82;
 }
 .gc-card-img{
@@ -2199,8 +2205,9 @@ footer::after{
 .gc-dot{width:7px;height:7px;border-radius:50%;background:rgba(10,22,48,.18);transition:.3s;cursor:pointer;}
 .gc-dot.active{width:22px;border-radius:4px;background:var(--a);}
 @media(max-width:600px){
-  .gc-card{width:220px;}
-  .gc-card.gc-active{transform:scale(1.06);}
+  .gc-card{width:72vw;max-width:280px;}
+  .gc-card.gc-active{transform:scale(1.05) translateZ(0);}
+  .gc-card.gc-adjacent{transform:scale(0.9) translateZ(0);}
 }
 
 .modal-fav-btn{
@@ -7026,20 +7033,78 @@ function selectLsAC(id, title, loc) {
 
 function initSwipe(sliderEl, prevFn, nextFn) {
   if(!sliderEl) return;
-  let startX=0, isDragging=false, moved=0;
-  sliderEl.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; isDragging=true; moved=0; }, {passive:true});
-  sliderEl.addEventListener('touchmove', e=>{ if(!isDragging) return; moved=e.touches[0].clientX-startX; }, {passive:true});
+  let startX=0, startY=0, isDragging=false, isVert=false, moved=0, lastX=0, lastT=0, vel=0;
+  const THRESHOLD = 30;
+
+  // live preview helper for modal slider
+  function previewSlide(dx) {
+    const slides = sliderEl.querySelector('#slides');
+    if(!slides) return;
+    const pct = (dx / sliderEl.offsetWidth) * 100;
+    const base = slide_cur * 100;
+    slides.style.transition = 'none';
+    slides.style.transform = `translateX(${-base + pct}%)`;
+  }
+  function snapSlideBack() {
+    const slides = sliderEl.querySelector('#slides');
+    if(!slides) return;
+    slides.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)';
+    slides.style.transform = `translateX(-${slide_cur * 100}%)`;
+  }
+
+  sliderEl.addEventListener('touchstart', e=>{
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isDragging = false; isVert = false; moved = 0;
+    lastX = startX; lastT = Date.now(); vel = 0;
+  }, {passive:true});
+
+  sliderEl.addEventListener('touchmove', e=>{
+    if(isVert) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if(!isDragging) {
+      if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isVert = Math.abs(dy) > Math.abs(dx) * 1.1;
+        if(!isVert) isDragging = true;
+        else return;
+      }
+    }
+    moved = dx;
+    const now = Date.now(); const dt = now - lastT;
+    if(dt > 0) vel = (e.touches[0].clientX - lastX) / dt;
+    lastX = e.touches[0].clientX; lastT = now;
+    previewSlide(dx);
+  }, {passive:true});
+
   sliderEl.addEventListener('touchend', ()=>{
-    if(!isDragging) return; isDragging=false;
-    if(moved < -50) nextFn();
-    else if(moved > 50) prevFn();
+    if(!isDragging) { isVert = false; return; }
+    isDragging = false;
+    if(moved < -THRESHOLD || vel < -0.3) nextFn();
+    else if(moved > THRESHOLD || vel > 0.3) prevFn();
+    else snapSlideBack();
+    moved = 0; isVert = false; vel = 0;
   });
-  sliderEl.addEventListener('mousedown', e=>{ startX=e.clientX; isDragging=true; moved=0; sliderEl.classList.add('dragging'); e.preventDefault(); });
-  window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; });
+
+  sliderEl.addEventListener('mousedown', e=>{
+    startX = e.clientX; isDragging = true; moved = 0;
+    sliderEl.classList.add('dragging'); e.preventDefault();
+    lastX = startX; lastT = Date.now(); vel = 0;
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    moved = e.clientX - startX;
+    const now = Date.now(); const dt = now - lastT;
+    if(dt > 0) vel = (e.clientX - lastX) / dt;
+    lastX = e.clientX; lastT = now;
+    previewSlide(moved);
+  });
   window.addEventListener('mouseup', ()=>{
-    if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
-    if(moved < -50) nextFn();
-    else if(moved > 50) prevFn();
+    if(!isDragging) return; isDragging = false; sliderEl.classList.remove('dragging');
+    if(moved < -THRESHOLD || vel < -0.3) nextFn();
+    else if(moved > THRESHOLD || vel > 0.3) prevFn();
+    else snapSlideBack();
+    moved = 0; vel = 0;
   });
 }
 
@@ -7400,8 +7465,6 @@ function cardGoSlide(e, pid, idx) {
 function initCardSwipeOn(containerEl) {
   if (!containerEl) return;
 
-  // หา surface (element ที่มี overflow:hidden และครอบ .card-slides)
-  // prop-thumb → blog-thumb → gal-img → agent-photo-wrap → card-slider-wrap → parent ของ slides
   var surface =
     containerEl.querySelector('.prop-thumb') ||
     containerEl.querySelector('.blog-thumb') ||
@@ -7410,7 +7473,6 @@ function initCardSwipeOn(containerEl) {
     containerEl.querySelector('.card-slider-wrap');
   if (!surface) return;
 
-  // ตรวจ _swipeInit ที่ surface (ไม่ใช่ containerEl) เพื่อป้องกัน bind ซ้ำ
   if (surface._swipeInit) return;
 
   var slidesEl = surface.querySelector('.card-slides');
@@ -7418,33 +7480,61 @@ function initCardSwipeOn(containerEl) {
 
   surface._swipeInit = true;
 
-  // pid มาจาก id ของ slides element ใน surface นี้โดยตรง
   var pid = slidesEl.id ? slidesEl.id.replace(/-slides$/, '') : null;
   if (!pid) return;
 
-  var startX = 0, startY = 0, moved = 0, active = false, didDrag = false;
-  var THRESHOLD = 40;
+  var startX = 0, startY = 0, moved = 0, active = false, didDrag = false, isVert = false;
+  var THRESHOLD = 28; // lower threshold for snappier feel on mobile
+
+  // helper: live preview while dragging
+  function applyDragPreview(dx) {
+    var slides = document.getElementById(pid + '-slides');
+    if (!slides) return;
+    var cur = parseInt(slides.dataset.cur || '0');
+    var baseOffset = cur * 100;
+    var pct = (dx / surface.offsetWidth) * 100;
+    slides.style.transition = 'none';
+    slides.style.transform = 'translateX(' + (-baseOffset + pct) + '%)';
+  }
+  function snapBack() {
+    var slides = document.getElementById(pid + '-slides');
+    if (!slides) return;
+    var cur = parseInt(slides.dataset.cur || '0');
+    slides.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)';
+    slides.style.transform = 'translateX(-' + (cur * 100) + '%)';
+  }
 
   // ── Touch ──
   surface.addEventListener('touchstart', function(e) {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    moved = 0; active = true; didDrag = false;
+    moved = 0; active = true; didDrag = false; isVert = false;
   }, { passive: true });
 
   surface.addEventListener('touchmove', function(e) {
-    if (!active) return;
+    if (!active || isVert) return;
     var dx = e.touches[0].clientX - startX;
     var dy = e.touches[0].clientY - startY;
-    if (!didDrag && Math.abs(dx) > Math.abs(dy) + 4 && Math.abs(dx) > 8) didDrag = true;
-    if (didDrag) moved = dx;
+    if (!didDrag) {
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isVert = Math.abs(dy) > Math.abs(dx) * 1.1;
+        if (!isVert) didDrag = true;
+        else { active = false; return; }
+      }
+    }
+    moved = dx;
+    applyDragPreview(dx); // live preview
   }, { passive: true });
 
   surface.addEventListener('touchend', function() {
     if (!active) return;
     active = false;
-    if (didDrag && Math.abs(moved) > THRESHOLD) _doCardSlide(pid, moved < 0 ? 1 : -1);
-    moved = 0; didDrag = false;
+    if (didDrag && Math.abs(moved) > THRESHOLD) {
+      _doCardSlide(pid, moved < 0 ? 1 : -1);
+    } else if (didDrag) {
+      snapBack(); // not enough — snap back
+    }
+    moved = 0; didDrag = false; isVert = false;
   });
 
   // ── Mouse drag ──
@@ -7459,8 +7549,8 @@ function initCardSwipeOn(containerEl) {
     document.addEventListener('mousemove', function(e) {
       if (!active) return;
       var dx = e.clientX - startX;
-      if (!didDrag && Math.abs(dx) > 8) didDrag = true;
-      if (didDrag) moved = dx;
+      if (!didDrag && Math.abs(dx) > 6) didDrag = true;
+      if (didDrag) { moved = dx; applyDragPreview(dx); }
     }, sig);
 
     document.addEventListener('mouseup', function() {
@@ -7469,9 +7559,10 @@ function initCardSwipeOn(containerEl) {
       surface.classList.remove('dragging');
       if (didDrag && Math.abs(moved) > THRESHOLD) {
         _doCardSlide(pid, moved < 0 ? 1 : -1);
-        // ป้องกัน click หลัง drag เปิด modal
         var kill = function(ev) { ev.stopPropagation(); containerEl.removeEventListener('click', kill, true); };
         containerEl.addEventListener('click', kill, true);
+      } else if (didDrag) {
+        snapBack();
       }
       moved = 0; didDrag = false;
       ac.abort();
@@ -8041,17 +8132,22 @@ function gcCardW() {
   const wrap = document.getElementById('gc-wrap');
   if(!wrap) return 280;
   const ww = wrap.offsetWidth;
-  return Math.min(260 + 20, ww * 0.75);
+  // mobile: 72vw capped at 280px — must match CSS
+  const isMob = ww < 640;
+  const cardW = isMob ? Math.min(Math.round(ww * 0.72), 280) : 260;
+  return cardW + 20; // +gap
 }
 
 function gcApply(animate=true) {
   const track = document.getElementById('gc-track');
   if(!track) return;
-  const cw = gcCardW();
   const wrap = document.getElementById('gc-wrap');
   const ww = wrap ? wrap.offsetWidth : 800;
-  const offset = ww / 2 - cw / 2 - gcIdx * (cw);
-  track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
+  // measure actual rendered card width from first card if possible
+  const firstCard = track.querySelector('.gc-card');
+  const cw = firstCard ? (firstCard.offsetWidth + 20) : gcCardW(); // +gap
+  const offset = ww / 2 - (cw - 20) / 2 - gcIdx * cw;
+  track.style.transition = animate ? 'transform .45s cubic-bezier(.22,1,.36,1)' : 'none';
   track.style.transform = `translateX(${offset}px)`;
   // Update card classes
   track.querySelectorAll('.gc-card').forEach((c, i) => {
@@ -8087,18 +8183,19 @@ function gcRenderDots() {
 function gcInitDrag() {
   const wrap = document.getElementById('gc-wrap');
   if(!wrap) return;
-  let _startY = 0, _isVert = false;
+  let _startY = 0, _isVert = false, _lastX = 0, _lastT = 0, _vel = 0;
   const onDown = e => {
     gcStopAuto();
     gcDragging = false;
     gcStartX = e.touches ? e.touches[0].clientX : e.clientX;
     _startY = e.touches ? e.touches[0].clientY : 0;
-    _isVert = false;
+    _lastX = gcStartX; _lastT = Date.now();
+    _isVert = false; _vel = 0;
     gcDragDelta = 0;
     wrap.classList.add('dragging');
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onMove, {passive:true});
+    document.addEventListener('touchmove', onMove, {passive:false});
     document.addEventListener('touchend', onUp);
   };
   const onMove = e => {
@@ -8106,16 +8203,33 @@ function gcInitDrag() {
     const y = e.touches ? e.touches[0].clientY : 0;
     const dx = x - gcStartX;
     const dy = y - _startY;
-    if(!gcDragging && e.touches) {
-      if(Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-        _isVert = Math.abs(dy) > Math.abs(dx);
+    // detect direction on first meaningful move
+    if(!gcDragging && !_isVert) {
+      if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        _isVert = Math.abs(dy) > Math.abs(dx) * 1.2;
         if(!_isVert) gcDragging = true;
       }
-    } else if(!e.touches) {
-      gcDragDelta = dx;
-      if(Math.abs(gcDragDelta) > 8) gcDragging = true;
     }
-    if(!_isVert) gcDragDelta = dx;
+    if(_isVert) return; // let browser handle vertical scroll
+    if(e.cancelable) e.preventDefault(); // prevent page scroll while swiping carousel
+    gcDragDelta = dx;
+    // velocity tracking
+    const now = Date.now(); const dt = now - _lastT;
+    if(dt > 0) _vel = (x - _lastX) / dt;
+    _lastX = x; _lastT = now;
+    // live preview: translate track with drag
+    if(gcDragging) {
+      const track = document.getElementById('gc-track');
+      if(track) {
+        const wrap2 = document.getElementById('gc-wrap');
+        const ww = wrap2 ? wrap2.offsetWidth : 800;
+        const firstCard = track.querySelector('.gc-card');
+        const cw = firstCard ? (firstCard.offsetWidth + 20) : gcCardW();
+        const baseOffset = ww / 2 - (cw - 20) / 2 - gcIdx * cw;
+        track.style.transition = 'none';
+        track.style.transform = `translateX(${baseOffset + gcDragDelta}px)`;
+      }
+    }
   };
   const onUp = () => {
     wrap.classList.remove('dragging');
@@ -8123,9 +8237,15 @@ function gcInitDrag() {
     document.removeEventListener('mouseup', onUp);
     document.removeEventListener('touchmove', onMove);
     document.removeEventListener('touchend', onUp);
-    if(!_isVert && Math.abs(gcDragDelta) > 50) gcMove(gcDragDelta < 0 ? 1 : -1);
+    // snap: threshold 30px OR velocity > 0.3px/ms
+    const SNAP_PX = 30;
+    if(!_isVert && (Math.abs(gcDragDelta) > SNAP_PX || Math.abs(_vel) > 0.3)) {
+      gcMove(gcDragDelta < 0 ? 1 : -1);
+    } else {
+      gcApply(true); // snap back
+    }
     setTimeout(() => { gcDragging = false; }, 50);
-    _isVert = false;
+    _isVert = false; _vel = 0;
     gcStartAuto();
   };
   wrap.addEventListener('mousedown', onDown);
@@ -8134,10 +8254,11 @@ function gcInitDrag() {
 
 function gcStartAuto() {
   gcStopAuto();
+  const isMobAuto = window.innerWidth < 640;
   gcAutoTimer = setInterval(() => {
     gcIdx = gcIdx >= gcItems.length - 1 ? 0 : gcIdx + 1;
     gcApply(true);
-  }, 4000);
+  }, isMobAuto ? 4500 : 4000);
 }
 function gcStopAuto() {
   if(gcAutoTimer) { clearInterval(gcAutoTimer); gcAutoTimer = null; }

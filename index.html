@@ -3043,7 +3043,7 @@ footer::after{
     </div>
   </div>
 </section>
- <div class="wrap" id="all-sec"><div class="sec-hd"><div class="sec-title" id="all-title">ประกาศทั้งหมด</div><div><span id="res-count" style="font-size:13px;color:var(--gr);margin-right:12px"></span><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div></div>
+ <div class="wrap" id="all-sec"><div class="sec-hd"><div class="sec-title" id="all-title">ประกาศทั้งหมด</div><div><span id="res-count" style="font-size:13px;color:var(--gr);margin-right:12px"></span><span class="view-all" onclick="showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div></div>
  <div id="osrv-sec" class="osrv-sec" style="padding:32px 0 28px">
   <div style="max-width:1320px;margin:0 auto;padding:0 20px">
     <div class="sec-hd">
@@ -4906,14 +4906,6 @@ window.addEventListener('popstate', function(e) {
       _listingsRenderPending = false;
       window._listingsRenderQueued = false;
       window._listingsBatchInFlight = false;
-      // ถ้ากลับไป listings และ grid มีการ์ดอยู่แล้ว → ตั้ง flag skip render ครั้งเดียว
-      if(state.name === 'listings') {
-        const _gridEl = document.getElementById('listings-grid');
-        if(_gridEl && _gridEl.querySelector('.prop-card')) {
-          window._skipListingsRenderOnce = true;
-          window._pageBeforeModal = 'listings';
-        }
-      }
       _silentShowPage(state.name, true);
       if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
     } else {
@@ -4979,28 +4971,19 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    // ── ถ้ามี flag skip (ตั้งโดย closeModal / popstate) → grid ยังครบ ไม่ต้อง re-render ──
-    // flag จะถูก clear ใน renderListingsPage เองทันทีหลังใช้ครั้งเดียว
-    const _skipThisRender = !!window._skipListingsRenderOnce;
-    if(_skipThisRender) {
-      // ไม่ต้อง render ซ้ำ — grid และ SEO sidebar ยังอยู่ครบ
-      // การ restore scroll จัดการโดย closeModal / popstate handler แล้ว
+    window._lsSeoSidebarRendered = false;
+    // NOTE: ไม่ clear _pageBeforeModal ที่นี่ — closeModal ต้องการค่านี้เพื่อ restore page หลังปิดการ์ด
+    // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
+    // ถ้า _listingsDataReady → render ทันที
+    // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
+    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
+      renderListingsPage();
     } else {
-      // navigate มาจากหน้าอื่นจริงๆ → reset และ render ใหม่
-      window._lsSeoSidebarRendered = false;
-      // NOTE: ไม่ clear _pageBeforeModal ที่นี่ — closeModal ต้องการค่านี้เพื่อ restore page หลังปิดการ์ด
-      // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
-      // ถ้า _listingsDataReady → render ทันที
-      // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
-      if(window._listingsDataReady && typeof renderListingsPage === 'function') {
-        renderListingsPage();
-      } else {
-        window._pendingListingsRender = true;
-      }
-      if(typeof renderListingsSeoSidebar === 'function'){
-        const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
-        idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
-      }
+      window._pendingListingsRender = true;
+    }
+    if(typeof renderListingsSeoSidebar === 'function'){
+      const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
+      idle(()=>{ renderListingsSeoSidebar(); window._lsSeoSidebarRendered = true; });
     }
   } else if (name === 'favorites') renderFavPage();
   else if (name === 'portfolio') { renderPortfolio('all'); setTimeout(()=>{ if(typeof applyLang==='function') applyLang(); }, 30); }
@@ -5091,9 +5074,8 @@ window.openModal = function(id) {
 // ── Patch closeModal to restore URL ──
 const _origCloseModal = closeModal;
 window.closeModal = function(e) {
-  // restore URL ก่อนเสมอ — ให้ browser เห็น URL หน้า listings ทันทีที่ modal เริ่มปิด
-  if (!e || e.target.id === 'prop-modal') _closePropertyUrl();
   _origCloseModal(e);
+  if (!e || e.target.id === 'prop-modal') _closePropertyUrl();
 };
 
 // Add "ดูหน้าเต็ม" share button inside property modal after it's opened
@@ -5316,16 +5298,6 @@ function renderListingsPage() {
   if(_listingsPageEl && !_listingsPageEl.classList.contains('active')) {
     _listingsRenderPending = false;
     return;
-  }
-  // ── skip-if-unchanged: ถ้ากลับมาจาก prop-modal และ grid ยังมีการ์ดครบ → ไม่ต้อง render ซ้ำ ──
-  // ใช้ flag _skipListingsRenderOnce ที่ตั้งโดย closeModal เท่านั้น และ clear ทันทีหลังใช้
-  if(window._skipListingsRenderOnce) {
-    window._skipListingsRenderOnce = false;
-    const _g = document.getElementById('listings-grid');
-    if(_g && _g.querySelector('.prop-card')) {
-      _listingsRenderPending = false;
-      return;
-    }
   }
   // ── debounce: ถ้ากำลัง render อยู่แล้ว (pending) ให้ queue ครั้งเดียวเท่านั้น ──
   if(_listingsRenderPending) {
@@ -5675,8 +5647,6 @@ function showListingsPage(title, data) {
   window._listingsBatchInFlight = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
-  // navigate มาใหม่จากเจตนา → ต้อง render ใหม่เสมอ ไม่ skip
-  window._skipListingsRenderOnce = false;
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
@@ -6375,10 +6345,7 @@ function closeModal(e){
   if(_qsSh3) _qsSh3.style.transform = 'translateY(100%)';
   const _prevPage = window._pageBeforeModal || 'home';
   if(_prevPage === 'listings') {
-    // กลับหน้า listings: ตั้ง flag ให้ renderListingsPage skip re-render ครั้งเดียว
-    // เพราะ grid ยังมีการ์ดครบอยู่ ไม่ต้องโหลดซ้ำ
-    window._skipListingsRenderOnce = true;
-    // เรียก _silentShowPage โดยตรง (skipScrollTop=true เพื่อ restore scroll)
+    // กลับหน้า listings: เรียก _silentShowPage โดยตรง (skipScrollTop=true เพื่อ restore scroll)
     _silentShowPage('listings', true);
     if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
   } else {

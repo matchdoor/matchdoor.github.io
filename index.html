@@ -5056,19 +5056,16 @@ function _initRouteFromUrl() {
 // ── Patch openModal to also update URL ──
 const _origOpenModal = openModal;
 window.openModal = function(id) {
-  // ── FIX: บันทึก page ปัจจุบันก่อนเปิด modal เพื่อ restore หลังปิด ──
-  const curState = history.state;
-  if (curState && curState.type === 'page') {
-    window._pageBeforeModal = curState.name;
+  // ── บันทึก page ปัจจุบันก่อนเปิด modal เพื่อ restore หลังปิด ──
+  // อ่านจาก active page DOM เป็นหลัก — แม่นยำกว่า history.state
+  // เพราะ _pushRoute อาจไม่ทำงานถ้า _routerReady=false ทำให้ state ไม่ตรงกับหน้าจริง
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const pid = activePage.id.replace('page-', '');
+    window._pageBeforeModal = pid || 'home';
   } else {
-    // อ่านจาก active page element ถ้า state ไม่มี
-    const activePage = document.querySelector('.page.active');
-    if (activePage) {
-      const pid = activePage.id.replace('page-', '');
-      window._pageBeforeModal = pid || 'home';
-    } else {
-      window._pageBeforeModal = 'home';
-    }
+    const curState = history.state;
+    window._pageBeforeModal = (curState && curState.type === 'page') ? curState.name : 'home';
   }
   _origOpenModal(id);
   _openPropertyUrl(id);

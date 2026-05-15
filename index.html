@@ -4898,16 +4898,17 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // scroll restore + show page ใน rAF — รอ 200ms ให้ batch abort ก่อน
+      // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
+        // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
+        // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
+        // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
+        window._listingsRenderAbort = false;
+        _listingsRenderPending = false;
+        window._listingsRenderQueued = false;
+        window._listingsBatchInFlight = false;
         _silentShowPage(state.name, true);
-        setTimeout(function(){
-          window._listingsRenderAbort = false;
-          _listingsRenderPending = false;
-          window._listingsRenderQueued = false;
-          window._listingsBatchInFlight = false;
-        }, 80);
       });
     } else {
       _silentShowPage(state.name);
@@ -4934,8 +4935,17 @@ function _silentShowPage(name, skipScrollTop) {
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
   window._listingsBatchInFlight = false;
-  // ถ้ามี modal เปิดอยู่ให้ปิดก่อน
+  // ถ้ามี modal/overlay เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
+  // ── FIX: ปิด apply-overlay ถ้าค้างเปิดอยู่ (z-index:4500 จะบัง listings ทั้งหมด) ──
+  ['apply-agent-overlay','apply-other-overlay'].forEach(function(id){
+    const ov = document.getElementById(id);
+    if(ov && ov.classList.contains('open')) ov.classList.remove('open');
+  });
+  // ── FIX: ปิด all-modal / ov อื่นๆ ที่อาจค้างเปิดอยู่เมื่อ navigate ──
+  document.querySelectorAll('.ov.open').forEach(function(el){
+    if(el.id !== 'prop-modal') el.classList.remove('open');
+  });
   // ถ้าไป listings ให้เตรียม data ไว้ก่อน
   if(name === 'listings'){
     const _allProps = (props && props.length) ? props :
@@ -4956,6 +4966,10 @@ function _silentShowPage(name, skipScrollTop) {
   _closeHamburger();
   if (name === 'listings') {
     window._lsSeoSidebarRendered = false;
+    // ── FIX: clear _pageBeforeModal เมื่อ navigate มาที่ listings ใหม่
+    // ป้องกัน afterModalClose guard ค้าง ทำให้ re-render ถูกเรียกซ้ำไม่สิ้นสุด
+    // (จะถูกตั้งใหม่ใน openModal เมื่อมีการเปิดการ์ด)
+    if(window._pageBeforeModal === 'listings') window._pageBeforeModal = null;
     // ถ้า _listingsDataReady → render ทันที
     // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
     if(window._listingsDataReady && typeof renderListingsPage === 'function') {
@@ -5570,6 +5584,29 @@ let _listingsTxFilter = 'ALL';
 let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
+  // ── FIX: ปิด prop-modal ถ้าค้างเปิดอยู่ก่อนเปลี่ยนหน้า ──
+  const _pm = document.getElementById('prop-modal');
+  if(_pm && _pm.classList.contains('open')) {
+    _pm.classList.remove('open');
+    window._currentModalId = null;
+  }
+  // ── FIX: unlock scroll lock ทุกรูปแบบที่อาจค้างไว้ ──
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('position');
+  document.body.style.removeProperty('top');
+  document.body.style.removeProperty('width');
+  document.body.style.removeProperty('left');
+  document.body.classList.remove('modal-open');
+  document.body._savedScrollY = 0;
+  // ── FIX: reset render flags ก่อนทุกครั้ง ป้องกัน abort ค้าง ──
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
+  window._listingsRenderAbort = false;
+  window._listingsBatchInFlight = false;
+  _listingsRenderPending = false;
+  window._listingsRenderQueued = false;
+
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
                      (props && props.length ? [...props] :
@@ -5655,6 +5692,13 @@ function _scrollToListingsResults() {
 }
 
 function listingsFilterTx(tx) {
+  // ── ถ้าไม่ได้อยู่หน้า listings ให้ navigate ก่อน ──
+  const lp = document.getElementById('page-listings');
+  if(!lp || !lp.classList.contains('active')) {
+    showListingsPage('ประกาศทั้งหมด');
+    setTimeout(function(){ listingsFilterTx(tx); }, 120);
+    return;
+  }
   _updateListingsTxTabs(tx);
   // Sync the ls-tx select dropdown
   const lsTxSel = document.getElementById('ls-tx');
@@ -5774,6 +5818,18 @@ function listingsInlineSearch() {
 }
 
 function listingsQuickSearch(kw) {
+  // ── ถ้าไม่ได้อยู่หน้า listings อยู่แล้ว ให้ navigate ก่อน แล้วค่อย search ──
+  const lp = document.getElementById('page-listings');
+  if(!lp || !lp.classList.contains('active')) {
+    showListingsPage('ประกาศทั้งหมด');
+    setTimeout(function(){
+      const inp2 = document.getElementById('ls-kw');
+      if(inp2) inp2.value = kw;
+      listingsInlineSearch();
+      _scrollToListingsResults();
+    }, 80);
+    return;
+  }
   const inp = document.getElementById('ls-kw');
   if(inp) inp.value = kw;
   listingsInlineSearch();
@@ -5794,6 +5850,13 @@ const listingsInlineSearchDebounced = (function(){
 // ฟิลเตอร์ประเภทอสังหาโดยตรงจาก SEO sidebar
 // (ไม่ผ่าน ls-type select เพราะ select มี option จำกัด)
 function listingsFilterByType(typeVal) {
+  // ── ถ้าไม่ได้อยู่หน้า listings อยู่แล้ว ให้ navigate ก่อน ──
+  const lp = document.getElementById('page-listings');
+  if(!lp || !lp.classList.contains('active')) {
+    showListingsPage('ประกาศทั้งหมด');
+    setTimeout(function(){ listingsFilterByType(typeVal); }, 120);
+    return;
+  }
   // sync ls-type select ถ้ามี option ตรงกัน (เพื่อให้ UI แสดงถูก)
   const sel = document.getElementById('ls-type');
   if(sel) {
@@ -6217,36 +6280,29 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // _afterModalClose: reset flags ทั้งหมด + ตรวจ listings grid ว่าโหลดครบไหม
-  // delay 80ms เพียงพอให้ idle batch เก่า abort ก่อน โดยไม่บล็อก UI นาน
-  const _afterModalClose = function() {
+  // ── รวม logic ทั้งหมดให้อยู่ที่เดียว ป้องกัน race condition ──
+  // ขั้นตอน: scroll restore → reset ALL flags → render (1 ครั้ง)
+  // ห้ามเรียก renderListingsPage หลาย rAF/setTimeout พร้อมกัน
+  const _doRestoreAndRender = function() {
+    // 1. reset flags ทั้งหมด ก่อน render เสมอ
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
     window._listingsBatchInFlight = false;
+    // 2. render listings ถ้าอยู่หน้า listings
     const listingsPage = document.getElementById('page-listings');
     if(listingsPage && listingsPage.classList.contains('active')) {
-      const grid = document.getElementById('listings-grid');
-      // ── GUARD: ถ้ามีการ์ด visible อยู่แล้ว ไม่ต้อง re-render ──
-      // ป้องกัน race condition ที่ทำให้หน้าค้างบน mobile
-      const visibleCards = grid ? grid.querySelectorAll('.prop-card:not(.loading-sk)').length : 0;
-      if(visibleCards > 0) return; // การ์ดยังอยู่ครบ — ไม่ต้อง render ซ้ำ
-      // re-render เฉพาะเมื่อ card หายไปจริงๆ และไม่มี render/batch อื่น active
-      const expectedCards = (typeof _listingsData !== 'undefined' && _listingsData.length)
-        ? Math.min(_listingsData.length - ((_listingsCurPage-1) * _listingsPerPage()), _listingsPerPage())
-        : 0;
-      if(grid && expectedCards > 0 && !_listingsRenderPending && !window._listingsBatchInFlight) {
-        requestAnimationFrame(function(){ renderListingsPage(); });
-      }
+      if(typeof renderListingsPage === 'function') renderListingsPage();
     }
   };
   if(savedY > 0) {
     requestAnimationFrame(function() {
       window.scrollTo(0, savedY);
-      setTimeout(_afterModalClose, 80);
+      // รอ 80ms ให้ batch abort เสร็จก่อน reset + render
+      setTimeout(_doRestoreAndRender, 80);
     });
   } else {
-    setTimeout(_afterModalClose, 80);
+    setTimeout(_doRestoreAndRender, 80);
   }
 }
 // Helper: build SEO-friendly property URL from prop object

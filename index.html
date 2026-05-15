@@ -4901,6 +4901,10 @@ window.addEventListener('popstate', function(e) {
       // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
+        // ── FIX: bump generation อีกครั้งก่อน reset — ป้องกัน idle batch เก่ารัน append หลัง reset
+        if(typeof window._listingsRenderGen !== 'undefined') {
+          window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+        }
         // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
         // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
         // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
@@ -4927,7 +4931,8 @@ function _silentShowPage(name, skipScrollTop) {
   document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
-  // bump generation + reset render flags — ป้องกัน abort ค้างและ batch stale จาก modal ก่อนหน้า
+  // bump generation ก่อนเสมอ — ป้องกัน idle batch เก่า (home, listings, หรือ modal)
+  // ที่กำลังรออยู่ abort ตัวเองทันที ก่อนที่ render ใหม่จะเริ่ม
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
@@ -4937,10 +4942,11 @@ function _silentShowPage(name, skipScrollTop) {
   window._listingsBatchInFlight = false;
   // ถ้ามี modal/overlay เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
-  // ── FIX: ปิด apply-overlay ถ้าค้างเปิดอยู่ (z-index:4500 จะบัง listings ทั้งหมด) ──
-  ['apply-agent-overlay','apply-other-overlay'].forEach(function(id){
+  // ── FIX: ปิด overlay/sheet ทุกตัวที่อาจค้างเปิดอยู่ (z-index สูงทำให้กดอะไรไม่ได้) ──
+  ['apply-agent-overlay','apply-other-overlay','adv-desktop-overlay',
+   'adv-sheet-overlay','adv-sheet','adv-filter-panel','seo-drawer','seo-drawer-overlay'].forEach(function(id){
     const ov = document.getElementById(id);
-    if(ov && ov.classList.contains('open')) ov.classList.remove('open');
+    if(ov) ov.classList.remove('open');
   });
   // ── FIX: ปิด all-modal / ov อื่นๆ ที่อาจค้างเปิดอยู่เมื่อ navigate ──
   document.querySelectorAll('.ov.open').forEach(function(el){
@@ -4966,10 +4972,8 @@ function _silentShowPage(name, skipScrollTop) {
   _closeHamburger();
   if (name === 'listings') {
     window._lsSeoSidebarRendered = false;
-    // ── FIX: clear _pageBeforeModal เมื่อ navigate มาที่ listings ใหม่
-    // ป้องกัน afterModalClose guard ค้าง ทำให้ re-render ถูกเรียกซ้ำไม่สิ้นสุด
-    // (จะถูกตั้งใหม่ใน openModal เมื่อมีการเปิดการ์ด)
-    if(window._pageBeforeModal === 'listings') window._pageBeforeModal = null;
+    // NOTE: ไม่ clear _pageBeforeModal ที่นี่ — closeModal ต้องการค่านี้เพื่อ restore page หลังปิดการ์ด
+    // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
     // ถ้า _listingsDataReady → render ทันที
     // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
     if(window._listingsDataReady && typeof renderListingsPage === 'function') {
@@ -5291,6 +5295,13 @@ function listingsSortChange() {
 if(typeof window._listingsRenderGen === 'undefined') window._listingsRenderGen = 0;
 
 function renderListingsPage() {
+  // ── guard: ถ้าหน้า listings ไม่ได้ active อยู่ ไม่ต้อง render ──
+  // ป้องกัน idle batch จากหน้า home มา append เข้า listings-grid เมื่อ navigate
+  const _listingsPageEl = document.getElementById('page-listings');
+  if(_listingsPageEl && !_listingsPageEl.classList.contains('active')) {
+    _listingsRenderPending = false;
+    return;
+  }
   // ── debounce: ถ้ากำลัง render อยู่แล้ว (pending) ให้ queue ครั้งเดียวเท่านั้น ──
   if(_listingsRenderPending) {
     if(!window._listingsRenderQueued) {
@@ -5308,6 +5319,19 @@ function renderListingsPage() {
   window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   const _myGen = window._listingsRenderGen;
   const _doRender = () => {
+  // ── ตรวจ generation + abort ก่อนทำอะไรเลย — ป้องกัน stale rAF รัน render ผิด ──
+  if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen) {
+    _listingsRenderPending = false;
+    window._listingsBatchInFlight = false;
+    return;
+  }
+  // ── ตรวจ page-listings active ก่อนด้วย ──
+  const _lsActivePre = document.getElementById('page-listings');
+  if(_lsActivePre && !_lsActivePre.classList.contains('active')) {
+    _listingsRenderPending = false;
+    window._listingsBatchInFlight = false;
+    return;
+  }
   _listingsRenderPending = false;
   window._listingsBatchInFlight = false; // reset ก่อนทุก render — ป้องกันค่าค้างจาก render ก่อน
 
@@ -5405,6 +5429,9 @@ function renderListingsPage() {
         window._listingsBatchInFlight = true;
         idle(function(){
           if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
+          // ตรวจว่า listings page ยัง active ก่อน append — ป้องกัน stale batch append หลัง navigate
+          const _lsPageCheck = document.getElementById('page-listings');
+          if(!_lsPageCheck || !_lsPageCheck.classList.contains('active')){ window._listingsBatchInFlight = false; return; }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
@@ -5416,6 +5443,9 @@ function renderListingsPage() {
           if(restBatch.length){
             idle(function(){
               if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
+              // ตรวจอีกครั้งก่อน batch สุดท้าย
+              const _lsPageCheck2 = document.getElementById('page-listings');
+              if(!_lsPageCheck2 || !_lsPageCheck2.classList.contains('active')){ window._listingsBatchInFlight = false; return; }
               const frag2 = document.createDocumentFragment();
               const tmp2 = document.createElement('div');
               tmp2.innerHTML = restBatch.map(propCard).join('');
@@ -5590,7 +5620,15 @@ function showListingsPage(title, data) {
     _pm.classList.remove('open');
     window._currentModalId = null;
   }
-  // ── FIX: unlock scroll lock ทุกรูปแบบที่อาจค้างไว้ ──
+  // ── FIX ข้อ 5: ปิด overlay/modal/sheet ทุกตัวที่อาจค้างอยู่ก่อน navigate ──
+  // ครอบคลุม apply-overlay, adv-desktop-overlay, all-modal, ทุก .ov.open
+  document.querySelectorAll('.ov.open').forEach(function(el){ el.classList.remove('open'); });
+  ['apply-agent-overlay','apply-other-overlay','adv-desktop-overlay',
+   'adv-sheet-overlay','adv-sheet','adv-filter-panel','seo-drawer','seo-drawer-overlay'].forEach(function(id){
+    const ov = document.getElementById(id);
+    if(ov) ov.classList.remove('open');
+  });
+  // unlock scroll lock ทุกรูปแบบที่อาจค้างไว้
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('position');
   document.body.style.removeProperty('top');
@@ -5598,14 +5636,17 @@ function showListingsPage(title, data) {
   document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
-  // ── FIX: reset render flags ก่อนทุกครั้ง ป้องกัน abort ค้าง ──
+  // ── bump generation + ตั้ง abort=true เพื่อหยุด idle batch (all-grid, listings เก่า) ──
+  // abort จะถูก reset ใน _silentShowPage → renderListingsPage → _doRender
+  // ไม่ reset ที่นี่เพื่อให้ batch ที่รออยู่ใน requestIdleCallback มีโอกาสเห็น abort=true ก่อน
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
-  window._listingsRenderAbort = false;
+  window._listingsRenderAbort = true;
   window._listingsBatchInFlight = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
+  // abort จะถูก reset โดย _silentShowPage ซึ่งจะ bump gen + set abort=false ก่อน renderListingsPage
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
@@ -6050,12 +6091,16 @@ function openModal(id){
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
 
-  // ── bump generation ทันที — หยุด batch idle ที่กำลัง render listings อยู่ ──
-  // (ป้องกัน batch append เข้า grid หลังจาก modal เปิดและ user กลับมาหน้า listings)
+  // ── bump generation + abort ทันที — หยุด batch idle ที่กำลัง render listings อยู่ ──
+  // ต้องตั้ง abort=true ด้วย ไม่ใช่แค่ bump generation
+  // เพราะ batch ตรวจทั้ง abort flag AND generation — ถ้าขาด abort จะยังรัน append ต่อ
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
+  window._listingsRenderAbort = true;
   window._listingsBatchInFlight = false;
+  _listingsRenderPending = false;
+  window._listingsRenderQueued = false;
 
   // ── แสดง modal ทันทีก่อน เพื่อให้ user เห็น response ไว ──
   // clear content เก่าก่อน
@@ -6248,6 +6293,10 @@ function closeModal(e){
     document.body.style.removeProperty('width');
     document.body.style.removeProperty('left');
     document.body.classList.remove('modal-open');
+    // bump generation ก่อน reset — ป้องกัน stale batch ที่อาจค้างอยู่
+    if(typeof window._listingsRenderGen !== 'undefined') {
+      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+    }
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
@@ -6280,30 +6329,26 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── รวม logic ทั้งหมดให้อยู่ที่เดียว ป้องกัน race condition ──
-  // ขั้นตอน: scroll restore → reset ALL flags → render (1 ครั้ง)
-  // ห้ามเรียก renderListingsPage หลาย rAF/setTimeout พร้อมกัน
-  const _doRestoreAndRender = function() {
-    // 1. reset flags ทั้งหมด ก่อน render เสมอ
+  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
+  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
+  const _prevPage = window._pageBeforeModal || 'home';
+  requestAnimationFrame(function() {
+    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
+    if(typeof window._listingsRenderGen !== 'undefined') {
+      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+    }
     window._listingsRenderAbort = false;
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
     window._listingsBatchInFlight = false;
-    // 2. render listings ถ้าอยู่หน้า listings
+    // restore scroll position
+    if(savedY > 0) window.scrollTo(0, savedY);
+    // render listings ถ้าเปิดการ์ดมาจากหน้า listings
     const listingsPage = document.getElementById('page-listings');
-    if(listingsPage && listingsPage.classList.contains('active')) {
+    if(_prevPage === 'listings' && listingsPage && listingsPage.classList.contains('active')) {
       if(typeof renderListingsPage === 'function') renderListingsPage();
     }
-  };
-  if(savedY > 0) {
-    requestAnimationFrame(function() {
-      window.scrollTo(0, savedY);
-      // รอ 80ms ให้ batch abort เสร็จก่อน reset + render
-      setTimeout(_doRestoreAndRender, 80);
-    });
-  } else {
-    setTimeout(_doRestoreAndRender, 80);
-  }
+  });
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -10066,10 +10111,10 @@ document.addEventListener('DOMContentLoaded', function ensureHomeVisible(){
 init();
 
 // ── Emergency unlock: ถ้า body ค้าง modal-open แต่ไม่มี modal/overlay เปิดจริงๆ
-// ครอบ .ov, [id$="-overlay"].open, apply-overlay.open และ qs-mob-sheet
+// ครอบ .ov, [id$="-overlay"].open, apply-overlay.open, adv-sheet.open, seo-drawer.open และ qs-mob-sheet
 setInterval(function(){
   const anyOpen = document.querySelector(
-    '.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open'
+    '.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open'
   );
   const qsSheet = document.getElementById('qs-mob-sheet');
   // qs-mob-sheet ถือว่า "open" เมื่อ translateY ไม่ใช่ 100% และ display ไม่ใช่ none
@@ -10082,7 +10127,7 @@ setInterval(function(){
     document.body.style.removeProperty('width');
     document.body.style.removeProperty('left');
     document.body.classList.remove('modal-open');
-    // bump generation ด้วยเพื่อ kill batch ที่ค้างอยู่
+    // bump generation + reset flags — kill batch ที่ค้างอยู่ทั้งหมด
     if(typeof window._listingsRenderGen !== 'undefined') {
       window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
     }
@@ -10090,6 +10135,11 @@ setInterval(function(){
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
     window._listingsBatchInFlight = false;
+    // ถ้า listings page active อยู่ → render ใหม่ด้วย (ป้องกันหน้าว่างจาก flag ค้าง)
+    const _lp = document.getElementById('page-listings');
+    if(_lp && _lp.classList.contains('active') && typeof renderListingsPage === 'function') {
+      requestAnimationFrame(function(){ renderListingsPage(); });
+    }
   }
 }, 1000);
 

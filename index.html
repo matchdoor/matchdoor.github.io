@@ -229,26 +229,19 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
 @media(max-width:1024px){
-  /* ครอบ iPad ด้วย — iPad มักใช้ 768-1024px */
   *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
 
 @media(max-width:768px){
-  /* ปิด animation ที่ไม่จำเป็นบน mobile */
   .door-left,.door-right,.pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
   #hero-canvas,#ph-canvas-ag,#ph-canvas-port,.page-hero-canvas{display:none!important}
-  /* ป้องกัน layout thrash จาก hover transform */
   .prop-card:hover,.price-card:hover,.cat-card:hover,
   .blog-card:hover,.gal-card:hover,.agent-card:hover,
   .osrv-card:hover{transform:none!important;box-shadow:none!important}
-  /* stat-counter-card: ลด shadow */
   .stat-counter-card{box-shadow:0 2px 8px rgba(0,0,0,.2)!important}
-  /* contain: ลดพื้นที่ repaint ลดการ layout shift */
   .prop-card,.blog-card,.agent-card,.gal-card{
-    contain:layout style paint;
     box-shadow:0 2px 8px rgba(0,0,0,.08)!important;
   }
-  /* Modal overlay touch scroll */
   .ov,.modal,.mbody{
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
@@ -259,62 +252,23 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
     overscroll-behavior:contain!important;
     overscroll-behavior-y:contain!important;
   }
-  /* ป้องกัน iOS freeze เมื่อ modal ปิด — isolate stacking context */
-  #prop-modal{
-    will-change:auto;
-    isolation:isolate;
-  }
-  #prop-modal.open .modal{
-    will-change:transform;
-  }
-  /* ลด transition ให้รู้สึกเร็วขึ้นบน mobile */
+  #prop-modal{will-change:auto;isolation:isolate}
+  #prop-modal.open .modal{will-change:transform}
   *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
-  /* modal overlay: display:none/flex แล้ว — ไม่มี transition ค้างให้ override */
   #prop-modal .modal{transition:none!important}
   .prop-title{font-size:13px!important}
-  /* Image optimization on mobile */
-  .prop-thumb img,.blog-thumb img{
-    image-rendering:auto;
-    decoding:async;
-  }
-  /* ป้องกัน horizontal scroll leaking */
+  .prop-thumb img,.blog-thumb img{image-rendering:auto;decoding:async}
   .page,.wrap{overflow-x:hidden}
-
-  /* ══ KEY FIX: listings-grid — ห้ามใช้ contain:layout style ══
-     contain:layout ทำให้ iOS ต้อง recalculate stacking context ใหม่
-     ทุกครั้งที่ modal ปิด → หน้าค้าง ใช้แค่ will-change:auto แทน */
-  #listings-grid{
-    will-change:auto;
-    /* ห้ามใช้ contain:layout หรือ contain:style ใน listings-grid */
-  }
-  #listings-grid .prop-card{
-    contain:style paint;
-    /* ลด contain scope — ใช้แค่ style+paint ไม่ใช่ layout */
-  }
-
-  /* listings search bar: ลด GPU load บน mobile */
-  #page-listings .listings-search-sf{
-    grid-template-columns:1fr 1fr!important;
-    gap:6px!important;
-  }
-  #page-listings .listings-search-sf > div:first-child{
-    grid-column:1/-1;
-  }
+  /* listings-grid: ห้ามใช้ contain เด็ดขาด ป้องกัน iOS freeze */
+  #listings-grid{will-change:auto}
+  #listings-grid .prop-card{will-change:auto}
 }
 
-/* ══ iPad Fix (768-1024px) ══ */
 @media(min-width:769px) and (max-width:1024px){
-  .prop-card,.blog-card,.agent-card,.gal-card{
-    box-shadow:0 2px 12px rgba(0,0,0,.10)!important;
-  }
-  body.modal-open{
-    overflow:hidden!important;
-  }
-  .ov,.modal,.mbody{
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior:contain;
-  }
+  .prop-card,.blog-card,.agent-card,.gal-card{box-shadow:0 2px 12px rgba(0,0,0,.10)!important}
+  body.modal-open{overflow:hidden!important}
+  .ov,.modal,.mbody{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 }
 /* ── z-index ให้เป็นระบบ (ทุก device) ────────────────────────
    nav=1000 | dd-mobile-overlay=1001 | dd-panel=1050 | modal=3200 | sheet=1500 | toast=9999 */
@@ -1265,19 +1219,33 @@ footer::after{
 .sort-select{padding:7px 10px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:inherit;color:var(--tx);background:#fff;cursor:pointer}
 .sub-page-footer{}
 
-/* ── LISTINGS PAGE RESPONSIVE ── */
-/* Desktop: 4 col grid + 280px sidebar */
+/* ══ LISTINGS PAGE — UNIFIED RESPONSIVE SYSTEM ══════════════════════════
+   กฎเดียว ไม่มีขัดแย้ง: desktop=4col, tablet=3col, mobile=2col
+   search bar: desktop=8col, tablet=4col, mobile=2col (keyword full-width)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Base: desktop — 4 col grid + 280px sidebar */
 .listings-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .listings-main-wrap{display:grid;grid-template-columns:1fr 280px;gap:24px;max-width:1320px;margin:0 auto;padding:20px}
-.listings-seo-sidebar{min-width:0}
+.listings-seo-sidebar{min-width:0;position:sticky;top:72px;align-self:start}
 
-/* Tablet landscape (1100px): 3 col grid, sidebar stays */
+/* Search bar: desktop 8-col */
+.listings-search-sf{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;
+  gap:8px;
+  align-items:end;
+}
+/* buttons wrapper: use contents so buttons sit in grid */
+.ls-btn-row{display:contents}
+
+/* ── Tablet landscape ≤1100px: 3 col grid ── */
 @media(max-width:1100px){
   .listings-grid-4{grid-template-columns:repeat(3,1fr)!important}
   .listings-search-sf{grid-template-columns:1fr 1fr 1fr 1fr!important}
 }
 
-/* Tablet portrait (900px): 2 col grid, sidebar hidden (goes to drawer) */
+/* ── Tablet portrait ≤900px: sidebar hidden, 3-col grid ── */
 @media(max-width:900px){
   .listings-main-wrap{grid-template-columns:1fr!important;padding:12px!important}
   .listings-grid-4{grid-template-columns:repeat(3,1fr)!important;gap:10px}
@@ -1285,91 +1253,64 @@ footer::after{
   .listings-search-sf{grid-template-columns:1fr 1fr 1fr!important}
 }
 
-/* Mobile large (640px): switch to 2-col filter */
+/* ── Mobile ≤640px: 2-col grid, 2-col filter ── */
 @media(max-width:640px){
   .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px}
-  .listings-search-sf{grid-template-columns:1fr 1fr!important}
+  .listings-main-wrap{padding:8px!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr!important;gap:8px!important}
   /* keyword spans full width */
-  .listings-search-sf > div:first-child,.listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
-  /* search/reset buttons row */
-  .listings-search-sf > button{flex:1;min-width:0}
-  /* two buttons side by side */
-  .ls-btn-row{display:flex;gap:8px;grid-column:1/-1}
+  .listings-search-sf > div:first-child,
+  .listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  /* buttons: exit contents mode, become a full-width flex row */
+  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
+  .ls-btn-row button{flex:1;justify-content:center}
   #ls-kw{width:100%!important;font-size:16px!important;box-sizing:border-box!important}
+  .listings-search-sf label{font-size:10px!important}
+  .listings-search-sf select,.listings-search-sf input{padding:8px 10px!important;font-size:13px!important}
 }
 
-/* Mobile (480px): compact */
+/* ── Mobile compact ≤480px ── */
 @media(max-width:480px){
   .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:6px}
   .listings-main-wrap{padding:6px!important}
   .listings-search-sf{grid-template-columns:1fr 1fr!important;gap:6px!important}
-  .listings-search-sf > div:first-child,.listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  .listings-search-sf > div:first-child,
+  .listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
+  .ls-btn-row button{flex:1;justify-content:center}
   #ls-kw{font-size:16px!important;box-sizing:border-box!important}
-  /* Shrink filter labels on very small screens */
   .listings-search-sf label{font-size:10px!important}
   .listings-search-sf select,.listings-search-sf input{padding:8px 10px!important;font-size:13px!important}
-  /* Map toggle — prevent it from pushing to new row alone */
-  #listings-map-toggle-btn{font-size:11px!important;padding:6px 10px!important}
-  /* TX tabs wrap tighter */
+  /* Map toggle — ซ่อน text label บนหน้าจอเล็กมาก */
+  .ls-map-btn-label{display:none}
+  #listings-map-toggle-btn{padding:8px 10px!important}
+  /* TX tabs */
   #ls-tab-all,#ls-tab-buy,#ls-tab-rent,#ls-tab-hot,#ls-tab-new{padding:4px 10px!important;font-size:11px!important}
 }
 
-/* ── LISTINGS MOBILE PATCHES ── */
-/* Hide scrollbar on tabs row */
+/* ── Hide scrollbar on tabs row ── */
 .ls-tabs-row::-webkit-scrollbar{display:none}
 .ls-tabs-row{-ms-overflow-style:none;scrollbar-width:none}
 
-/* Map button: hide text label on very small screens */
-@media(max-width:480px){
-  .ls-map-btn-label{display:none}
-  #listings-map-toggle-btn{padding:8px 10px!important}
-}
-
-/* Buttons in filter grid: on mobile become a 2-col row at bottom */
-@media(max-width:640px){
-  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
-  .ls-btn-row button{flex:1;justify-content:center}
-}
-
-/* SEO rich content grid — better on mobile */
-#listings-seo-rich-content section > div[style*="grid-template-columns"]{
-  display:grid;
-}
-@media(max-width:480px){
-  #listings-seo-rich-content section > div[style*="grid-template-columns"]{
-    grid-template-columns:1fr 1fr!important;
-    gap:10px!important;
-  }
-}
-
-/* Listings toolbar: count left, sort right — stack on mobile */
+/* ── Listings toolbar: stack on very small screens ── */
 @media(max-width:480px){
   .listings-toolbar{flex-direction:column;align-items:flex-start!important;gap:6px!important}
   .listings-count{font-size:13px}
   .sort-select{font-size:12px;padding:5px 8px}
 }
 
-/* Pagination mobile: compact */
-.pagination{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:24px;padding:0 8px}
-.pg-info{width:100%;text-align:center;font-size:12px;color:var(--tx2);margin-bottom:4px}
-.pg-controls{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
-.pg-btn{min-width:36px;height:36px;padding:0 10px;border-radius:8px;border:1.5px solid var(--bd);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--tx);display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
-.pg-btn:hover:not(.disabled){background:var(--lt);border-color:var(--p);color:var(--p)}
-.pg-btn.active{background:var(--p);color:#fff;border-color:var(--p)}
-.pg-btn.disabled{opacity:.35;cursor:not-allowed}
-.pg-ellipsis{display:inline-flex;align-items:center;padding:0 6px;color:var(--gr);font-size:14px}
-.pg-label{display:inline}
+/* ── Pagination ── */
 @media(max-width:480px){
   .pg-btn{min-width:32px;height:32px;font-size:12px;padding:0 7px}
   .pg-label{display:none}
   .pg-first,.pg-last{display:none}
 }
 
-/* Advanced filter sheet mobile footer buttons — bigger touch targets */
+/* ── Adv filter sheet footer buttons ── */
 .adv-sheet-foot .adv-apply-btn,.adv-sheet-foot .adv-reset-btn{min-height:48px;font-size:14px}
 
-/* Transit filter on listings page */
-#ls-transit{color:#fff;background:rgba(20,40,80,.85)}
+/* ── SEO sidebar toggle: mobile only ── */
+@media(max-width:900px){.seo-toggle-btn[data-page="listings"]{display:flex}}
 .seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
 .seo-drawer-overlay.open{display:block}
 .seo-drawer{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);background:#fff;z-index:4001;transform:translateX(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.18)}
@@ -2434,20 +2375,13 @@ footer::after{
 .sort-select{padding:8px 12px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:var(--tx);cursor:pointer;min-width:160px}
 .sort-select:focus{outline:none;border-color:var(--a)}
 .listings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px;margin-bottom:24px}
-@media(max-width:600px){.listings-grid{grid-template-columns:1fr}}
-/* 4-col grid for listings page — controlled by .listings-grid-4 in responsive CSS above */
-/* Smaller cards in listings-grid-4 */
+/* 4-col grid for listings page */
 .listings-grid-4 .prop-card .prop-thumb{height:170px}
 .listings-grid-4 .prop-card .prop-title{font-size:13px}
 .listings-grid-4 .prop-card .prop-price{font-size:16px}
 .listings-grid-4 .prop-card .prop-body{padding:12px}
-/* SEO sidebar — sticky on desktop (handled by .listings-seo-sidebar class in responsive section above) */
-.listings-seo-sidebar{position:sticky;top:72px;align-self:start}
-/* Listings search bar responsive */
-@media(max-width:900px){.listings-search-sf{grid-template-columns:repeat(3,1fr)!important}}
-@media(max-width:600px){.listings-search-sf{grid-template-columns:1fr 1fr!important}}
-@media(max-width:380px){.listings-search-sf{grid-template-columns:1fr!important}}
-
+/* Transit filter */
+#ls-transit{color:#fff;background:rgba(20,40,80,.85)}
 
 /* ===== PAGINATION ===== */
 .pagination{padding:24px 0 8px;border-top:1px solid var(--bd)}
@@ -3820,8 +3754,8 @@ footer::after{
 // 🔧 จุด CONFIG ทั้งหมด — แก้ไขตรงนี้ที่เดียว
 const C = {
   // --- [1] Supabase Project ---
-  SUPABASE_URL:'https://efgoomcxkozwoumxcaja.supabase.co', // 🔧 [CONFIG-1] Supabase Project URL
-  SUPABASE_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZ29vbWN4a296d291bXhjYWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDAzODQsImV4cCI6MjA5MzcxNjM4NH0.GhxHlZTGxrNmnerNzMHz8c5DAWQXCGte3_tXSd46g5I', // 🔧 [CONFIG-2] Supabase Anon/Public Key เท่านั้น!
+  SUPABASE_URL:'https://pqixxurswwjejrdrtctj.supabase.co', // 🔧 [CONFIG-1] Supabase Project URL
+  SUPABASE_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxaXh4dXJzd3dqZWpyZHJ0Y3RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MjM3NjcsImV4cCI6MjA5NDM5OTc2N30.tXU8IAL8T4n_F9lca8xuTXAhU8f-pFXUiQFcebpAxZk', // 🔧 [CONFIG-2] Supabase Anon/Public Key เท่านั้น!
 
   // --- [2] Supabase Storage ---
   STORAGE_BUCKET: 'matchdoor-assets', // 🔧 [CONFIG-3] ชื่อ Storage Bucket หลัก
@@ -5303,12 +5237,8 @@ function propCard(p){
 // ===== LISTINGS PAGE =====
 let _listingsData = [];
 let _listingsCurPage = 1;
-// ปรับ perPage ให้ responsive: mobile=12, tablet/iPad=20, desktop=32
-// ใช้ function แทน const เพื่อให้ recalculate ตาม viewport จริงทุกครั้ง
+// แสดง 32 ทรัพย์ต่อหน้าทุกอุปกรณ์ — logic เหมือนกับ desktop ทุกหน้าจอ
 function _listingsPerPage() {
-  const w = window.innerWidth;
-  if(w <= 768) return 12;
-  if(w <= 1024) return 20; // iPad
   return 32;
 }
 let _listingsMapInitialized = false;
@@ -5441,27 +5371,21 @@ function renderListingsPage() {
   const grid = document.getElementById('listings-grid');
   if(grid) {
     if(pageData.length) {
-      // ── Batch sizes: mobile=4/8, tablet(iPad)=6/10, desktop=8/16 ──
-      const vw = window.innerWidth;
-      const isMob = vw <= 768;
-      const isTablet = vw > 768 && vw <= 1024;
-      const FIRST_BATCH = isMob ? 4 : (isTablet ? 6 : 8);
-      const SECOND_BATCH = isMob ? 8 : (isTablet ? 10 : 16);
+      // ── Batch sizes: แสดง 32 ทรัพย์ทุก device — render แบ่ง batch เพื่อ performance ──
+      const FIRST_BATCH = 8;   // render ทันที (sync)
+      const SECOND_BATCH = 16; // render batch 2
+      // restBatch: ส่วนที่เหลือ (ถึง 32)
       const firstBatch  = pageData.slice(0, FIRST_BATCH);
       const secondBatch = pageData.slice(FIRST_BATCH, FIRST_BATCH + SECOND_BATCH);
       const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
       // render batch แรกทันที (sync) — ให้ first paint เร็ว
-      // ไม่เรียก initAllCardSwipes หลัง batch แรก — MutationObserver จัดการแทน
-      // เรียกครั้งเดียวหลัง batch สุดท้ายเท่านั้น เพื่อไม่ block main thread ซ้ำ
       grid.innerHTML = firstBatch.map(propCard).join('');
 
       // batch ถัดไป: ใช้ idle callback ป้องกัน main thread block
-      // delay มากขึ้นบน mobile/tablet เพื่อให้ first paint smooth
-      const idleDelay = isMob ? 150 : (isTablet ? 120 : 80);
       const idle = window.requestIdleCallback
-        ? function(cb){ window.requestIdleCallback(cb, {timeout: idleDelay*3}); }
-        : function(cb){ setTimeout(cb, idleDelay); };
+        ? function(cb){ window.requestIdleCallback(cb, {timeout: 300}); }
+        : function(cb){ setTimeout(cb, 80); };
 
       if(secondBatch.length){
         window._listingsBatchInFlight = true;
@@ -11770,7 +11694,7 @@ function resetAdvFilter(){
       </div>
       <!-- Search Bar -->
       <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.12)">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end" class="listings-search-sf">
+        <div class="listings-search-sf">
           <div class="ls-ac-wrap" style="position:relative;z-index:500">
             <label id="ls-label-kw" style="display:block;font-size:11px;font-weight:700;color:rgba(255,220,150,.9);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px"><i class="fas fa-search"></i> คำค้นหา</label>
             <input id="ls-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:9px;font-size:14px;color:#fff;background:rgba(255,255,255,.12);font-family:inherit;box-sizing:border-box" oninput="clearTimeout(window._lsTimer);window._lsTimer=setTimeout(listingsInlineSearch,300)">
@@ -11869,7 +11793,7 @@ function resetAdvFilter(){
   </div>
 
   <!-- Main content: cards + SEO sidebar -->
-  <div style="max-width:1320px;margin:0 auto;padding:20px;display:grid;gap:24px" class="listings-main-wrap">
+  <div class="listings-main-wrap">
     <div>
       <!-- Toolbar -->
       <div class="listings-toolbar" id="listings-results-top" style="margin-bottom:16px">

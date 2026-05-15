@@ -223,7 +223,7 @@ body.modal-open{
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
 /* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
-body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)):not(:has(#qs-mob-overlay[style*="block"])).modal-open{
+body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
   overflow:auto!important;
 }
 
@@ -4876,20 +4876,20 @@ window.addEventListener('popstate', function(e) {
   if (state.type === 'property') {
     if (state.id) { openModal(state.id); }
   } else if (state.type === 'page') {
-    // ── ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
+    // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
-      // bump generation ทันที — idle batch เก่าจะ abort ตัวเองผ่าน generation check
-      // ไม่ set abort=true เพราะจะถูก reset เป็น false ก่อน render อยู่แล้ว
+      // bump generation ทันที + abort pending renders
       if(typeof window._listingsRenderGen !== 'undefined') {
         window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
       }
+      window._listingsRenderAbort = true;
       window._listingsBatchInFlight = false;
       if (typeof close360 === 'function') close360();
       // อ่าน savedY ก่อน clear
       const savedY = document.body._savedScrollY || 0;
       document.body._savedScrollY = 0;
-      // unlock scroll + ปิด modal
+      // restore scroll lock ก่อน remove modal
       document.body.style.removeProperty('overflow');
       document.body.style.removeProperty('position');
       document.body.style.removeProperty('top');
@@ -4898,16 +4898,22 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // reset abort flags ทั้งหมดก่อน _silentShowPage เสมอ
-      if(typeof window._listingsRenderGen !== 'undefined') {
-        window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-      }
-      window._listingsRenderAbort = false;
-      _listingsRenderPending = false;
-      window._listingsRenderQueued = false;
-      window._listingsBatchInFlight = false;
-      _silentShowPage(state.name, true);
-      if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
+      // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
+      requestAnimationFrame(function() {
+        if(savedY > 0) window.scrollTo(0, savedY);
+        // ── FIX: bump generation อีกครั้งก่อน reset — ป้องกัน idle batch เก่ารัน append หลัง reset
+        if(typeof window._listingsRenderGen !== 'undefined') {
+          window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+        }
+        // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
+        // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
+        // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
+        window._listingsRenderAbort = false;
+        _listingsRenderPending = false;
+        window._listingsRenderQueued = false;
+        window._listingsBatchInFlight = false;
+        _silentShowPage(state.name, true);
+      });
     } else {
       _silentShowPage(state.name);
     }
@@ -4936,19 +4942,13 @@ function _silentShowPage(name, skipScrollTop) {
   window._listingsBatchInFlight = false;
   // ถ้ามี modal/overlay เปิดอยู่ให้ปิดก่อน
   if(typeof close360 === 'function') close360();
-  // ── ปิด overlay/sheet ทุกตัวที่อาจค้างเปิดอยู่ (z-index สูงทำให้กดอะไรไม่ได้) ──
+  // ── FIX: ปิด overlay/sheet ทุกตัวที่อาจค้างเปิดอยู่ (z-index สูงทำให้กดอะไรไม่ได้) ──
   ['apply-agent-overlay','apply-other-overlay','adv-desktop-overlay',
    'adv-sheet-overlay','adv-sheet','adv-filter-panel','seo-drawer','seo-drawer-overlay'].forEach(function(id){
     const ov = document.getElementById(id);
     if(ov) ov.classList.remove('open');
   });
-  // ── ปิด qs-mob-overlay (dynamic element ใช้ style.display ไม่ใช่ class) ──
-  if(typeof closeQsSheet === 'function') closeQsSheet();
-  const _qsOv = document.getElementById('qs-mob-overlay');
-  if(_qsOv) _qsOv.style.display = 'none';
-  const _qsSh = document.getElementById('qs-mob-sheet');
-  if(_qsSh) _qsSh.style.transform = 'translateY(100%)';
-  // ── ปิด all-modal / ov อื่นๆ ที่อาจค้างเปิดอยู่เมื่อ navigate ──
+  // ── FIX: ปิด all-modal / ov อื่นๆ ที่อาจค้างเปิดอยู่เมื่อ navigate ──
   document.querySelectorAll('.ov.open').forEach(function(el){
     if(el.id !== 'prop-modal') el.classList.remove('open');
   });
@@ -5056,16 +5056,19 @@ function _initRouteFromUrl() {
 // ── Patch openModal to also update URL ──
 const _origOpenModal = openModal;
 window.openModal = function(id) {
-  // ── บันทึก page ปัจจุบันก่อนเปิด modal เพื่อ restore หลังปิด ──
-  // อ่านจาก active page DOM เป็นหลัก — แม่นยำกว่า history.state
-  // เพราะ _pushRoute อาจไม่ทำงานถ้า _routerReady=false ทำให้ state ไม่ตรงกับหน้าจริง
-  const activePage = document.querySelector('.page.active');
-  if (activePage) {
-    const pid = activePage.id.replace('page-', '');
-    window._pageBeforeModal = pid || 'home';
+  // ── FIX: บันทึก page ปัจจุบันก่อนเปิด modal เพื่อ restore หลังปิด ──
+  const curState = history.state;
+  if (curState && curState.type === 'page') {
+    window._pageBeforeModal = curState.name;
   } else {
-    const curState = history.state;
-    window._pageBeforeModal = (curState && curState.type === 'page') ? curState.name : 'home';
+    // อ่านจาก active page element ถ้า state ไม่มี
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const pid = activePage.id.replace('page-', '');
+      window._pageBeforeModal = pid || 'home';
+    } else {
+      window._pageBeforeModal = 'home';
+    }
   }
   _origOpenModal(id);
   _openPropertyUrl(id);
@@ -5611,25 +5614,20 @@ let _listingsTxFilter = 'ALL';
 let _listingsBaseData = []; // original unfiltered set for this listings page
 
 function showListingsPage(title, data) {
-  // ── ปิด prop-modal ถ้าค้างเปิดอยู่ก่อนเปลี่ยนหน้า ──
+  // ── FIX: ปิด prop-modal ถ้าค้างเปิดอยู่ก่อนเปลี่ยนหน้า ──
   const _pm = document.getElementById('prop-modal');
   if(_pm && _pm.classList.contains('open')) {
     _pm.classList.remove('open');
     window._currentModalId = null;
   }
-  // ── ปิด overlay/modal/sheet ทุกตัวที่อาจค้างอยู่ก่อน navigate ──
+  // ── FIX ข้อ 5: ปิด overlay/modal/sheet ทุกตัวที่อาจค้างอยู่ก่อน navigate ──
+  // ครอบคลุม apply-overlay, adv-desktop-overlay, all-modal, ทุก .ov.open
   document.querySelectorAll('.ov.open').forEach(function(el){ el.classList.remove('open'); });
   ['apply-agent-overlay','apply-other-overlay','adv-desktop-overlay',
    'adv-sheet-overlay','adv-sheet','adv-filter-panel','seo-drawer','seo-drawer-overlay'].forEach(function(id){
     const ov = document.getElementById(id);
     if(ov) ov.classList.remove('open');
   });
-  // ── ปิด qs-mob-overlay (dynamic element ใช้ style.display ไม่ใช่ class) ──
-  if(typeof closeQsSheet === 'function') closeQsSheet();
-  const _qsOv2 = document.getElementById('qs-mob-overlay');
-  if(_qsOv2) _qsOv2.style.display = 'none';
-  const _qsSh2 = document.getElementById('qs-mob-sheet');
-  if(_qsSh2) _qsSh2.style.transform = 'translateY(100%)';
   // unlock scroll lock ทุกรูปแบบที่อาจค้างไว้
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('position');
@@ -5638,15 +5636,17 @@ function showListingsPage(title, data) {
   document.body.style.removeProperty('left');
   document.body.classList.remove('modal-open');
   document.body._savedScrollY = 0;
-  // ── bump generation + reset flags ทั้งหมดทันที (เหมือน logic ข้อ 1-4 ใน _silentShowPage) ──
-  // ไม่ set abort=true ก่อน เพราะทำให้ _doRender ที่ถูก schedule ใหม่โดน abort ด้วย
+  // ── bump generation + ตั้ง abort=true เพื่อหยุด idle batch (all-grid, listings เก่า) ──
+  // abort จะถูก reset ใน _silentShowPage → renderListingsPage → _doRender
+  // ไม่ reset ที่นี่เพื่อให้ batch ที่รออยู่ใน requestIdleCallback มีโอกาสเห็น abort=true ก่อน
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
-  window._listingsRenderAbort = false;
+  window._listingsRenderAbort = true;
   window._listingsBatchInFlight = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
+  // abort จะถูก reset โดย _silentShowPage ซึ่งจะ bump gen + set abort=false ก่อน renderListingsPage
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
@@ -6304,12 +6304,13 @@ function closeModal(e){
     return;
   }
 
-  // ── bump generation ทันที เพื่อให้ idle batch เก่า abort ตัวเองผ่าน generation check ──
-  // ไม่ set abort=true เพราะจะถูก reset เป็น false ก่อน render อยู่แล้ว
+  // ── abort pending idle batch renders ทันที — ก่อนทุกอย่าง ──
+  // เพิ่ม generation ทันที เพื่อให้ batch ที่ค้างอยู่ abort ตัวเองโดยไม่ต้องรอ flag
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
-  window._listingsBatchInFlight = false;
+  window._listingsRenderAbort = true;
+  window._listingsBatchInFlight = false; // idle batch จะ return ทันทีเมื่อเจอ abort/generation
 
   // ปิด 360 viewer ก่อน
   if(typeof close360==='function') close360();
@@ -6318,7 +6319,7 @@ function closeModal(e){
   const savedY = document.body._savedScrollY || 0;
   document.body._savedScrollY = 0;
 
-  // unlock scroll และปิด modal
+  // unlock scroll และปิด modal ใน 1 ชุดคำสั่ง
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('position');
   document.body.style.removeProperty('top');
@@ -6328,29 +6329,26 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── ข้อ 6: restore page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
-  // reset abort flags ทั้งหมดก่อน navigate เสมอ
-  if(typeof window._listingsRenderGen !== 'undefined') {
-    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-  }
-  window._listingsRenderAbort = false;
-  _listingsRenderPending = false;
-  window._listingsRenderQueued = false;
-  window._listingsBatchInFlight = false;
-  // ── ปิด qs-mob-overlay ที่อาจค้างอยู่ ──
-  if(typeof closeQsSheet === 'function') closeQsSheet();
-  const _qsOv3 = document.getElementById('qs-mob-overlay');
-  if(_qsOv3) _qsOv3.style.display = 'none';
-  const _qsSh3 = document.getElementById('qs-mob-sheet');
-  if(_qsSh3) _qsSh3.style.transform = 'translateY(100%)';
+  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
+  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
   const _prevPage = window._pageBeforeModal || 'home';
-  if(_prevPage === 'listings') {
-    // กลับหน้า listings: เรียก _silentShowPage โดยตรง (skipScrollTop=true เพื่อ restore scroll)
-    _silentShowPage('listings', true);
-    if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
-  } else {
-    _silentShowPage(_prevPage);
-  }
+  requestAnimationFrame(function() {
+    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
+    if(typeof window._listingsRenderGen !== 'undefined') {
+      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+    }
+    window._listingsRenderAbort = false;
+    _listingsRenderPending = false;
+    window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
+    // restore scroll position
+    if(savedY > 0) window.scrollTo(0, savedY);
+    // render listings ถ้าเปิดการ์ดมาจากหน้า listings
+    const listingsPage = document.getElementById('page-listings');
+    if(_prevPage === 'listings' && listingsPage && listingsPage.classList.contains('active')) {
+      if(typeof renderListingsPage === 'function') renderListingsPage();
+    }
+  });
 }
 // Helper: build SEO-friendly property URL from prop object
 function propUrl(p) {
@@ -10113,7 +10111,7 @@ document.addEventListener('DOMContentLoaded', function ensureHomeVisible(){
 init();
 
 // ── Emergency unlock: ถ้า body ค้าง modal-open แต่ไม่มี modal/overlay เปิดจริงๆ
-// ครอบ .ov, [id$="-overlay"].open, apply-overlay.open, adv-sheet.open, seo-drawer.open และ qs-mob-sheet/overlay
+// ครอบ .ov, [id$="-overlay"].open, apply-overlay.open, adv-sheet.open, seo-drawer.open และ qs-mob-sheet
 setInterval(function(){
   const anyOpen = document.querySelector(
     '.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open'
@@ -10122,12 +10120,6 @@ setInterval(function(){
   // qs-mob-sheet ถือว่า "open" เมื่อ translateY ไม่ใช่ 100% และ display ไม่ใช่ none
   const qsVisible = qsSheet && qsSheet.style.display !== 'none' &&
                     qsSheet.style.transform !== '' && qsSheet.style.transform !== 'translateY(100%)';
-  // qs-mob-overlay ค้างเปิด (display:block) แต่ modal-open หลุดออกไปแล้ว — ปิดทั้งคู่
-  const qsOv = document.getElementById('qs-mob-overlay');
-  if(qsOv && qsOv.style.display === 'block' && !anyOpen && !qsVisible) {
-    qsOv.style.display = 'none';
-    if(qsSheet) qsSheet.style.transform = 'translateY(100%)';
-  }
   if(!anyOpen && !qsVisible && document.body.classList.contains('modal-open')) {
     document.body.style.removeProperty('overflow');
     document.body.style.removeProperty('position');

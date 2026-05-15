@@ -4906,11 +4906,11 @@ window.addEventListener('popstate', function(e) {
       _listingsRenderPending = false;
       window._listingsRenderQueued = false;
       window._listingsBatchInFlight = false;
-      // ถ้ากลับไป listings และ grid มีการ์ดอยู่แล้ว → ตั้ง _pageBeforeModal = 'listings'
-      // เพื่อให้ _silentShowPage ตรวจเจอแล้ว skip render ซ้ำ
+      // ถ้ากลับไป listings และ grid มีการ์ดอยู่แล้ว → ตั้ง flag skip render ครั้งเดียว
       if(state.name === 'listings') {
         const _gridEl = document.getElementById('listings-grid');
         if(_gridEl && _gridEl.querySelector('.prop-card')) {
+          window._skipListingsRenderOnce = true;
           window._pageBeforeModal = 'listings';
         }
       }
@@ -4979,14 +4979,12 @@ function _silentShowPage(name, skipScrollTop) {
   closeAllDD();
   _closeHamburger();
   if (name === 'listings') {
-    // ── ถ้ากลับมาจาก modal (prop-modal เพิ่งปิด) → grid ยังครบ ไม่ต้อง re-render ──
-    // ตรวจจาก _pageBeforeModal: ถ้าเป็น 'listings' และ grid มีการ์ดอยู่แล้ว ให้ skip render + skip SEO sidebar
-    const _comingFromModal = (window._pageBeforeModal === 'listings');
-    const _grid = document.getElementById('listings-grid');
-    const _gridHasCards = _grid && _grid.querySelector('.prop-card');
-    if(_comingFromModal && _gridHasCards) {
-      // ไม่ต้อง render ซ้ำ — grid ยังครบ, SEO sidebar ยังอยู่ ไม่ต้องแตะ
-      // การ restore scroll จัดการโดย closeModal แล้ว
+    // ── ถ้ามี flag skip (ตั้งโดย closeModal / popstate) → grid ยังครบ ไม่ต้อง re-render ──
+    // flag จะถูก clear ใน renderListingsPage เองทันทีหลังใช้ครั้งเดียว
+    const _skipThisRender = !!window._skipListingsRenderOnce;
+    if(_skipThisRender) {
+      // ไม่ต้อง render ซ้ำ — grid และ SEO sidebar ยังอยู่ครบ
+      // การ restore scroll จัดการโดย closeModal / popstate handler แล้ว
     } else {
       // navigate มาจากหน้าอื่นจริงๆ → reset และ render ใหม่
       window._lsSeoSidebarRendered = false;
@@ -5320,7 +5318,9 @@ function renderListingsPage() {
     return;
   }
   // ── skip-if-unchanged: ถ้ากลับมาจาก prop-modal และ grid ยังมีการ์ดครบ → ไม่ต้อง render ซ้ำ ──
-  if(window._pageBeforeModal === 'listings') {
+  // ใช้ flag _skipListingsRenderOnce ที่ตั้งโดย closeModal เท่านั้น และ clear ทันทีหลังใช้
+  if(window._skipListingsRenderOnce) {
+    window._skipListingsRenderOnce = false;
     const _g = document.getElementById('listings-grid');
     if(_g && _g.querySelector('.prop-card')) {
       _listingsRenderPending = false;
@@ -5675,6 +5675,8 @@ function showListingsPage(title, data) {
   window._listingsBatchInFlight = false;
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
+  // navigate มาใหม่จากเจตนา → ต้อง render ใหม่เสมอ ไม่ skip
+  window._skipListingsRenderOnce = false;
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :
@@ -6373,8 +6375,10 @@ function closeModal(e){
   if(_qsSh3) _qsSh3.style.transform = 'translateY(100%)';
   const _prevPage = window._pageBeforeModal || 'home';
   if(_prevPage === 'listings') {
-    // กลับหน้า listings: เรียก _silentShowPage โดยตรง (skipScrollTop=true เพื่อ restore scroll)
-    // _silentShowPage จะตรวจ _comingFromModal + _gridHasCards แล้ว skip render อัตโนมัติ
+    // กลับหน้า listings: ตั้ง flag ให้ renderListingsPage skip re-render ครั้งเดียว
+    // เพราะ grid ยังมีการ์ดครบอยู่ ไม่ต้องโหลดซ้ำ
+    window._skipListingsRenderOnce = true;
+    // เรียก _silentShowPage โดยตรง (skipScrollTop=true เพื่อ restore scroll)
     _silentShowPage('listings', true);
     if(savedY > 0) requestAnimationFrame(function(){ window.scrollTo(0, savedY); });
   } else {

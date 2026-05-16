@@ -4898,21 +4898,25 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
+      // scroll restore + show page ใน rAF — reset flags ก่อนทุกครั้ง
       requestAnimationFrame(function() {
-        if(savedY > 0) window.scrollTo(0, savedY);
-        // ── FIX: bump generation อีกครั้งก่อน reset — ป้องกัน idle batch เก่ารัน append หลัง reset
         if(typeof window._listingsRenderGen !== 'undefined') {
           window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
         }
-        // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
-        // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
-        // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
         window._listingsRenderAbort = false;
         _listingsRenderPending = false;
         window._listingsRenderQueued = false;
         window._listingsBatchInFlight = false;
-        _silentShowPage(state.name, true);
+        // ถ้ากด Back จากหน้าประกาศทั้งหมด → showListingsPage + restore scroll ตำแหน่งเดิม (ทุก device)
+        if(state.name === 'listings') {
+          if(typeof showListingsPage === 'function') {
+            showListingsPage('ประกาศทั้งหมด', props.length ? [...props] : (typeof MOCK !== 'undefined' ? [...MOCK.props] : []));
+          }
+          if(savedY > 0) requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+        } else {
+          if(savedY > 0) window.scrollTo(0, savedY);
+          _silentShowPage(state.name, true);
+        }
       });
     } else {
       _silentShowPage(state.name);
@@ -5077,9 +5081,10 @@ window.openModal = function(id) {
 // ── Patch closeModal to restore URL ──
 const _origCloseModal = closeModal;
 window.closeModal = function(e) {
-  _origCloseModal(e);
-  // ถ้ามาจากหน้าประกาศทั้งหมด → ไม่ต้อง restore URL เดิม เพราะ showListingsPage จัดการเอง
+  // อ่านค่าก่อน _origCloseModal รัน เพื่อป้องกัน race condition
   const _fromListings = (window._pageBeforeModal || 'home') === 'listings';
+  _origCloseModal(e);
+  // ถ้ามาจากหน้าประกาศทั้งหมด → showListingsPage จัดการ URL เอง ไม่ต้อง replaceState
   if (!_fromListings && (!e || e.target.id === 'prop-modal')) _closePropertyUrl();
 };
 
@@ -6331,10 +6336,9 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── เมื่อเปิดการ์ดจากหน้าประกาศทั้งหมด → แสดงหน้าประกาศทั้งหมด และ restore scroll ตำแหน่งเดิม
+  // ── เมื่อปิด modal จากหน้าประกาศทั้งหมด → showListingsPage + restore scroll ตำแหน่งเดิม (ทุก device)
   const _prevPage = window._pageBeforeModal || 'home';
   requestAnimationFrame(function() {
-    // reset render flags ก่อนเสมอ
     if(typeof window._listingsRenderGen !== 'undefined') {
       window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
     }
@@ -6342,18 +6346,12 @@ function closeModal(e){
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
     window._listingsBatchInFlight = false;
-
     if(_prevPage === 'listings') {
-      // แสดงหน้าประกาศทั้งหมดทันที เหมือนกดปุ่ม "ดูประกาศทั้งหมด"
       if(typeof showListingsPage === 'function') {
         showListingsPage('ประกาศทั้งหมด', props.length ? [...props] : (typeof MOCK !== 'undefined' ? [...MOCK.props] : []));
       }
-      // restore scroll ไปตำแหน่งเดิมก่อนกดการ์ด หลัง render เสร็จ
-      if(savedY > 0) {
-        requestAnimationFrame(function() { window.scrollTo(0, savedY); });
-      }
+      if(savedY > 0) requestAnimationFrame(function() { window.scrollTo(0, savedY); });
     } else {
-      // หน้าอื่น → restore scroll ตามปกติ
       if(savedY > 0) window.scrollTo(0, savedY);
     }
   });

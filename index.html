@@ -1076,6 +1076,10 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .price-card h3{font-size:16px;font-weight:700;margin-bottom:3px}
 .price-card p{font-size:12px;opacity:.8}
 .prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+/* all-grid home + modal: 4col desktop → 4col tablet → 2col mobile */
+#all-grid,#modal-prop-grid{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){#all-grid,#modal-prop-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){#all-grid,#modal-prop-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}}
 .prop-card{background:#fff;border-radius:var(--rl);border:2px solid var(--bd);overflow:hidden;cursor:pointer;transition:.25s;position:relative}
 .prop-card:hover{transform:translateY(-6px);box-shadow:0 16px 48px rgba(124,111,205,.2);border-color:#c3b7ff}
 .prop-price-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1503,7 +1507,7 @@ footer::after{
   .cat-name{font-size:11px}
   .sec-title{font-size:18px}
   .view-all{padding:4px 10px;font-size:12px}
-  .prop-grid{grid-template-columns:1fr}
+  .prop-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .osrv-grid{grid-template-columns:1fr 1fr}
   .blog-grid{grid-template-columns:1fr}
   .agent-grid{grid-template-columns:1fr}
@@ -3043,7 +3047,7 @@ footer::after{
     </div>
   </div>
 </section>
- <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><button onclick="showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ดูประกาศทั้งหมด</button></div></div><div class="prop-grid" id="all-grid"></div></div>
+ <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
  <div id="osrv-sec" class="osrv-sec" style="padding:32px 0 28px">
   <div style="max-width:1320px;margin:0 auto;padding:0 20px">
     <div class="sec-hd">
@@ -4456,8 +4460,8 @@ function _renderHomeGrids(){
   const all = props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []);
   if(!all.length){ console.warn('_renderHomeGrids: ไม่มีข้อมูล'); return; }
 
-  // all-grid: 8 รายการแรก
-  renderGrid('all-grid', all.slice(0,8));
+  // all-grid: แสดง 16 รายการต่อหน้า พร้อม pagination
+  _renderHomeAllGrid(all);
 
   // rec-grid: ยอดนิยม (ถ้าไม่มี flag isRec ให้แสดง 8 แรก)
   const recList = all.filter(p=>p.isRec);
@@ -4628,7 +4632,7 @@ async function applyFilters(){
   if(rc) rc.textContent=resText;
 
   // ── all-grid: แสดงผลตาม filter ────────────────────────────────
-  _renderHomeAllGrid(filtered.slice(0,8));
+  _renderHomeAllGrid(filtered);
 
   // ── rec-grid: กรองตาม filter ──────────────────────────────────
   renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8));
@@ -4650,7 +4654,7 @@ async function applyFilters(){
           filtered = serverFiltered;
           allFiltered = filtered;
           if(rc) rc.textContent=_lang==='en'?`Found ${filtered.length} listings`:_lang==='cn'?`找到 ${filtered.length} 个房源`:_lang==='ja'?`${filtered.length} 件見つかりました`:`พบ ${filtered.length} รายการ`;
-          _renderHomeAllGrid(filtered.slice(0,8));
+          _renderHomeAllGrid(filtered);
           renderGrid('rec-grid',filtered.filter(p=>p.isRec).slice(0,8));
           // new-track ไม่อัปเดต — คงค่าเดิม (แสดงทั้งหมด)
         }
@@ -4660,16 +4664,74 @@ async function applyFilters(){
   }
 }
 
+// ── Home all-grid pagination state ──────────────────────────────
+window._homeAllData = [];
+window._homeAllPage = 1;
+const _HOME_ALL_PER = 16;
+
+function _renderHomeAllPagination() {
+  const total = window._homeAllData.length;
+  const cur   = window._homeAllPage;
+  const totalPages = Math.ceil(total / _HOME_ALL_PER);
+  const pgWrap  = $('all-grid-pagination');
+  const pgInfo  = $('all-pg-info');
+  const pgCtrl  = $('all-pg-controls');
+  if (!pgWrap) return;
+  if (totalPages <= 1) { pgWrap.style.display = 'none'; return; }
+  pgWrap.style.display = '';
+
+  const startItem = (cur - 1) * _HOME_ALL_PER + 1;
+  const endItem   = Math.min(cur * _HOME_ALL_PER, total);
+  const langTh = (typeof _lang === 'undefined' || !_lang || _lang === 'th');
+  const pgFirst = langTh ? 'หน้าแรก'    : _lang==='en'?'First':_lang==='cn'?'首页':'最初';
+  const pgPrev  = langTh ? 'ก่อนหน้า'  : _lang==='en'?'Prev' :_lang==='cn'?'上一页':'前へ';
+  const pgNext  = langTh ? 'ถัดไป'      : _lang==='en'?'Next' :_lang==='cn'?'下一页':'次へ';
+  const pgLast  = langTh ? 'หน้าสุดท้าย': _lang==='en'?'Last' :_lang==='cn'?'末页':'最後';
+  const ofTxt   = langTh ? 'จาก'       : _lang==='en'?'of'   :_lang==='cn'?'，共':'/';
+  const itemTxt = langTh ? 'รายการ'    : _lang==='en'?'listings':_lang==='cn'?'个房源':'件';
+
+  if (pgInfo) pgInfo.textContent = `${startItem.toLocaleString()}–${endItem.toLocaleString()} ${ofTxt} ${total.toLocaleString()} ${itemTxt}`;
+
+  const pages = buildPageRange(cur, totalPages);
+  let html = '';
+  html += `<button class="pg-btn pg-first${cur===1?' disabled':''}" onclick="_homeAllGoPage(1)" ${cur===1?'disabled':''} title="${pgFirst}"><i class="fas fa-angle-double-left"></i> <span class="pg-label">${pgFirst}</span></button>`;
+  html += `<button class="pg-btn pg-prev${cur===1?' disabled':''}" onclick="_homeAllGoPage(${cur-1})" ${cur===1?'disabled':''} title="${pgPrev}"><i class="fas fa-angle-left"></i></button>`;
+  for (const p of pages) {
+    if (p === '...') { html += '<span class="pg-ellipsis">…</span>'; }
+    else { html += `<button class="pg-btn${p===cur?' active':''}" onclick="_homeAllGoPage(${p})">${p}</button>`; }
+  }
+  html += `<button class="pg-btn pg-next${cur===totalPages?' disabled':''}" onclick="_homeAllGoPage(${cur+1})" ${cur===totalPages?'disabled':''} title="${pgNext}"><i class="fas fa-angle-right"></i></button>`;
+  html += `<button class="pg-btn pg-last${cur===totalPages?' disabled':''}" onclick="_homeAllGoPage(${totalPages})" ${cur===totalPages?'disabled':''} title="${pgLast}"><span class="pg-label">${pgLast}</span> <i class="fas fa-angle-double-right"></i></button>`;
+  if (pgCtrl) pgCtrl.innerHTML = html;
+}
+
+function _homeAllGoPage(page) {
+  const totalPages = Math.ceil(window._homeAllData.length / _HOME_ALL_PER);
+  if (page < 1 || page > totalPages) return;
+  window._homeAllPage = page;
+  const start = (page - 1) * _HOME_ALL_PER;
+  const slice = window._homeAllData.slice(start, start + _HOME_ALL_PER);
+  const el = $('all-grid');
+  if (el) { el.innerHTML = slice.map(propCard).join(''); setTimeout(initAllCardSwipes, 50); }
+  _renderHomeAllPagination();
+  scrollToEl('all-sec');
+}
+
 // ── helper: render all-grid พร้อม empty state แบบ professional ──
 function _renderHomeAllGrid(list) {
   const el = $('all-grid');
-  if(!el) return;
-  if(list && list.length) {
-    el.innerHTML = list.map(propCard).join('');
+  if (!el) return;
+  if (list && list.length) {
+    window._homeAllData = list;
+    window._homeAllPage = 1;
+    const slice = list.slice(0, _HOME_ALL_PER);
+    el.innerHTML = slice.map(propCard).join('');
     setTimeout(initAllCardSwipes, 50);
+    _renderHomeAllPagination();
     return;
   }
   // Empty state — สวยงาม มีปุ่ม LINE และ Reset
+  const pgWrapE = $('all-grid-pagination'); if(pgWrapE) pgWrapE.style.display='none';
   const lang = (typeof _lang !== 'undefined' && _lang) ? _lang : 'th';
   const lineHref = (typeof C !== 'undefined' && C && C.LINE)
     ? 'https://line.me/R/ti/p/' + C.LINE
@@ -6364,22 +6426,20 @@ function propUrl(p) {
 function openAllModal(type){
   const m=$('all-modal'),t=$('all-title2'),b=$('all-body');
   let title='',data=[];
-  window._modalCurrentType = type; // track for lang re-render
+  window._modalCurrentType = type;
   if(type==='rec'){
-    // Show popup modal with rec props
     title=ui('modal.rec.title');
     data = props.filter(p=>p.isRec);
     if(!data.length) data = sortListings([...props],'default').slice(0,20);
   }
   else if(type==='new'){
-    // Show popup modal with new props
     title=ui('modal.new.title');
     data = props.filter(p=>p.isNew);
     if(!data.length) data = sortListings([...props],'newest').slice(0,20);
   }
   else if(type==='all'){
-    showListingsPage('ประกาศทั้งหมด', props);
-    return;
+    title='ประกาศทั้งหมด';
+    data = props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []);
   }
   else if(type==='services'){
     title=ui('modal.srv.title');
@@ -6392,7 +6452,59 @@ function openAllModal(type){
     t.textContent=title; b.innerHTML=html; _openModal('all-modal'); b.scrollTop=0; return;
   }
   else return;
-  // For rec / new: show in modal with sort + link to full listings page
+
+  // rec / new / all: show with sort toolbar + paginated prop-grid
+  const _PER = 16;
+  window._modalTypeData = { type, data: [...data], currentPage: 1, perPage: _PER };
+
+  function _modalRenderPage(pageData, curPage) {
+    const total = pageData.length;
+    const totalPages = Math.ceil(total / _PER);
+    const start = (curPage-1)*_PER;
+    const slice = pageData.slice(start, start+_PER);
+    const grid = document.getElementById('modal-prop-grid');
+    if(grid){ grid.innerHTML = slice.map(propCard).join(''); setTimeout(initAllCardSwipes,50); }
+    // pagination bar
+    const pgInfo = document.getElementById('modal-pg-info');
+    const pgCtrl = document.getElementById('modal-pg-controls');
+    const pgWrap = document.getElementById('modal-pg-wrap');
+    if(!pgWrap) return;
+    if(totalPages<=1){ pgWrap.style.display='none'; return; }
+    pgWrap.style.display='';
+    const startI=(curPage-1)*_PER+1, endI=Math.min(curPage*_PER,total);
+    const langTh=(typeof _lang==='undefined'||!_lang||_lang==='th');
+    const pgFirst=langTh?'หน้าแรก':_lang==='en'?'First':_lang==='cn'?'首页':'最初';
+    const pgPrev =langTh?'ก่อนหน้า':_lang==='en'?'Prev':_lang==='cn'?'上一页':'前へ';
+    const pgNext =langTh?'ถัดไป':_lang==='en'?'Next':_lang==='cn'?'下一页':'次へ';
+    const pgLast =langTh?'หน้าสุดท้าย':_lang==='en'?'Last':_lang==='cn'?'末页':'最後';
+    const ofTxt  =langTh?'จาก':_lang==='en'?'of':_lang==='cn'?'，共':'/';
+    const itTxt  =langTh?'รายการ':_lang==='en'?'listings':_lang==='cn'?'个房源':'件';
+    if(pgInfo) pgInfo.textContent=`${startI}–${endI} ${ofTxt} ${total} ${itTxt}`;
+    const pages=buildPageRange(curPage,totalPages);
+    let html='';
+    html+=`<button class="pg-btn pg-first${curPage===1?' disabled':''}" onclick="window._modalGoPage(1)" ${curPage===1?'disabled':''} title="${pgFirst}"><i class="fas fa-angle-double-left"></i> <span class="pg-label">${pgFirst}</span></button>`;
+    html+=`<button class="pg-btn pg-prev${curPage===1?' disabled':''}" onclick="window._modalGoPage(${curPage-1})" ${curPage===1?'disabled':''} title="${pgPrev}"><i class="fas fa-angle-left"></i></button>`;
+    for(const p of pages){
+      if(p==='...'){ html+='<span class="pg-ellipsis">…</span>'; }
+      else{ html+=`<button class="pg-btn${p===curPage?' active':''}" onclick="window._modalGoPage(${p})">${p}</button>`; }
+    }
+    html+=`<button class="pg-btn pg-next${curPage===totalPages?' disabled':''}" onclick="window._modalGoPage(${curPage+1})" ${curPage===totalPages?'disabled':''} title="${pgNext}"><i class="fas fa-angle-right"></i></button>`;
+    html+=`<button class="pg-btn pg-last${curPage===totalPages?' disabled':''}" onclick="window._modalGoPage(${totalPages})" ${curPage===totalPages?'disabled':''} title="${pgLast}"><span class="pg-label">${pgLast}</span> <i class="fas fa-angle-double-right"></i></button>`;
+    if(pgCtrl) pgCtrl.innerHTML=html;
+  }
+
+  window._modalGoPage = function(page) {
+    if(!window._modalTypeData) return;
+    const d=window._modalTypeData;
+    const totalPages=Math.ceil(d.data.length/d.perPage);
+    if(page<1||page>totalPages) return;
+    d.currentPage=page;
+    _modalRenderPage(d.data,page);
+    const bd=$('all-body'); if(bd) bd.scrollTop=0;
+  };
+  // store render fn for sort changes
+  window._modalRenderPage = _modalRenderPage;
+
   const sortHtml=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
     <span style="font-size:13px;color:var(--tx2)">${ui('modal.found')} <strong style="color:var(--p)">${data.length}</strong> ${ui('modal.items')}</span>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -6407,18 +6519,20 @@ function openAllModal(type){
       <button onclick="_closeModal('all-modal');showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>
     </div>
   </div>`;
-  window._modalTypeData = {type, data};
   t.textContent=title;
-  b.innerHTML=sortHtml+`<div class="prop-grid" id="modal-prop-grid">${data.map(propCard).join('')}</div>`;
+  b.innerHTML=sortHtml
+    +`<div class="prop-grid" id="modal-prop-grid"></div>`
+    +`<div class="pagination" id="modal-pg-wrap" style="display:none"><div class="pg-info" id="modal-pg-info"></div><div class="pg-controls" id="modal-pg-controls"></div></div>`;
+  _modalRenderPage(window._modalTypeData.data, 1);
   _openModal('all-modal'); b.scrollTop=0;
-  setTimeout(initAllCardSwipes, 50);
 }
 
 function modalSortChange(sel, type) {
   if(!window._modalTypeData) return;
-  const sorted = sortListings(window._modalTypeData.data, sel.value);
-  const grid = document.getElementById('modal-prop-grid');
-  if(grid) { grid.innerHTML = sorted.map(propCard).join(''); setTimeout(initAllCardSwipes, 50); }
+  const sorted = sortListings([...window._modalTypeData.data], sel.value);
+  window._modalTypeData.data = sorted;
+  window._modalTypeData.currentPage = 1;
+  if(window._modalRenderPage) window._modalRenderPage(sorted, 1);
 }
 
 function renderServices(){

@@ -2701,7 +2701,7 @@ footer::after{
    </div>
    <div class="sf">
     <div class="ac-wrap"><label><i class="fas fa-search"></i> คำค้นหา</label><input id="s-kw" placeholder="ชื่อโครงการ ทำเล..." autocomplete="off" oninput="debouncedSearch()"><div class="ac-list" id="ac-list" style="display:none"></div></div>
-    <div><label><i class="fas fa-building"></i> ประเภท</label><select id="s-type"><option value="">ทุกประเภท</option><optgroup label="🏠 ที่อยู่อาศัย"><option value="คอนโด">คอนโด</option><option value="บ้านเดี่ยว">บ้านเดี่ยว</option><option value="บ้านแฝด">บ้านแฝด</option><option value="ทาวน์โฮม">ทาวน์โฮม</option><option value="ทาวน์เฮาส์">ทาวน์เฮาส์</option><option value="อพาร์ตเมนต์">อพาร์ตเมนต์</option><option value="หอพัก">หอพัก</option><option value="บ้านมือสอง">บ้านมือสอง</option><option value="บ้านหรู">บ้านหรู</option><option value="บ้านตากอากาศ">บ้านตากอากาศ</option><option value="วิลล่า">วิลล่า</option><option value="เพนต์เฮาส์">เพนต์เฮาส์</option><option value="โฮมออฟฟิศ">โฮมออฟฟิศ</option></optgroup><optgroup label="🗺️ ที่ดิน"><option value="ที่ดินเปล่า">ที่ดินเปล่า</option><option value="ที่ดินจัดสรร">ที่ดินจัดสรร</option><option value="ที่ดินเกษตร">ที่ดินเกษตร</option><option value="ที่ดินพาณิชย์">ที่ดินพาณิชย์</option><option value="ที่ดินอุตสาหกรรม">ที่ดินอุตสาหกรรม</option><option value="ที่ดินติดถนนใหญ่">ที่ดินติดถนนใหญ่</option><option value="ที่ดินติดรถไฟฟ้า">ที่ดินติดรถไฟฟ้า</option><option value="ที่ดินติดทะเล">ที่ดินติดทะเล</option><option value="ที่ดิน EEC">ที่ดินติดเขต EEC</option><option value="ที่ดินลงทุน">ที่ดินลงทุน</option><option value="ที่ดินโฉนด">ที่ดิน — โฉนด</option><option value="ที่ดิน นส.3ก">ที่ดิน — นส.3ก</option><option value="ที่ดิน นส.3">ที่ดิน — นส.3</option><option value="ที่ดิน สปก">ที่ดิน — สปก</option></optgroup><optgroup label="🏪 เชิงพาณิชย์"><option value="อาคารพาณิชย์">อาคารพาณิชย์</option><option value="ตึกแถว">ตึกแถว</option><option value="สำนักงาน">สำนักงาน</option><option value="Office Building">Office Building</option><option value="Retail Space">Retail Space</option><option value="Community Mall">Community Mall</option><option value="โชว์รูม">โชว์รูม</option><option value="ร้านค้า">ร้านค้า</option><option value="คลินิก">คลินิก</option><option value="โรงแรม">โรงแรม</option><option value="โฮสเทล">โฮสเทล</option><option value="Service Apartment">Service Apartment</option><option value="โรงงาน">โรงงาน</option><option value="โกดัง">โกดัง/โรงงาน</option><option value="รีสอร์ท">รีสอร์ท</option></optgroup></select></div>
+    <div><label><i class="fas fa-building"></i> ประเภท</label><select id="s-type"><option value="">ทุกประเภท</option><option value="บ้านเดี่ยว">บ้านเดี่ยว</option><option value="ทาวน์โฮม">ทาวน์โฮม</option><option value="คอนโด">คอนโด</option><option value="อาคารพาณิชย์">อาคารพาณิชย์</option><option value="ที่ดิน">ที่ดิน</option><option value="วิลล่า">วิลล่า</option><option value="รีสอร์ท">รีสอร์ท</option><option value="โรงแรม">โรงแรม</option></select></div>
     <div><label><i class="fas fa-map-marker-alt"></i> จังหวัด / ทำเล</label><select id="s-prov"><option value="">ทุกทำเล</option></select></div>
     <div><label><i class="fas fa-tag"></i> ราคาต่ำสุด</label><select id="s-min" onchange="updatePriceMax()" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <div><label><i class="fas fa-tag"></i> ราคาสูงสุด</label><select id="s-max" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
@@ -4630,7 +4630,7 @@ function translateKeyword(kw) {
   return kw; // return original if no translation
 }
 
-function doSearch(){ curType=''; $$('.cat-card').forEach((c,i)=>c.classList.toggle('active',i===0)); applyFilters().catch(console.error); scrollToEl('all-sec'); }
+function doSearch(){ curType=($('s-type')?.value||'').trim(); $$('.cat-card').forEach((c,i)=>c.classList.toggle('active',i===0)); applyFilters().catch(console.error); scrollToEl('all-sec'); }
 async function applyFilters(){
   const kw=($('s-kw')?.value||'').trim();
   const tp=curType||$('s-type')?.value||'';
@@ -4653,27 +4653,19 @@ async function applyFilters(){
 
   // ── Type alias map: select value → accepted p.type values ──────
   const _TYPE_ALIAS_MAP = {
-    // ที่อยู่อาศัย — exact aliases & spelling variants
-    'ทาวน์โฮม':     ['ทาวน์โฮม','ทาวน์โฮ','townhome','townhouse'],
-    'ทาวน์เฮาส์':   ['ทาวน์เฮาส์','ทาวน์เฮ้าส์','ทาวน์โฮม'],
-    'บ้านมือสอง':   ['บ้านมือสอง','บ้านเดี่ยว','บ้านแฝด'],
-    // ที่ดิน — select มีค่าย่อย แต่ข้อมูลมักเก็บเป็น "ที่ดิน" หรือชื่อเต็ม
-    'ที่ดินเปล่า':         ['ที่ดินเปล่า','ที่ดิน'],
-    'ที่ดินจัดสรร':        ['ที่ดินจัดสรร','ที่ดิน'],
-    'ที่ดินเกษตร':         ['ที่ดินเกษตร','ที่ดิน'],
-    'ที่ดินพาณิชย์':       ['ที่ดินพาณิชย์','ที่ดิน'],
-    'ที่ดินอุตสาหกรรม':   ['ที่ดินอุตสาหกรรม','ที่ดิน'],
-    'ที่ดินติดถนนใหญ่':   ['ที่ดินติดถนนใหญ่','ที่ดิน'],
-    'ที่ดินติดรถไฟฟ้า':   ['ที่ดินติดรถไฟฟ้า','ที่ดิน'],
-    'ที่ดินติดทะเล':       ['ที่ดินติดทะเล','ที่ดิน'],
-    'ที่ดิน EEC':          ['ที่ดิน EEC','ที่ดิน'],
-    'ที่ดินลงทุน':         ['ที่ดินลงทุน','ที่ดิน'],
-    'ที่ดินโฉนด':          ['ที่ดินโฉนด','ที่ดิน'],
-    'ที่ดิน นส.3ก':        ['ที่ดิน นส.3ก','ที่ดิน'],
-    'ที่ดิน นส.3':         ['ที่ดิน นส.3','ที่ดิน'],
-    'ที่ดิน สปก':          ['ที่ดิน สปก','ที่ดิน'],
+    // ที่อยู่อาศัย
+    'คอนโด':        ['คอนโด','คอนโดมิเนียม','Condominium','condominium','Condo','condo'],
+    'ทาวน์โฮม':     ['ทาวน์โฮม','ทาวน์โฮ','ทาวน์เฮาส์','ทาวน์เฮ้าส์','townhome','townhouse'],
+    'บ้านเดี่ยว':   ['บ้านเดี่ยว','บ้านแฝด','บ้านมือสอง','บ้านหรู','บ้านตากอากาศ','โฮมออฟฟิศ','บ้าน'],
+    // ที่ดิน — รวม sub-type ทั้งหมดเข้าด้วยกัน
+    'ที่ดิน':        ['ที่ดิน','ที่ดินเปล่า','ที่ดินจัดสรร','ที่ดินเกษตร','ที่ดินพาณิชย์','ที่ดินอุตสาหกรรม','ที่ดินติดถนนใหญ่','ที่ดินติดรถไฟฟ้า','ที่ดินติดทะเล','ที่ดิน EEC','ที่ดินลงทุน','ที่ดินโฉนด','ที่ดิน นส.3ก','ที่ดิน นส.3','ที่ดิน สปก'],
     // เชิงพาณิชย์
-    'โกดัง':              ['โกดัง','โกดัง/โรงงาน','โรงงาน'],
+    'อาคารพาณิชย์': ['อาคารพาณิชย์','ตึกแถว','สำนักงาน','Office Building','Retail Space','Community Mall','โชว์รูม','ร้านค้า','คลินิก'],
+    'วิลล่า':       ['วิลล่า','Villa','villa'],
+    'รีสอร์ท':      ['รีสอร์ท','Resort','resort'],
+    'โรงแรม':       ['โรงแรม','Hotel','hotel','โฮสเทล','Service Apartment'],
+    // เชิงพาณิชย์เบ็ดเตล็ด
+    'โกดัง':        ['โกดัง','โกดัง/โรงงาน','โรงงาน'],
   };
   const _acceptedTypes = tp ? (_TYPE_ALIAS_MAP[tp] || [tp]) : null;
 
@@ -9669,8 +9661,8 @@ function applyLang(){
   }
   const sType=document.getElementById('s-type');
   if(sType){
-    const typeKeys=['sf.type.all','dd.house','dd.town','dd.condo','dd.comm','dd.land','dd.villa','dd.resort','dd.hotel'];
-    Array.from(sType.options).forEach((opt,i)=>{if(typeKeys[i])opt.textContent=ui(typeKeys[i]);});
+    const typeKeyMap={'':'sf.type.all','บ้านเดี่ยว':'dd.house','ทาวน์โฮม':'dd.town','คอนโด':'dd.condo','อาคารพาณิชย์':'dd.comm','ที่ดิน':'dd.land','วิลล่า':'dd.villa','รีสอร์ท':'dd.resort','โรงแรม':'dd.hotel'};
+    Array.from(sType.options).forEach((opt)=>{ const k=typeKeyMap[opt.value]; if(k) opt.textContent=ui(k); });
   }
   const sProv=document.getElementById('s-prov');
   if(sProv&&sProv.options[0])sProv.options[0].textContent=ui('sf.prov.all');

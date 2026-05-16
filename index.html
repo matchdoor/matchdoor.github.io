@@ -253,7 +253,7 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
     overscroll-behavior-y:contain!important;
   }
   #prop-modal{will-change:auto;isolation:isolate}
-  #prop-modal.open .modal{will-change:transform}
+  #prop-modal.open .modal{will-change:transform;animation:propModalPop .12s cubic-bezier(.2,.8,.4,1) both}
   *:not(.ov):not(#prop-modal){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   #prop-modal .modal{transition:none!important}
@@ -629,6 +629,17 @@ nav{
 .ov.open{
   display:flex;
   pointer-events:auto;
+}
+/* prop-modal: เปิดทันที ไม่มี animation ช้า */
+#prop-modal.open{
+  z-index:3300;isolation:isolate;
+}
+#prop-modal.open .modal{
+  animation:propModalPop .12s cubic-bezier(.2,.8,.4,1) both;
+}
+@keyframes propModalPop{
+  from{opacity:.7;transform:scale(.97)}
+  to{opacity:1;transform:scale(1)}
 }
 /* iOS Safari: ต้องใช้ isolation:isolate เพื่อป้องกัน z-index stacking context ค้าง */
 #prop-modal.open{z-index:3300;isolation:isolate}

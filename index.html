@@ -973,6 +973,7 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .adv-sheet-hd h3{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
 .adv-sheet-body{flex:1;overflow-y:auto;padding:12px 18px}
 .adv-sheet-foot{padding:12px 18px;background:#f9f5ef;border-top:1px solid var(--bd);flex-shrink:0;display:flex;gap:10px}
+.qs-transit-wrap{display:inline-flex;gap:8px;align-items:center;flex-shrink:0}
 .qs-group{position:relative;display:inline-flex;align-items:center;flex-shrink:0}/* ── Dropdown trigger button ── */
 .qs-dd-btn{
   display:inline-flex;align-items:center;gap:6px;
@@ -1053,12 +1054,14 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .tx-tabs{display:flex;margin-bottom:18px;border-radius:10px;overflow:hidden;border:1.5px solid var(--bd)}
 .tx-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;background:#F5F0E8;color:var(--tx2);transition:.2s}
 .tx-tab.active{background:var(--p);color:#F0ECE3}
-.sf{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+.sf{display:grid;grid-template-columns:1.6fr 0.9fr 0.9fr 0.9fr 0.9fr auto auto;gap:10px;align-items:end}
 .sf label{display:block;font-size:13px;font-weight:800;color:#1a2744;margin-bottom:5px;text-shadow:none;letter-spacing:.2px}
 .sf select,.sf input{width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:14px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600}
 .sf select:focus,.sf input:focus{outline:none;border-color:var(--p)}
 .btn-search{background:var(--a);color:#fff;padding:10px 22px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-search:hover{opacity:.9}
+.btn-reset-search{background:#fff;color:var(--tx2);padding:10px 16px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;border:1.5px solid var(--bd);cursor:pointer;font-family:inherit;font-size:14px}
+.btn-reset-search:hover{border-color:var(--p);color:var(--p)}
 .cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;padding-top:2px;-ms-overflow-style:none;scrollbar-width:none}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-card{flex-shrink:0;background:#fff;border-radius:var(--r);border:2px solid var(--bd);padding:16px 20px;text-align:center;cursor:pointer;min-width:100px;transition:.2s}
@@ -1474,7 +1477,11 @@ footer::after{
   .nav-links.mob-open{display:flex!important}
   .hamburger{display:flex}
   .sf{grid-template-columns:1fr 1fr}
+  .sf .ac-wrap{grid-column:1/-1}
+  .sf-price-pair{display:contents}
   .price-grid{grid-template-columns:repeat(2,1fr)}
+  .res-count-home{display:none!important}
+  .btn-search,.btn-reset-search{justify-content:center}
   /* Footer mobile: 2+2 layout - เมนูหลัก+ประเภท side by side, ข้อมูล+brand */
   .footer-inner{grid-template-columns:1fr 1fr!important}
   .footer-brand-col{text-align:left}
@@ -1500,7 +1507,9 @@ footer::after{
   .dep-panel .fg input,.dep-panel .fg select,.dep-panel .fg textarea{padding:9px 10px;font-size:13px}
 }
 @media(max-width:600px){
-  .sf{grid-template-columns:1fr}
+  .sf{grid-template-columns:1fr 1fr}
+  .sf .ac-wrap{grid-column:1/-1}
+  .sf .btn-search,.sf .btn-reset-search{grid-column:span 1}
   .price-grid{grid-template-columns:1fr}
   .specs{grid-template-columns:repeat(2,1fr)}
   .frow{grid-template-columns:1fr}
@@ -1535,6 +1544,9 @@ footer::after{
   .hcounter{padding:10px 14px;min-width:90px}
   .hc-num{font-size:26px}
   .quick-search-bar{gap:8px;flex-wrap:wrap}
+  /* BTS + MRT ต้องอยู่แถวเดียวกันเสมอ */
+  #qs-group-bts, #qs-group-mrt { flex-shrink:0 }
+  #qs-group-bts + #qs-group-mrt { margin-left:0 }
   .search-box{padding:16px}
   .sf select,.sf input{padding:8px 10px;font-size:13px}
   .btn-search{padding:8px 16px;height:40px}
@@ -2712,6 +2724,7 @@ footer::after{
     <div><label><i class="fas fa-tag"></i> ราคาต่ำสุด</label><select id="s-min" onchange="updatePriceMax()" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <div><label><i class="fas fa-tag"></i> ราคาสูงสุด</label><select id="s-max" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <button class="btn-search" onclick="doSearch()"><i class="fas fa-search"></i> ค้นหา</button>
+    <button class="btn-reset-search" onclick="resetSearch()"><i class="fas fa-undo"></i> รีเซ็ต</button>
    </div>
    <!-- loc-search-layer removed: use native select dropdown -->
   </div>
@@ -2773,8 +2786,9 @@ footer::after{
      <button class="qs-opt" onclick="quickSearch('บางบอน');closeQsDDs()">📍 บางบอน</button>
     </div>
    </div>
-   <!-- 🚈 BTS -->
-   <div class="qs-group">
+   <!-- 🚈 BTS + 🚇 MRT wrapper -->
+   <div class="qs-transit-wrap">
+   <div class="qs-group qs-group-transit" id="qs-group-bts">
     <button class="qs-dd-btn" onclick="toggleQsDD('qs-bts-dd',this)" data-panel="qs-bts-dd">
      <span class="qs-icon">🚈</span> BTS <i class="fas fa-chevron-down chevdown"></i>
     </button>
@@ -2874,7 +2888,7 @@ footer::after{
     </div>
    </div>
    <!-- 🚇 MRT -->
-   <div class="qs-group">
+   <div class="qs-group qs-group-transit" id="qs-group-mrt">
     <button class="qs-dd-btn" onclick="toggleQsDD('qs-mrt-dd',this)" data-panel="qs-mrt-dd">
      <span class="qs-icon">🚇</span> MRT <i class="fas fa-chevron-down chevdown"></i>
     </button>
@@ -2992,6 +3006,7 @@ footer::after{
      <button class="qs-opt" onclick="quickSearch('สำโรง MRT สีเหลือง');closeQsDDs()">🚇 สำโรง (YL23)</button>
     </div>
    </div>
+   </div><!-- end qs-transit-wrap -->
    <!-- 🎓 มหาวิทยาลัย removed -->
   </div>
   </div><!-- end hero-content -->
@@ -3054,25 +3069,21 @@ footer::after{
   </div>
 </section>
  <div class="wrap" id="all-sec">
-  <!-- Row 1: title (left) + count + view-all (right) -->
-  <div class="sec-hd all-sec-row1" style="flex-wrap:nowrap;gap:8px;margin-bottom:10px">
+  <!-- Row 1: title (left) + count + view-all + sort (right) -->
+  <div class="sec-hd all-sec-row1" style="flex-wrap:nowrap;gap:8px;margin-bottom:16px">
     <div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">ประกาศทั้งหมด</div>
     <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-      <span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span>
+      <span id="res-count" class="res-count-home" style="font-size:13px;color:var(--gr);white-space:nowrap"></span>
       <span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span>
+      <select id="all-grid-sort" class="sort-select" style="font-size:12px;padding:5px 8px;min-width:110px" onchange="homeAllGridSortChange(this)">
+        <option value="default">แนะนำ</option>
+        <option value="price_asc">ราคา ต่ำ→สูง</option>
+        <option value="price_desc">ราคา สูง→ต่ำ</option>
+        <option value="newest">ใหม่สุด</option>
+        <option value="oldest">เก่าสุด</option>
+        <option value="alpha">ชื่อ A–Z</option>
+      </select>
     </div>
-  </div>
-  <!-- Row 2: sort (right-aligned) -->
-  <div class="all-sec-row2" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:16px">
-    <label data-i18n="ls.sort.label" style="font-size:12px;font-weight:600;color:var(--gr);white-space:nowrap">เรียงโดย:</label>
-    <select id="all-grid-sort" class="sort-select" style="font-size:12px;padding:5px 8px;min-width:110px" onchange="homeAllGridSortChange(this)">
-      <option value="default">แนะนำ</option>
-      <option value="price_asc">ราคา ต่ำ→สูง</option>
-      <option value="price_desc">ราคา สูง→ต่ำ</option>
-      <option value="newest">ใหม่สุด</option>
-      <option value="oldest">เก่าสุด</option>
-      <option value="alpha">ชื่อ A–Z</option>
-    </select>
   </div>
   <div class="prop-grid" id="all-grid"></div>
   <div class="pagination" id="all-grid-pagination" style="display:none">
@@ -6687,22 +6698,20 @@ function openAllModal(type){
     ? `<button onclick="window._allModalParentType='${type}';openAllModal('all')" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>`
     : (window._allModalParentType ? `<button onclick="var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt)" style="padding:7px 14px;background:var(--lt);color:var(--p);border:1.5px solid var(--bd);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-arrow-left"></i> กลับ</button>` : '');
   const sortHtml=`<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
-    <!-- Row 1: count (left) + view-all btn (right) -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <span style="font-size:13px;color:var(--tx2);flex-shrink:0">${ui('modal.found')} <strong style="color:var(--p)">${data.length}</strong> ${ui('modal.items')}</span>
-      ${_viewAllBtn}
-    </div>
-    <!-- Row 2: map btn + sort (right-aligned) -->
-    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">
-      <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s;flex-shrink:0" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ${ui('modal.map.btn')}</button>
-      <select class="sort-select" onchange="modalSortChange(this,'${type}')" style="min-width:120px">
-        <option value="default">${ui('modal.sort.rec')}</option>
-        <option value="price_asc">${ui('modal.sort.asc')}</option>
-        <option value="price_desc">${ui('modal.sort.desc')}</option>
-        <option value="newest">${ui('modal.sort.new')}</option>
-        <option value="oldest">${ui('modal.sort.old')}</option>
-        <option value="alpha">${ui('modal.sort.alpha')}</option>
-      </select>
+    <!-- Single row: view-all (left) + map btn + sort (right) -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div style="flex-shrink:0">${_viewAllBtn}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0">
+        <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s;flex-shrink:0" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ${ui('modal.map.btn')}</button>
+        <select class="sort-select" onchange="modalSortChange(this,'${type}')" style="min-width:120px">
+          <option value="default">${ui('modal.sort.rec')}</option>
+          <option value="price_asc">${ui('modal.sort.asc')}</option>
+          <option value="price_desc">${ui('modal.sort.desc')}</option>
+          <option value="newest">${ui('modal.sort.new')}</option>
+          <option value="oldest">${ui('modal.sort.old')}</option>
+          <option value="alpha">${ui('modal.sort.alpha')}</option>
+        </select>
+      </div>
     </div>
   </div>`;
   t.textContent=title;

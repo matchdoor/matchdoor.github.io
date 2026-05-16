@@ -1314,7 +1314,7 @@ footer::after{
 .adv-sheet-foot .adv-apply-btn,.adv-sheet-foot .adv-reset-btn{min-height:48px;font-size:14px}
 
 /* ── SEO sidebar toggle: mobile only ── */
-@media(max-width:900px){.seo-toggle-btn[data-page="listings"]{display:flex}}
+.seo-toggle-btn[data-page="listings"],.seo-toggle-btn[data-page="home"]{display:flex}
 .seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
 .seo-drawer-overlay.open{display:block}
 .seo-drawer{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);background:#fff;z-index:4001;transform:translateX(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.18)}
@@ -1363,7 +1363,7 @@ footer::after{
 .float-top.show{opacity:1;pointer-events:auto;transform:translateY(0)}
 /* seo-toggle-btn: part of float-wrap flow on mobile — override fixed positioning */
 .seo-toggle-btn{display:none;background:linear-gradient(135deg,var(--p),#2a5298);color:#fff;border:none;border-radius:50%;width:46px;height:46px;font-size:16px;cursor:pointer;box-shadow:0 4px 16px rgba(27,58,107,.35);align-items:center;justify-content:center;transition:.2s}
-@media(max-width:900px){.seo-toggle-btn[data-page="listings"]{display:flex}}
+.seo-toggle-btn[data-page="listings"],.seo-toggle-btn[data-page="home"]{display:flex}
 .float-grp{position:relative;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .float-items{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .float-items.hide{display:none}
@@ -2450,7 +2450,7 @@ footer::after{
      <div class="dd-sec">
       <div class="dd-sec-title">ประเภทอสังหาริมทรัพย์</div>
       <div class="dd-grid">
-       <div class="dd-item" onclick="closeAllDD();showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))"><i class="fas fa-home"></i> ทั้งหมด</div>
+       <div class="dd-item" onclick="closeAllDD();_silentShowPage('home',true);setTimeout(()=>scrollToEl('all-sec'),60)"><i class="fas fa-home"></i> ทั้งหมด</div>
        <div class="dd-item" onclick="filterTypeDD('บ้านเดี่ยว')"><i class="fas fa-house-user"></i> บ้านเดี่ยว</div>
        <div class="dd-item" onclick="filterTypeDD('ทาวน์โฮม')"><i class="fas fa-building"></i> ทาวน์โฮม</div>
        <div class="dd-item" onclick="filterTypeDD('คอนโด')"><i class="fas fa-city"></i> คอนโด</div>
@@ -2475,7 +2475,7 @@ footer::after{
      <div class="dd-sec">
       <div class="dd-sec-title">ประเภทอสังหาแบบเช่า</div>
       <div class="dd-grid">
-       <div class="dd-item" onclick="closeAllDD();showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))"><i class="fas fa-home"></i> ทั้งหมด</div>
+       <div class="dd-item" onclick="closeAllDD();_silentShowPage('home',true);setTimeout(()=>scrollToEl('all-sec'),60)"><i class="fas fa-home"></i> ทั้งหมด</div>
        <div class="dd-item" onclick="filterRentDD('บ้านเดี่ยว','')"><i class="fas fa-house-user"></i> บ้านเดี่ยว</div>
        <div class="dd-item" onclick="filterRentDD('ทาวน์โฮม','')"><i class="fas fa-building"></i> ทาวน์โฮม</div>
        <div class="dd-item" onclick="filterRentDD('คอนโด','')"><i class="fas fa-city"></i> คอนโด</div>
@@ -2649,7 +2649,7 @@ footer::after{
 
 <div class="float-wrap">
  <button class="float-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="เลื่อนขึ้นบนสุด"><i class="fas fa-arrow-up"></i></button>
- <button class="seo-toggle-btn" id="seo-toggle-btn" onclick="openSeoDrawer()" title="ค้นหาด้วย SEO"><i class="fas fa-list-alt"></i></button>
+ <button class="seo-toggle-btn" id="seo-toggle-btn" data-page="home" onclick="openSeoDrawer()" title="ค้นหาด้วย SEO"><i class="fas fa-list-alt"></i></button>
  <div class="float-grp">
   <div class="float-items hide" id="float-items">
    <a class="float-btn" href="javascript:void(0)" onclick="navigator.clipboard?.writeText('matchdoor').then(()=>toast('คัดลอก WeChat ID: matchdoor แล้ว ✅'))"><span class="fb-lbl">WeChat</span><span class="fb-ico" style="background:#07c160;color:#fff"><i class="fab fa-weixin"></i></span></a>
@@ -5057,6 +5057,9 @@ function _silentShowPage(name, skipScrollTop) {
       animateCounter($('ag-agent-cnt'), agents.length);
     }, 200);
   }
+  // seo-toggle-btn: แสดงบนหน้า home และ listings เท่านั้น
+  const _seoBtn = document.getElementById('seo-toggle-btn');
+  if(_seoBtn) _seoBtn.setAttribute('data-page', (name === 'listings' || name === 'home') ? name : 'other');
   // Update meta
   const route = PAGE_ROUTES[name];
   if (route) {
@@ -5080,10 +5083,9 @@ function _initRouteFromUrl() {
   const match = path.match(/^\/property\/([^\/\-]+)/);
   if (match) {
     const propId = match[1];
-    // ── FIX: ถ้ามาจาก refresh ที่ /property/... ให้ตั้ง _pageBeforeModal เป็น 'listings'
-    // เพราะ property card อยู่ในหน้า listings เสมอ
-    window._pageBeforeModal = 'listings';
-    _silentShowPage('listings');
+    // ── เปิด property modal ที่หน้าหลัก (layout ประกาศทั้งหมด) ──
+    window._pageBeforeModal = 'home';
+    _silentShowPage('home');
     // Try to open modal — data may not be loaded yet, handled by _pendingOpenId
     window._pendingOpenId = propId;
     return;
@@ -5151,7 +5153,7 @@ function showPage(name){
   _silentShowPage(name); // _silentShowPage renders listings already
   // seo-toggle-btn: show only on listings page
   const seoBtn = document.getElementById('seo-toggle-btn');
-  if(seoBtn) seoBtn.setAttribute('data-page', name === 'listings' ? 'listings' : 'other');
+  if(seoBtn) seoBtn.setAttribute('data-page', name === 'listings' ? 'listings' : name === 'home' ? 'home' : 'other');
   const route = PAGE_ROUTES[name];
   const path = route ? route.path : '/';
   _pushRoute(path, { type: 'page', name });
@@ -5921,22 +5923,43 @@ function listingsInlineSearch() {
 }
 
 function listingsQuickSearch(kw) {
-  // ── ถ้าไม่ได้อยู่หน้า listings อยู่แล้ว ให้ navigate ก่อน แล้วค่อย search ──
-  const lp = document.getElementById('page-listings');
-  if(!lp || !lp.classList.contains('active')) {
-    showListingsPage('ประกาศทั้งหมด');
-    setTimeout(function(){
-      const inp2 = document.getElementById('ls-kw');
-      if(inp2) inp2.value = kw;
-      listingsInlineSearch();
-      _scrollToListingsResults();
-    }, 80);
+  closeSeoDrawer();
+  // ── ถ้าอยู่หน้าหลัก → filter all-grid ที่หน้าหลักแทน ──
+  const homePg = document.getElementById('page-home');
+  if(homePg && homePg.classList.contains('active')) {
+    const inp = document.getElementById('s-kw');
+    if(inp) inp.value = kw;
+    const kwLow = kw.toLowerCase();
+    const base = props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []);
+    const result = base.filter(p =>
+      (p.title||'').toLowerCase().includes(kwLow) ||
+      (p.location||'').toLowerCase().includes(kwLow) ||
+      (p.province||'').toLowerCase().includes(kwLow) ||
+      (p.type||'').toLowerCase().includes(kwLow) ||
+      (p.tags||[]).some(t=>(t||'').toLowerCase().includes(kwLow))
+    );
+    _renderHomeAllGrid(result);
+    const rc = document.getElementById('res-count');
+    if(rc) rc.textContent = `พบ ${result.length} รายการ`;
+    const titleEl = document.getElementById('all-title');
+    if(titleEl) titleEl.textContent = `ผลการค้นหา: "${kw}"`;
+    setTimeout(()=>scrollToEl('all-sec'), 60);
     return;
   }
-  const inp = document.getElementById('ls-kw');
-  if(inp) inp.value = kw;
-  listingsInlineSearch();
-  _scrollToListingsResults();
+  // ── ถ้าอยู่หน้า listings อยู่แล้ว → ค้นหาในหน้า listings ──
+  const lp = document.getElementById('page-listings');
+  if(lp && lp.classList.contains('active')) {
+    const inp = document.getElementById('ls-kw');
+    if(inp) inp.value = kw;
+    listingsInlineSearch();
+    _scrollToListingsResults();
+    return;
+  }
+  // ── อยู่หน้าอื่น → navigate ไปหน้าหลักแล้ว filter ──
+  _silentShowPage('home', true);
+  setTimeout(function(){
+    listingsQuickSearch(kw);
+  }, 80);
 }
 
 // เรียกจากปุ่ม "ค้นหา" เท่านั้น — ค้นหา + scroll ไปผลลัพธ์
@@ -5953,35 +5976,50 @@ const listingsInlineSearchDebounced = (function(){
 // ฟิลเตอร์ประเภทอสังหาโดยตรงจาก SEO sidebar
 // (ไม่ผ่าน ls-type select เพราะ select มี option จำกัด)
 function listingsFilterByType(typeVal) {
-  // ── ถ้าไม่ได้อยู่หน้า listings อยู่แล้ว ให้ navigate ก่อน ──
-  const lp = document.getElementById('page-listings');
-  if(!lp || !lp.classList.contains('active')) {
-    showListingsPage('ประกาศทั้งหมด');
-    setTimeout(function(){ listingsFilterByType(typeVal); }, 120);
-    return;
-  }
-  // sync ls-type select ถ้ามี option ตรงกัน (เพื่อให้ UI แสดงถูก)
-  const sel = document.getElementById('ls-type');
-  if(sel) {
-    let matched = false;
-    for(const opt of sel.options) { if(opt.value === typeVal) { sel.value = typeVal; matched = true; break; } }
-    if(!matched) sel.value = ''; // option ไม่มี → ล้างค่าใน select
-  }
-  // filter _listingsBaseData โดยตรง รองรับ spelling variants
+  closeSeoDrawer();
   const typeAliases = {
     'ทาวน์เฮ้าส์': ['ทาวน์เฮ้าส์','ทาวน์เฮาส์'],
     'ทาวน์เฮาส์':  ['ทาวน์เฮาส์','ทาวน์เฮ้าส์'],
     'ทาวน์โฮม':    ['ทาวน์โฮม','ทาวน์โฮ'],
   };
   const accepted = typeAliases[typeVal] || [typeVal];
-  const base = _listingsBaseData.filter(p => accepted.includes(p.type));
-  _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
-  _listingsTxFilter = 'ALL';
-  _updateListingsTxTabs('ALL');
-  _listingsCurPage = 1;
-  renderListingsPage();
-  // ── FIX: scroll ไปที่ผลลัพธ์หลัง filter ──
-  _scrollToListingsResults();
+
+  // ── ถ้าอยู่หน้าหลัก → filter all-grid ที่หน้าหลักแทน ──
+  const homePg = document.getElementById('page-home');
+  if(homePg && homePg.classList.contains('active')) {
+    const base = props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []);
+    const result = base.filter(p => accepted.includes(p.type));
+    _renderHomeAllGrid(result);
+    const rc = document.getElementById('res-count');
+    if(rc) rc.textContent = `พบ ${result.length} รายการ`;
+    const titleEl = document.getElementById('all-title');
+    if(titleEl) titleEl.textContent = `ประเภท: ${typeVal}`;
+    setTimeout(()=>scrollToEl('all-sec'), 60);
+    return;
+  }
+
+  // ── ถ้าอยู่หน้า listings อยู่แล้ว → filter ที่หน้า listings ──
+  const lp = document.getElementById('page-listings');
+  if(lp && lp.classList.contains('active')) {
+    const sel = document.getElementById('ls-type');
+    if(sel) {
+      let matched = false;
+      for(const opt of sel.options) { if(opt.value === typeVal) { sel.value = typeVal; matched = true; break; } }
+      if(!matched) sel.value = '';
+    }
+    const base = _listingsBaseData.filter(p => accepted.includes(p.type));
+    _listingsData = sortListings(base, document.getElementById('listings-sort')?.value||'default');
+    _listingsTxFilter = 'ALL';
+    _updateListingsTxTabs('ALL');
+    _listingsCurPage = 1;
+    renderListingsPage();
+    _scrollToListingsResults();
+    return;
+  }
+
+  // ── อยู่หน้าอื่น → navigate ไปหน้าหลักแล้ว filter ──
+  _silentShowPage('home', true);
+  setTimeout(function(){ listingsFilterByType(typeVal); }, 80);
 }
 
 function openListingsAdvFilter() {

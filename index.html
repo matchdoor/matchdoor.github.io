@@ -4876,14 +4876,13 @@ window.addEventListener('popstate', function(e) {
   if (state.type === 'property') {
     if (state.id) { openModal(state.id); }
   } else if (state.type === 'page') {
-    // ── FIX: ถ้า modal เปิดอยู่ ให้ปิด modal ก่อน แทนที่จะ showPage ใหม่ ──
     const propModal = document.getElementById('prop-modal');
     if (propModal && propModal.classList.contains('open')) {
+      // ── modal เปิดอยู่ → ปิด modal แล้ว restore scroll เท่านั้น ──
+      // ไม่เรียก _silentShowPage เพราะ page ยังแสดงอยู่ grid มีข้อมูลครบแล้ว
       if (typeof close360 === 'function') close360();
-      // อ่าน savedY ก่อน clear
       const savedY = document.body._savedScrollY || 0;
       document.body._savedScrollY = 0;
-      // restore scroll lock ก่อน remove modal
       document.body.style.removeProperty('overflow');
       document.body.style.removeProperty('position');
       document.body.style.removeProperty('top');
@@ -4892,10 +4891,8 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // scroll restore + show page ใน rAF
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
-        _silentShowPage(state.name, true);
       });
     } else {
       _silentShowPage(state.name);
@@ -4906,6 +4903,20 @@ window.addEventListener('popstate', function(e) {
 // Show page WITHOUT pushing another history entry (used by popstate)
 function _closeHamburger(){ const nav=$('nav-links'),hb=$('hamburger'); if(nav)nav.classList.remove('mob-open'); if(hb)hb.classList.remove('active'); }
 function _silentShowPage(name, skipScrollTop) {
+  // ── guard: ถ้ากำลัง restore จาก modal close (prop-modal หายไป แต่ page ยังถูกต้อง)
+  // ตรวจว่า active page ตรงกับ name ที่ขอ และ grid มีการ์ดอยู่แล้ว → skip re-render
+  const _curActive = document.querySelector('.page.active');
+  const _curName = _curActive ? _curActive.id.replace('page-', '') : '';
+  if(_curName === name && name === 'listings') {
+    const _g = document.getElementById('listings-grid');
+    if(_g && _g.querySelector('.prop-card')) {
+      // หน้าถูก + grid ครบ → restore scroll เท่านั้น ไม่ต้อง re-render
+      document.body.style.removeProperty('overflow');
+      document.body.classList.remove('modal-open');
+      if(!skipScrollTop) scrollTo(0,0);
+      return;
+    }
+  }
   // คืน body scroll เสมอ — ปลอดภัยสำหรับทุก device
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('position');
@@ -4948,14 +4959,17 @@ function _silentShowPage(name, skipScrollTop) {
   _closeHamburger();
   if (name === 'listings') {
     window._lsSeoSidebarRendered = false;
-    // NOTE: ไม่ clear _pageBeforeModal ที่นี่ — closeModal ต้องการค่านี้เพื่อ restore page หลังปิดการ์ด
-    // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
-    // ถ้า _listingsDataReady → render ทันที
-    // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
-    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
-      renderListingsPage();
-    } else {
-      window._pendingListingsRender = true;
+    // ── ตรวจว่า grid มีการ์ดอยู่แล้วหรือไม่ ──────────────────────
+    // ถ้ามี → ไม่ต้อง render ใหม่ (กรณีปิดการ์ดจาก listings แล้ว restore กลับ)
+    // ถ้าไม่มี → render (กรณี navigate มาหน้า listings ครั้งแรก หรือหลัง refresh)
+    const _existingGrid = document.getElementById('listings-grid');
+    const _gridHasCards = _existingGrid && _existingGrid.querySelector('.prop-card');
+    if(!_gridHasCards) {
+      if(window._listingsDataReady && typeof renderListingsPage === 'function') {
+        renderListingsPage();
+      } else {
+        window._pendingListingsRender = true;
+      }
     }
     if(typeof renderListingsSeoSidebar === 'function'){
       const idle = window.requestIdleCallback || (cb=>setTimeout(cb,200));
@@ -5541,6 +5555,9 @@ function showListingsPage(title, data) {
   document.body._savedScrollY = 0;
   // reset render lock เมื่อ navigate ใหม่
   _listingsRenderScheduled = false;
+  // ── clear grid ก่อนเพื่อให้ _silentShowPage รู้ว่าต้อง render ใหม่ ──
+  const _gridToClear = document.getElementById('listings-grid');
+  if(_gridToClear) _gridToClear.innerHTML = '';
 
   // ── รวบรวม source data: data ที่ส่งมา → props จาก Supabase → MOCK ──
   const sourceData = (data && data.length) ? [...data] :

@@ -732,8 +732,6 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 /* Btn styles */
 .btn-search{background:linear-gradient(135deg,var(--a),#a855f7);color:#fff;padding:10px 22px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:.2s}
 .btn-search:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,107,157,.4);opacity:1}
-.btn-reset{background:rgba(255,255,255,0.18);backdrop-filter:blur(8px);color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:.2s;border:1.5px solid rgba(255,255,255,0.35);cursor:pointer}
-.btn-reset:hover{background:rgba(255,255,255,0.28);transform:translateY(-1px)}
 .btn-line{background:var(--ln);border-radius:8px;padding:0 10px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:4px;height:34px}
 .btn-line-nav{display:none}
 @media(min-width:951px){.btn-line-nav{display:flex}}
@@ -1055,14 +1053,12 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .tx-tabs{display:flex;margin-bottom:18px;border-radius:10px;overflow:hidden;border:1.5px solid var(--bd)}
 .tx-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;background:#F5F0E8;color:var(--tx2);transition:.2s}
 .tx-tab.active{background:var(--p);color:#F0ECE3}
-.sf{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr auto auto;gap:8px;align-items:end}
+.sf{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
 .sf label{display:block;font-size:13px;font-weight:800;color:#1a2744;margin-bottom:5px;text-shadow:none;letter-spacing:.2px}
 .sf select,.sf input{width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:14px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600}
 .sf select:focus,.sf input:focus{outline:none;border-color:var(--p)}
 .btn-search{background:var(--a);color:#fff;padding:10px 22px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-search:hover{opacity:.9}
-.btn-reset{background:rgba(255,255,255,0.12);color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;border:1.5px solid rgba(255,255,255,0.35);cursor:pointer;transition:.2s}
-.btn-reset:hover{background:rgba(255,255,255,0.22)}
 .cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;padding-top:2px;-ms-overflow-style:none;scrollbar-width:none}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-card{flex-shrink:0;background:#fff;border-radius:var(--r);border:2px solid var(--bd);padding:16px 20px;text-align:center;cursor:pointer;min-width:100px;transition:.2s}
@@ -1471,15 +1467,7 @@ footer::after{
   .nav-links{display:none!important;flex-direction:column;position:absolute;top:64px;left:0;right:0;background:var(--p2);padding:12px;z-index:999}
   .nav-links.mob-open{display:flex!important}
   .hamburger{display:flex}
-  .sf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .sf .ac-wrap{grid-column:1/-1}
-  .sf>div:nth-child(2){grid-column:1}
-  .sf>div:nth-child(3){grid-column:2}
-  .sf>div:nth-child(4){grid-column:1}
-  .sf>div:nth-child(5){grid-column:2}
-  .sf .btn-search,.sf .btn-reset{grid-column:span 1}
-  .sf .btn-search{grid-column:1}
-  .sf .btn-reset{grid-column:2}
+  .sf{grid-template-columns:1fr 1fr}
   .price-grid{grid-template-columns:repeat(2,1fr)}
   /* Footer mobile: 2+2 layout - เมนูหลัก+ประเภท side by side, ข้อมูล+brand */
   .footer-inner{grid-template-columns:1fr 1fr!important}
@@ -1506,14 +1494,7 @@ footer::after{
   .dep-panel .fg input,.dep-panel .fg select,.dep-panel .fg textarea{padding:9px 10px;font-size:13px}
 }
 @media(max-width:600px){
-  .sf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .sf .ac-wrap{grid-column:1/-1}
-  .sf>div:nth-child(2){grid-column:1}
-  .sf>div:nth-child(3){grid-column:2}
-  .sf>div:nth-child(4){grid-column:1}
-  .sf>div:nth-child(5){grid-column:2}
-  .sf .btn-search{grid-column:1}
-  .sf .btn-reset{grid-column:2}
+  .sf{grid-template-columns:1fr}
   .price-grid{grid-template-columns:1fr}
   .specs{grid-template-columns:repeat(2,1fr)}
   .frow{grid-template-columns:1fr}
@@ -1550,7 +1531,7 @@ footer::after{
   .quick-search-bar{gap:8px;flex-wrap:wrap}
   .search-box{padding:16px}
   .sf select,.sf input{padding:8px 10px;font-size:13px}
-  .btn-search,.btn-reset{padding:8px 12px;height:40px;justify-content:center}
+  .btn-search{padding:8px 16px;height:40px}
   .price-card{padding:14px 16px}
   .price-card h3{font-size:14px}
   .prop-thumb{height:170px}
@@ -2725,7 +2706,6 @@ footer::after{
     <div><label><i class="fas fa-tag"></i> ราคาต่ำสุด</label><select id="s-min" onchange="updatePriceMax()" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <div><label><i class="fas fa-tag"></i> ราคาสูงสุด</label><select id="s-max" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <button class="btn-search" onclick="doSearch()"><i class="fas fa-search"></i> ค้นหา</button>
-    <button class="btn-reset" onclick="resetSearch()" title="ล้างการค้นหา"><i class="fas fa-undo"></i> Reset</button>
    </div>
    <!-- loc-search-layer removed: use native select dropdown -->
   </div>
@@ -3067,7 +3047,7 @@ footer::after{
     </div>
   </div>
 </section>
- <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><button onclick="openHomeMapModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(200,146,42,.35);flex-shrink:0"><i class="fas fa-map-marked-alt"></i> <span>แผนที่</span></button><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
+ <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
  <div id="osrv-sec" class="osrv-sec" style="padding:32px 0 28px">
   <div style="max-width:1320px;margin:0 auto;padding:0 20px">
     <div class="sec-hd">
@@ -3251,6 +3231,7 @@ footer::after{
       <a href="javascript:void(0)" onclick="gotoBlog()" data-i18n="ft.col.blog">บทความ</a>
       <a href="/agents" onclick="event.preventDefault();showPage('agents')" data-i18n="ft.col.agents">ตัวแทน</a>
       <a href="javascript:void(0)" onclick="gotoOtherSrv()" data-i18n="ft.col.srv">บริการอื่นๆ</a>
+      <a href="/listings" onclick="event.preventDefault();showListingsPage('ประกาศทั้งหมด')">ประกาศทั้งหมด</a>
     </div>
     <div>
       <h4 data-i18n="ft.col.type">ประเภท</h4>
@@ -3415,7 +3396,48 @@ footer::after{
 </div>
 
 <div class="ov" id="prop-modal" onclick="closeModal(event)"><div class="modal"><div class="mhd"><h2 id="m-title"></h2><div style="display:flex;align-items:center;gap:8px"><button onclick="event.stopPropagation();(function(){const url=location.href;if(navigator.share)navigator.share({title:document.title,url});else navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅'));})()" style="width:34px;height:34px;border-radius:50%;background:var(--lt);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--p);font-size:14px" title="แชร์"><i class="fas fa-share-nodes"></i></button><button id="m-fav-btn" onclick="event.stopPropagation();toggleModalFav()" class="modal-fav-btn" title="เพิ่มรายการโปรด"><i class="far fa-heart"></i></button><span class="mclose" onclick="event.stopPropagation();closeModal()">×</span></div></div><div class="mbody"><div class="mslider-wrap"><div class="mslider"><div class="slides" id="slides"></div></div><button class="sarr prev" onclick="slide(-1)"><i class="fas fa-chevron-left"></i></button><button class="sarr next" onclick="slide(1)"><i class="fas fa-chevron-right"></i></button><div class="sdots" id="sdots"></div></div><div id="m-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div><div class="modal-price" id="m-price"></div><div class="modal-loc" id="m-loc"></div><div class="specs" id="m-specs"></div><div id="m-extras"></div><div class="agent-box" id="m-agent"><div class="ag-av" id="m-ag-av"></div><div><div id="m-ag-name" style="font-weight:700"></div><div id="m-ag-role" style="font-size:12px;color:var(--gr)"></div></div></div><div class="modal-desc" id="m-desc"></div><div id="m-chips" style="margin-bottom:10px"></div><div id="m-map" style="margin-bottom:16px"></div><div id="m-360-wrap" style="margin-bottom:16px"><button id="m-360-toggle-btn" onclick="toggle360()" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#0f1e3a,#1b3a6b);color:#fff;border:none;border-radius:12px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-street-view" style="font-size:18px;opacity:.9"></i><span id="m-360-label">มุมมอง 360°</span><span class="tour360-badge">Virtual Tour</span><i id="m-360-chevron" class="fas fa-chevron-down" style="margin-left:auto;font-size:12px;opacity:.7;transition:transform .3s"></i></button><div id="m-360-viewer-wrap" style="display:none;margin-top:8px"><div id="m-360-viewer" class="tour360-viewer"><canvas id="tour360-canvas"></canvas><div class="tour360-hint"><i class="fas fa-hand-pointer"></i> <span id="m-drag-hint">ลากเพื่อหมุน</span></div><button class="tour360-close" onclick="toggle360()"><i class="fas fa-times"></i></button></div></div></div><div id="m-nearby" style="margin-bottom:14px"></div><div class="cta-row"><a class="btn-cta cta-ln" id="m-ln" href="#" target="_blank"><i class="fab fa-line"></i> <span id="m-ln-label">แชท Line</span></a><a class="btn-cta cta-tel" id="m-tel" href="#"><i class="fas fa-mobile-alt"></i> <span id="m-tel-label">โทรสอบถาม</span></a></div></div></div></div>
-<div class="ov" id="all-modal" onclick="if(event.target===this){_closeModal('all-modal');window._modalCurrentType=null;}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="_closeModal('all-modal');window._modalCurrentType=null;">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
+<div class="ov" id="all-modal" onclick="if(event.target===this){if(window._allModalParentType){var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt);}else{_closeModal('all-modal');window._modalCurrentType=null;}}"><div class="modal wide"><div class="mhd"><h2 id="all-title2"></h2><span class="mclose" onclick="if(window._allModalParentType){var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt);}else{_closeModal('all-modal');window._modalCurrentType=null;}">×</span></div><div class="mbody" id="all-body" style="max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain"></div></div></div>
+<!-- ===== GOOGLE MY MAPS POPUP (เปิดทับ all-modal) ===== -->
+<div id="gmap-popup-overlay" onclick="closeGmapPopup()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10500;align-items:center;justify-content:center;padding:16px;box-sizing:border-box">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:16px;overflow:hidden;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(135deg,#1B3A6B,#2a5298);color:#fff;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fas fa-map-marked-alt" style="font-size:18px;color:#C8922A"></i>
+        <span style="font-weight:700;font-size:15px;font-family:'Kanit',sans-serif">แผนที่ประกาศ Matchdoor</span>
+      </div>
+      <button onclick="closeGmapPopup()" style="background:rgba(255,255,255,.18);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.2s" onmouseover="this.style.background='rgba(255,255,255,.32)'" onmouseout="this.style.background='rgba(255,255,255,.18)'">×</button>
+    </div>
+    <div style="flex:1;overflow:hidden;min-height:480px">
+      <iframe id="gmap-popup-iframe"
+        src="https://www.google.com/maps/d/embed?mid=1Bn_8_mJg2S9Lxp0sM85ZA6K0FDVZIHc&ehbc=2E312F&noprof=1"
+        width="100%" height="100%"
+        style="border:none;display:block;min-height:480px"
+        loading="lazy"
+        allowfullscreen
+        title="แผนที่ประกาศ Matchdoor">
+      </iframe>
+    </div>
+    <div style="padding:10px 18px;background:#f8f9fa;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <i class="fas fa-info-circle" style="color:#C8922A"></i>
+      ปิดหน้าต่างแผนที่นี้เพื่อกลับไปดูรายการประกาศ
+    </div>
+  </div>
+</div>
+<script>
+function openGmapPopup(){
+  const el = document.getElementById('gmap-popup-overlay');
+  if(el){ el.style.display='flex'; document.body.style.overflow='hidden'; }
+}
+function closeGmapPopup(){
+  const el = document.getElementById('gmap-popup-overlay');
+  if(el){ el.style.display='none'; }
+  // คืน scroll ให้ all-modal body เท่านั้น (ไม่ปิด all-modal)
+  const allBody = document.getElementById('all-body');
+  if(allBody) allBody.style.overflow='';
+  // ไม่ต้อง restore body overflow เพราะ all-modal ยังเปิดอยู่
+}
+</script>
+
 <div class="ov" id="srv-modal" onclick="if(event.target===this)_closeModal('srv-modal')"><div class="modal"><div class="mhd"><h2 id="srv-title2"></h2><span class="mclose" onclick="_closeModal('srv-modal')">×</span></div><div class="mbody" id="srv-body"></div></div></div>
 <div class="ov" id="blog-modal" onclick="if(event.target===this)_closeModal('blog-modal')"><div class="modal"><div class="mhd"><h2 id="blog-title"></h2><span class="mclose" onclick="_closeModal('blog-modal')">×</span></div><div class="mbody" id="blog-body"></div></div></div>
 <div class="ov" id="port-modal" onclick="if(event.target===this)_closeModal('port-modal')"><div class="modal"><div class="mhd"><h2 id="port-title"></h2><span class="mclose" onclick="_closeModal('port-modal')">×</span></div><div class="mbody" id="port-body"></div></div></div>
@@ -4629,10 +4651,36 @@ async function applyFilters(){
     return;
   }
 
+  // ── Type alias map: select value → accepted p.type values ──────
+  const _TYPE_ALIAS_MAP = {
+    // ที่อยู่อาศัย — exact aliases & spelling variants
+    'ทาวน์โฮม':     ['ทาวน์โฮม','ทาวน์โฮ','townhome','townhouse'],
+    'ทาวน์เฮาส์':   ['ทาวน์เฮาส์','ทาวน์เฮ้าส์','ทาวน์โฮม'],
+    'บ้านมือสอง':   ['บ้านมือสอง','บ้านเดี่ยว','บ้านแฝด'],
+    // ที่ดิน — select มีค่าย่อย แต่ข้อมูลมักเก็บเป็น "ที่ดิน" หรือชื่อเต็ม
+    'ที่ดินเปล่า':         ['ที่ดินเปล่า','ที่ดิน'],
+    'ที่ดินจัดสรร':        ['ที่ดินจัดสรร','ที่ดิน'],
+    'ที่ดินเกษตร':         ['ที่ดินเกษตร','ที่ดิน'],
+    'ที่ดินพาณิชย์':       ['ที่ดินพาณิชย์','ที่ดิน'],
+    'ที่ดินอุตสาหกรรม':   ['ที่ดินอุตสาหกรรม','ที่ดิน'],
+    'ที่ดินติดถนนใหญ่':   ['ที่ดินติดถนนใหญ่','ที่ดิน'],
+    'ที่ดินติดรถไฟฟ้า':   ['ที่ดินติดรถไฟฟ้า','ที่ดิน'],
+    'ที่ดินติดทะเล':       ['ที่ดินติดทะเล','ที่ดิน'],
+    'ที่ดิน EEC':          ['ที่ดิน EEC','ที่ดิน'],
+    'ที่ดินลงทุน':         ['ที่ดินลงทุน','ที่ดิน'],
+    'ที่ดินโฉนด':          ['ที่ดินโฉนด','ที่ดิน'],
+    'ที่ดิน นส.3ก':        ['ที่ดิน นส.3ก','ที่ดิน'],
+    'ที่ดิน นส.3':         ['ที่ดิน นส.3','ที่ดิน'],
+    'ที่ดิน สปก':          ['ที่ดิน สปก','ที่ดิน'],
+    // เชิงพาณิชย์
+    'โกดัง':              ['โกดัง','โกดัง/โรงงาน','โรงงาน'],
+  };
+  const _acceptedTypes = tp ? (_TYPE_ALIAS_MAP[tp] || [tp]) : null;
+
   // ── Client-side filter (เร็ว ทำก่อน) ─────────────────────────────
   filtered=props.filter(p=>{
     if(tx!=='ALL' && p.tx!==tx) return false;
-    if(tp&&p.type!==tp) return false;
+    if(_acceptedTypes && !_acceptedTypes.includes(p.type)) return false;
     if(pv&&p.province!==pv) return false;
     if(kwlOrig){
       const titleL = p.title.toLowerCase();
@@ -6207,7 +6255,14 @@ function renderFavPage(){
 function shareFavs(){ const fp=props.filter(p=>favs.includes(String(p.id))); if(!fp.length)return toast('ไม่มีรายการโปรด'); const url = location.origin + '/favorites'; if(navigator.share){ navigator.share({title:'รายการโปรด Matchdoor',text:`อสังหาฯ ที่น่าสนใจ ${fp.length} รายการ`,url}); } else { navigator.clipboard?.writeText(url).then(()=>toast('คัดลอก URL แล้ว ✅')); } }
 
 function openModal(id){
-  if($('all-modal').classList.contains('open')) _closeModal('all-modal');
+  // ── ถ้าเปิดจาก all-modal ให้จำไว้ (ไม่ปิด all-modal ทิ้ง — จะ restore หลัง closeModal) ──
+  const allModalOpen = $('all-modal').classList.contains('open');
+  window._openedFromAllModal = allModalOpen;
+  if(allModalOpen) {
+    // ซ่อน all-modal ชั่วคราว (ไม่ _closeModal ซึ่งจะทำลาย state pagination/sort)
+    $('all-modal').style.visibility = 'hidden';
+    $('all-modal').style.pointerEvents = 'none';
+  }
   const p=props.find(x=>String(x.id)==String(id));
   if(!p)return;
   const a=agents.find(x=>x.id===p.agentId);
@@ -6450,6 +6505,29 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
+  // ── ถ้าเปิดการ์ดมาจาก all-modal → คืน all-modal กลับมา ──
+  if(window._openedFromAllModal) {
+    window._openedFromAllModal = false;
+    const allModal = $('all-modal');
+    if(allModal && allModal.classList.contains('open')) {
+      allModal.style.visibility = '';
+      allModal.style.pointerEvents = '';
+      // re-lock scroll เพราะ all-modal ยังเปิดอยู่
+      document.body.classList.add('modal-open');
+    }
+    // reset scroll lock flags และจบ (ไม่ต้องทำ restore page)
+    requestAnimationFrame(function() {
+      if(typeof window._listingsRenderGen !== 'undefined') {
+        window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+      }
+      window._listingsRenderAbort = false;
+      _listingsRenderPending = false;
+      window._listingsRenderQueued = false;
+      window._listingsBatchInFlight = false;
+    });
+    return;
+  }
+
   // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
   // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
   const _prevPage = window._pageBeforeModal || 'home';
@@ -6486,6 +6564,8 @@ function openAllModal(type){
   const m=$('all-modal'),t=$('all-title2'),b=$('all-body');
   let title='',data=[];
   window._modalCurrentType = type;
+  // ถ้าเปิด rec หรือ new ตรงๆ (ไม่ใช่ restore จาก viewall) ให้ clear parent type
+  if(type==='rec'||type==='new') window._allModalParentType = null;
   if(type==='rec'){
     title=ui('modal.rec.title');
     data = props.filter(p=>p.isRec);
@@ -6498,7 +6578,9 @@ function openAllModal(type){
   }
   else if(type==='all'){
     title='ประกาศทั้งหมด';
-    data = props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []);
+    // ใช้ allFiltered ถ้ามี filter ใช้งานอยู่ (เพื่อให้ modal แสดงผลตรงกับ filter ปัจจุบัน)
+    const hasActiveFilter = allFiltered && allFiltered.length > 0 && allFiltered.length < props.length;
+    data = hasActiveFilter ? [...allFiltered] : (props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []));
   }
   else if(type==='services'){
     title=ui('modal.srv.title');
@@ -6513,7 +6595,7 @@ function openAllModal(type){
   else return;
 
   // rec / new / all: show with sort toolbar + paginated prop-grid
-  const _PER = 16;
+  const _PER = 32;
   window._modalTypeData = { type, data: [...data], currentPage: 1, perPage: _PER };
 
   function _modalRenderPage(pageData, curPage) {
@@ -6567,6 +6649,7 @@ function openAllModal(type){
   const sortHtml=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
     <span style="font-size:13px;color:var(--tx2)">${ui('modal.found')} <strong style="color:var(--p)">${data.length}</strong> ${ui('modal.items')}</span>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ดูแผนที่</button>
       <select class="sort-select" onchange="modalSortChange(this,'${type}')">
         <option value="default">${ui('modal.sort.rec')}</option>
         <option value="price_asc">${ui('modal.sort.asc')}</option>
@@ -6575,7 +6658,8 @@ function openAllModal(type){
         <option value="oldest">${ui('modal.sort.old')}</option>
         <option value="alpha">${ui('modal.sort.alpha')}</option>
       </select>
-      <button onclick="_closeModal('all-modal');showListingsPage('ประกาศทั้งหมด', props.length?[...props]:(typeof MOCK!=='undefined'?[...MOCK.props]:[]))" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>
+      ${type!=='all'?`<button onclick="window._allModalParentType='${type}';openAllModal('all')" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>`:''}
+      ${type==='all'&&window._allModalParentType?`<button onclick="var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt)" style="padding:7px 14px;background:var(--lt);color:var(--p);border:1.5px solid var(--bd);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-arrow-left"></i> กลับ</button>`:''}
     </div>
   </div>`;
   t.textContent=title;
@@ -10113,9 +10197,6 @@ function closeApplyModal(type){
 // Close on ESC
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){
-    // ปิด home map modal
-    const hmm = document.getElementById('home-map-modal');
-    if(hmm && hmm.style.display !== 'none') { closeHomeMapModal(); return; }
     // ปิด apply modals
     closeApplyModal('agent'); closeApplyModal('other');
     // ปิด modal ทั่วไปผ่าน helper (scroll restore อัตโนมัติ)
@@ -10844,30 +10925,6 @@ function closeSeoDrawer(){
   const drawer = document.getElementById('seo-drawer');
   if(overlay) overlay.classList.remove('open');
   if(drawer) drawer.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
-  if(!stillOpen){
-    document.body.style.removeProperty('overflow');
-    document.body.classList.remove('modal-open');
-  }
-}
-
-function openHomeMapModal(){
-  const overlay = document.getElementById('home-map-overlay');
-  const modal   = document.getElementById('home-map-modal');
-  // Lazy-load iframe on first open
-  const iframe  = document.getElementById('home-google-map');
-  if(iframe && !iframe.getAttribute('src') && iframe.dataset.deferredSrc){
-    iframe.src = iframe.dataset.deferredSrc;
-  }
-  if(overlay){ overlay.style.display = 'block'; }
-  if(modal)  { modal.style.display   = 'flex'; }
-  document.body.classList.add('modal-open');
-}
-function closeHomeMapModal(){
-  const overlay = document.getElementById('home-map-overlay');
-  const modal   = document.getElementById('home-map-modal');
-  if(overlay) overlay.style.display = 'none';
-  if(modal)   modal.style.display   = 'none';
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
@@ -12225,21 +12282,6 @@ function resetAdvFilter(){
 
 <!-- ===== SEO DRAWER (mobile ≤768px) ===== -->
 <div class="seo-drawer-overlay" id="seo-drawer-overlay" onclick="closeSeoDrawer()"></div>
-
-<!-- ===== HOME MAP MODAL ===== -->
-<div id="home-map-overlay" onclick="closeHomeMapModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4500;backdrop-filter:blur(4px)"></div>
-<div id="home-map-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(900px,94vw);max-height:90vh;background:#0A1628;border-radius:18px;border:2px solid rgba(200,146,42,.35);z-index:4501;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1.5px solid rgba(200,146,42,.25);flex-shrink:0">
-    <div style="color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-map-marked-alt" style="color:var(--a)"></i> แผนที่อสังหาริมทรัพย์ <span style="font-size:11px;opacity:.55;font-weight:400">— กดที่ pin บนแผนที่เพื่อดูพื้นที่</span></div>
-    <button onclick="closeHomeMapModal()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="fas fa-times"></i> ปิด</button>
-  </div>
-  <div style="padding:16px;flex:1">
-    <div style="border-radius:12px;overflow:hidden;border:2px solid rgba(200,146,42,.3);height:500px;position:relative">
-      <iframe id="home-google-map" data-deferred-src="https://www.google.com/maps/d/u/0/embed?mid=1z39rekBQwIHBp5BneTY-wZmJGQcIEVk&ehbc=2E312F" width="100%" height="100%" style="border:0;display:block" allowfullscreen></iframe>
-      <div style="position:absolute;bottom:12px;right:12px;background:rgba(10,22,40,.85);color:#fff;font-size:11px;padding:6px 12px;border-radius:8px;backdrop-filter:blur(8px)"><i class="fas fa-info-circle" style="color:var(--a)"></i> กดที่ปักหมุดในแผนที่เพื่อดูรายละเอียด</div>
-    </div>
-  </div>
-</div>
 <div class="seo-drawer" id="seo-drawer">
   <div class="seo-drawer-hd">
     <h3><i class="fas fa-chart-bar" style="color:var(--a)"></i> ข้อมูลอสังหาฯ</h3>

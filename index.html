@@ -4893,21 +4893,16 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
+      // reset flags + restore scroll เท่านั้น — grid ยังมีข้อมูลครบ ไม่ re-render
+      window._listingsRenderAbort = false;
+      _listingsRenderPending = false;
+      window._listingsRenderQueued = false;
+      window._listingsBatchInFlight = false;
+      if(typeof window._listingsRenderGen !== 'undefined') {
+        window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+      }
       requestAnimationFrame(function() {
         if(savedY > 0) window.scrollTo(0, savedY);
-        // ── FIX: bump generation อีกครั้งก่อน reset — ป้องกัน idle batch เก่ารัน append หลัง reset
-        if(typeof window._listingsRenderGen !== 'undefined') {
-          window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-        }
-        // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
-        // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
-        // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
-        window._listingsRenderAbort = false;
-        _listingsRenderPending = false;
-        window._listingsRenderQueued = false;
-        window._listingsBatchInFlight = false;
-        _silentShowPage(state.name, true);
       });
     } else {
       _silentShowPage(state.name);
@@ -4971,7 +4966,12 @@ function _silentShowPage(name, skipScrollTop) {
     // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
     // ถ้า _listingsDataReady → render ทันที
     // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
-    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
+    // ถ้า grid ยังมีข้อมูลอยู่ (กลับมาจาก modal) — ข้ามการ render ซ้ำ
+    const _lsGrid = document.getElementById('listings-grid');
+    const _gridHasData = _lsGrid && _lsGrid.querySelector('.prop-card');
+    if(_gridHasData) {
+      // grid ยังครบ — ไม่ต้องทำอะไร รอ scroll restore จาก closeModal เท่านั้น
+    } else if(window._listingsDataReady && typeof renderListingsPage === 'function') {
       renderListingsPage();
     } else {
       window._pendingListingsRender = true;
@@ -5250,7 +5250,8 @@ function propCard(p){
 // ===== LISTINGS PAGE =====
 let _listingsData = [];
 let _listingsCurPage = 1;
-// Desktop ≥1101px → 32 การ์ด | Tablet/Mobile <1101px → 16 การ์ด
+// แสดง 32 ทรัพย์ต่อหน้าทุกอุปกรณ์ — logic เหมือนกับ desktop ทุกหน้าจอ
+// Desktop >=1101px → 32 การ์ด | Tablet/Mobile <1101px → 16 การ์ด
 function _listingsPerPage() {
   return window.innerWidth >= 1101 ? 32 : 16;
 }
@@ -6258,25 +6259,18 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
-  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
-  const _prevPage = window._pageBeforeModal || 'home';
+  // ── reset flags + restore scroll เท่านั้น — ห้าม re-render grid ซ้ำ ──
+  // grid ยังมีข้อมูลครบอยู่แล้ว การ render ใหม่คือต้นเหตุที่ทำให้ช้าบน mobile/tablet
+  window._listingsRenderAbort = false;
+  _listingsRenderPending = false;
+  window._listingsRenderQueued = false;
+  window._listingsBatchInFlight = false;
+  if(typeof window._listingsRenderGen !== 'undefined') {
+    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+  }
+  // restore scroll position ใน rAF — หลัง browser unlock overflow แล้ว
   requestAnimationFrame(function() {
-    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
-    if(typeof window._listingsRenderGen !== 'undefined') {
-      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-    }
-    window._listingsRenderAbort = false;
-    _listingsRenderPending = false;
-    window._listingsRenderQueued = false;
-    window._listingsBatchInFlight = false;
-    // restore scroll position
     if(savedY > 0) window.scrollTo(0, savedY);
-    // render listings ถ้าเปิดการ์ดมาจากหน้า listings
-    const listingsPage = document.getElementById('page-listings');
-    if(_prevPage === 'listings' && listingsPage && listingsPage.classList.contains('active')) {
-      if(typeof renderListingsPage === 'function') renderListingsPage();
-    }
   });
 }
 // Helper: build SEO-friendly property URL from prop object

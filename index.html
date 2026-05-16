@@ -222,9 +222,12 @@ body.modal-open{
   overflow:hidden!important;
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
-/* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
-body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
-  overflow:auto!important;
+/* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ
+   ใช้ @supports เพื่อ fallback ใน Safari < 16 และ Android WebView เก่าที่ไม่รองรับ :has() */
+@supports selector(:has(*)) {
+  body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
+    overflow:auto!important;
+  }
 }
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
@@ -3985,8 +3988,8 @@ function _closeModal(id){
   const m = document.getElementById(id);
   if(!m) return;
   m.classList.remove('open');
-  /* unlock scroll เฉพาะเมื่อไม่มี modal อื่นเปิดอยู่ */
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  /* unlock scroll เฉพาะเมื่อไม่มี modal/overlay/sheet อื่นเปิดอยู่ */
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -3996,7 +3999,7 @@ function _closeModalEl(el){
   /* ปิด modal จาก element reference แทน id */
   if(!el) return;
   el.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -4902,7 +4905,9 @@ window.addEventListener('popstate', function(e) {
         window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
       }
       requestAnimationFrame(function() {
-        if(savedY > 0) window.scrollTo(0, savedY);
+        requestAnimationFrame(function() {
+          if(savedY > 0) window.scrollTo(0, savedY);
+        });
       });
     } else {
       _silentShowPage(state.name);
@@ -6049,6 +6054,8 @@ function openModal(id){
 
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
   $('prop-modal').classList.add('open');
+  // บันทึกเวลาเปิด — ป้องกัน iOS ghost-tap ปิด modal ทันที
+  $('prop-modal')._openedAt = Date.now();
 
   // ── iOS scroll-lock: ใช้ overflow:hidden บน body เท่านั้น ──
   // ห้ามใช้ position:fixed เด็ดขาด — สร้าง layout recalc ขนาดใหญ่บน iOS/iPad
@@ -6215,6 +6222,10 @@ function closeModal(e){
   const modal = $('prop-modal');
   if(!modal) return;
 
+  // ป้องกัน iOS ghost-tap / accidental close ภายใน 300ms หลัง openModal
+  // (iOS ยิง touchend → click ในกรอบเวลาสั้น ซึ่งอาจทำให้ปิดทันทีที่เปิด)
+  if(modal._openedAt && (Date.now() - modal._openedAt) < 300) return;
+
   // Safety net: ถ้า modal ไม่ได้ open อยู่ ให้ reset lock ทุกอย่างแล้วออก
   if(!modal.classList.contains('open')) {
     document.body.style.removeProperty('overflow');
@@ -6268,9 +6279,21 @@ function closeModal(e){
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
-  // restore scroll position ใน rAF — หลัง browser unlock overflow แล้ว
+  // restore scroll position ใน double rAF — iOS/iPad ต้องรอ layout คำนวณใหม่หลัง overflow unlock
+  // single rAF ไม่พอบน iOS Safari เพราะ overflow:hidden ถูกปลดใน frame เดียวกัน
   requestAnimationFrame(function() {
-    if(savedY > 0) window.scrollTo(0, savedY);
+    requestAnimationFrame(function() {
+      if(savedY > 0) window.scrollTo(0, savedY);
+      // กู้คืน listings grid ถ้า abort ทำให้ render ไม่สมบูรณ์ (grid ว่างหรือมีแค่ skeleton)
+      const listingsPage = document.getElementById('page-listings');
+      if(listingsPage && listingsPage.classList.contains('active')) {
+        const grid = document.getElementById('listings-grid');
+        const hasRealCards = grid && grid.querySelector('.prop-card:not(.loading-sk)');
+        if(!hasRealCards && typeof renderListingsPage === 'function') {
+          setTimeout(renderListingsPage, 50);
+        }
+      }
+    });
   });
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -6914,6 +6937,9 @@ function selectLsAC(id, title, loc) {
 
 function initSwipe(sliderEl, prevFn, nextFn) {
   if(!sliderEl) return;
+  // ป้องกัน bind ซ้ำ — ถ้าเคย init แล้วให้ข้ามทันที
+  if(sliderEl._swipeInitDone) return;
+  sliderEl._swipeInitDone = true;
   let startX=0, isDragging=false, moved=0;
   sliderEl.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; isDragging=true; moved=0; }, {passive:true});
   sliderEl.addEventListener('touchmove', e=>{ if(!isDragging) return; moved=e.touches[0].clientX-startX; }, {passive:true});
@@ -6921,22 +6947,32 @@ function initSwipe(sliderEl, prevFn, nextFn) {
     if(!isDragging) return; isDragging=false;
     if(moved < -50) nextFn();
     else if(moved > 50) prevFn();
+    moved=0;
   });
-  sliderEl.addEventListener('mousedown', e=>{ startX=e.clientX; isDragging=true; moved=0; sliderEl.classList.add('dragging'); e.preventDefault(); });
-  window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; });
-  window.addEventListener('mouseup', ()=>{
-    if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
-    if(moved < -50) nextFn();
-    else if(moved > 50) prevFn();
+  // ใช้ AbortController เพื่อไม่ให้ global listeners รั่วไหล
+  let _ac = null;
+  sliderEl.addEventListener('mousedown', e=>{
+    startX=e.clientX; isDragging=true; moved=0;
+    sliderEl.classList.add('dragging'); e.preventDefault();
+    if(_ac) _ac.abort();
+    _ac = new AbortController();
+    const sig = { signal: _ac.signal };
+    window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; }, sig);
+    window.addEventListener('mouseup', ()=>{
+      if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
+      if(moved < -50) nextFn();
+      else if(moved > 50) prevFn();
+      moved=0;
+      if(_ac){ _ac.abort(); _ac=null; }
+    }, sig);
   });
 }
 
 function initModalSwipe() {
   const ms = document.querySelector('#prop-modal .mslider');
-  if(ms && !ms._swipeInit) {
-    ms._swipeInit = true;
-    initSwipe(ms, ()=>slide(-1), ()=>slide(1));
-  }
+  if(!ms) return;
+  // initSwipe มีการ์ด _swipeInitDone ภายในตัวเองแล้ว — เรียกได้ทุกครั้งที่ modal เปิด โดยไม่ leak
+  initSwipe(ms, ()=>slide(-1), ()=>slide(1));
 }
 
 function lazyLoadImages() {
@@ -7328,10 +7364,14 @@ function initCardSwipeOn(containerEl) {
     if (didDrag) moved = dx;
   }, { passive: true });
 
-  surface.addEventListener('touchend', function() {
+  surface.addEventListener('touchend', function(e) {
     if (!active) return;
     active = false;
-    if (didDrag && Math.abs(moved) > THRESHOLD) _doCardSlide(pid, moved < 0 ? 1 : -1);
+    if (didDrag && Math.abs(moved) > THRESHOLD) {
+      // หยุด bubble เมื่อ swipe รูป — ป้องกัน .ov onclick closeModal ถูกเรียกโดยไม่ตั้งใจ
+      e.stopPropagation();
+      _doCardSlide(pid, moved < 0 ? 1 : -1);
+    }
     moved = 0; didDrag = false;
   });
 
@@ -8102,24 +8142,29 @@ function initHGallerySwipe(wrapId) {
     // If vertical, do nothing — browser handles page scroll
   }, {passive:true});
   wrap.addEventListener('touchend', () => { isDragging = false; moved = 0; isVertical = false; });
-  // Mouse drag (desktop)
+  // Mouse drag (desktop) — ใช้ AbortController ป้องกัน listener รั่ว
+  let _hgAc = null;
   wrap.addEventListener('mousedown', e => {
     startX = e.clientX;
     startScroll = wrap.scrollLeft;
     isDragging = true;
     moved = 0;
     wrap.classList.add('dragging');
-  });
-  window.addEventListener('mousemove', e => {
-    if(!isDragging) return;
-    const dx = startX - e.clientX;
-    moved = Math.abs(dx);
-    wrap.scrollLeft = startScroll + dx;
-  });
-  window.addEventListener('mouseup', () => {
-    if(!isDragging) return;
-    isDragging = false;
-    wrap.classList.remove('dragging');
+    if(_hgAc) _hgAc.abort();
+    _hgAc = new AbortController();
+    const sig = { signal: _hgAc.signal };
+    window.addEventListener('mousemove', e => {
+      if(!isDragging) return;
+      const dx = startX - e.clientX;
+      moved = Math.abs(dx);
+      wrap.scrollLeft = startScroll + dx;
+    }, sig);
+    window.addEventListener('mouseup', () => {
+      if(!isDragging) return;
+      isDragging = false;
+      wrap.classList.remove('dragging');
+      if(_hgAc){ _hgAc.abort(); _hgAc=null; }
+    }, sig);
   });
   // Block click only if dragged
   wrap.addEventListener('click', e => {

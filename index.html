@@ -1296,11 +1296,17 @@ footer::after{
 .ls-tabs-row::-webkit-scrollbar{display:none}
 .ls-tabs-row{-ms-overflow-style:none;scrollbar-width:none}
 
+/* ── all-sec: row1 + row2 layout ── */
+.all-sec-row1{margin-bottom:8px!important}
+.all-sec-row2{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:16px}
+
 /* ── Listings toolbar: stack on very small screens ── */
 @media(max-width:480px){
   .listings-toolbar{flex-direction:column;align-items:flex-start!important;gap:6px!important}
   .listings-count{font-size:13px}
   .sort-select{font-size:12px;padding:5px 8px}
+  /* all-sec row2 stays right-aligned on mobile */
+  .all-sec-row2{margin-bottom:12px}
 }
 
 /* ── Pagination ── */
@@ -3047,7 +3053,33 @@ footer::after{
     </div>
   </div>
 </section>
- <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
+ <div class="wrap" id="all-sec">
+  <!-- Row 1: title (left) + count + view-all (right) -->
+  <div class="sec-hd all-sec-row1" style="flex-wrap:nowrap;gap:8px;margin-bottom:10px">
+    <div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">ประกาศทั้งหมด</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span>
+      <span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span>
+    </div>
+  </div>
+  <!-- Row 2: sort (right-aligned) -->
+  <div class="all-sec-row2" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:16px">
+    <label data-i18n="ls.sort.label" style="font-size:12px;font-weight:600;color:var(--gr);white-space:nowrap">เรียงโดย:</label>
+    <select id="all-grid-sort" class="sort-select" style="font-size:12px;padding:5px 8px;min-width:110px" onchange="homeAllGridSortChange(this)">
+      <option value="default">แนะนำ</option>
+      <option value="price_asc">ราคา ต่ำ→สูง</option>
+      <option value="price_desc">ราคา สูง→ต่ำ</option>
+      <option value="newest">ใหม่สุด</option>
+      <option value="oldest">เก่าสุด</option>
+      <option value="alpha">ชื่อ A–Z</option>
+    </select>
+  </div>
+  <div class="prop-grid" id="all-grid"></div>
+  <div class="pagination" id="all-grid-pagination" style="display:none">
+    <div class="pg-info" id="all-pg-info"></div>
+    <div class="pg-controls" id="all-pg-controls"></div>
+  </div>
+</div>
  <div id="osrv-sec" class="osrv-sec" style="padding:32px 0 28px">
   <div style="max-width:1320px;margin:0 auto;padding:0 20px">
     <div class="sec-hd">
@@ -3231,7 +3263,7 @@ footer::after{
       <a href="javascript:void(0)" onclick="gotoBlog()" data-i18n="ft.col.blog">บทความ</a>
       <a href="/agents" onclick="event.preventDefault();showPage('agents')" data-i18n="ft.col.agents">ตัวแทน</a>
       <a href="javascript:void(0)" onclick="gotoOtherSrv()" data-i18n="ft.col.srv">บริการอื่นๆ</a>
-      <a href="/listings" onclick="event.preventDefault();showListingsPage('ประกาศทั้งหมด')">ประกาศทั้งหมด</a>
+      <a href="/listings" onclick="event.preventDefault();showListingsPage(ui('ft.col.listings'))" data-i18n="ft.col.listings">ประกาศทั้งหมด</a>
     </div>
     <div>
       <h4 data-i18n="ft.col.type">ประเภท</h4>
@@ -4777,6 +4809,18 @@ function _homeAllGoPage(page) {
   scrollToEl('all-sec');
 }
 
+// ── Sort handler for home all-grid ──────────────────────────────
+function homeAllGridSortChange(sel) {
+  if (!window._homeAllData || !window._homeAllData.length) return;
+  const sorted = (typeof sortListings === 'function') ? sortListings([...window._homeAllData], sel.value) : window._homeAllData;
+  window._homeAllData = sorted;
+  window._homeAllPage = 1;
+  const slice = sorted.slice(0, _HOME_ALL_PER);
+  const el = $('all-grid');
+  if (el) { el.innerHTML = slice.map(propCard).join(''); setTimeout(initAllCardSwipes, 50); }
+  _renderHomeAllPagination();
+}
+
 // ── helper: render all-grid พร้อม empty state แบบ professional ──
 function _renderHomeAllGrid(list) {
   const el = $('all-grid');
@@ -5861,7 +5905,7 @@ function listingsFilterTx(tx) {
   // ── ถ้าไม่ได้อยู่หน้า listings ให้ navigate ก่อน ──
   const lp = document.getElementById('page-listings');
   if(!lp || !lp.classList.contains('active')) {
-    showListingsPage('ประกาศทั้งหมด');
+    showListingsPage(ui('sec.all'));
     setTimeout(function(){ listingsFilterTx(tx); }, 120);
     return;
   }
@@ -6569,7 +6613,7 @@ function openAllModal(type){
     if(!data.length) data = sortListings([...props],'newest').slice(0,20);
   }
   else if(type==='all'){
-    title='ประกาศทั้งหมด';
+    title=ui('sec.all');
     // ใช้ allFiltered ถ้ามี filter ใช้งานอยู่ (เพื่อให้ modal แสดงผลตรงกับ filter ปัจจุบัน)
     const hasActiveFilter = allFiltered && allFiltered.length > 0 && allFiltered.length < props.length;
     data = hasActiveFilter ? [...allFiltered] : (props.length ? [...props] : (typeof MOCK!=='undefined' ? [...MOCK.props] : []));
@@ -6638,11 +6682,20 @@ function openAllModal(type){
   // store render fn for sort changes
   window._modalRenderPage = _modalRenderPage;
 
-  const sortHtml=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
-    <span style="font-size:13px;color:var(--tx2)">${ui('modal.found')} <strong style="color:var(--p)">${data.length}</strong> ${ui('modal.items')}</span>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ดูแผนที่</button>
-      <select class="sort-select" onchange="modalSortChange(this,'${type}')">
+  // ── row 1: res-count + viewall button (mobile: side by side) ──
+  const _viewAllBtn = type!=='all'
+    ? `<button onclick="window._allModalParentType='${type}';openAllModal('all')" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>`
+    : (window._allModalParentType ? `<button onclick="var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt)" style="padding:7px 14px;background:var(--lt);color:var(--p);border:1.5px solid var(--bd);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-arrow-left"></i> กลับ</button>` : '');
+  const sortHtml=`<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+    <!-- Row 1: count (left) + view-all btn (right) -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--tx2);flex-shrink:0">${ui('modal.found')} <strong style="color:var(--p)">${data.length}</strong> ${ui('modal.items')}</span>
+      ${_viewAllBtn}
+    </div>
+    <!-- Row 2: map btn + sort (right-aligned) -->
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+      <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s;flex-shrink:0" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ${ui('modal.map.btn')}</button>
+      <select class="sort-select" onchange="modalSortChange(this,'${type}')" style="min-width:120px">
         <option value="default">${ui('modal.sort.rec')}</option>
         <option value="price_asc">${ui('modal.sort.asc')}</option>
         <option value="price_desc">${ui('modal.sort.desc')}</option>
@@ -6650,8 +6703,6 @@ function openAllModal(type){
         <option value="oldest">${ui('modal.sort.old')}</option>
         <option value="alpha">${ui('modal.sort.alpha')}</option>
       </select>
-      ${type!=='all'?`<button onclick="window._allModalParentType='${type}';openAllModal('all')" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>`:''}
-      ${type==='all'&&window._allModalParentType?`<button onclick="var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt)" style="padding:7px 14px;background:var(--lt);color:var(--p);border:1.5px solid var(--bd);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px"><i class="fas fa-arrow-left"></i> กลับ</button>`:''}
     </div>
   </div>`;
   t.textContent=title;
@@ -8713,6 +8764,8 @@ const I18N_DICT = {
   'modal.found':      {th:'พบ',               en:'Found',             cn:'找到',       ja:''},
   'modal.items':      {th:'รายการ',            en:'listings',          cn:'个房源',     ja:'件'},
   'modal.viewall':    {th:'ดูประกาศทั้งหมด',  en:'View All Listings', cn:'查看全部',   ja:'全件表示'},
+  'modal.map.btn':    {th:'ดูแผนที่',          en:'View Map',          cn:'查看地图',   ja:'地図を見る'},
+  'ft.col.listings':  {th:'ประกาศทั้งหมด',    en:'All Listings',      cn:'全部房源',   ja:'全物件一覧'},
   'modal.sort.rec':   {th:'แนะนำ',            en:'Recommended',       cn:'推荐',       ja:'おすすめ'},
   'modal.sort.asc':   {th:'ราคาต่ำ → สูง',   en:'Price: Low → High', cn:'价格从低到高', ja:'価格: 低→高'},
   'modal.sort.desc':  {th:'ราคาสูง → ต่ำ',   en:'Price: High → Low', cn:'价格从高到低', ja:'価格: 高→低'},
@@ -10141,6 +10194,12 @@ function applyLang(){
     if(lsSort){
       const sortKeys=[['default','ls.sort.default'],['price_asc','ls.sort.price_asc'],['price_desc','ls.sort.price_desc'],['newest','ls.sort.newest'],['oldest','ls.sort.oldest'],['alpha','ls.sort.alpha']];
       sortKeys.forEach(([val,key])=>{ const opt=lsSort.querySelector('option[value="'+val+'"]'); if(opt)opt.textContent=ui(key); });
+    }
+    // Home "all" grid sort options
+    const allGridSort=document.getElementById('all-grid-sort');
+    if(allGridSort){
+      const homeSortKeys=[['default','modal.sort.rec'],['price_asc','modal.sort.asc'],['price_desc','modal.sort.desc'],['newest','modal.sort.new'],['oldest','modal.sort.old'],['alpha','modal.sort.alpha']];
+      homeSortKeys.forEach(([val,key])=>{ const opt=allGridSort.querySelector('option[value="'+val+'"]'); if(opt)opt.textContent=ui(key); });
     }
     // Sidebar: property types header
     const seoTypesHd=document.querySelector('#page-listings aside > div:first-child > div:first-child');
@@ -12151,9 +12210,11 @@ function resetAdvFilter(){
   <div class="listings-main-wrap">
     <div>
       <!-- Toolbar -->
-      <div class="listings-toolbar" id="listings-results-top" style="margin-bottom:16px">
-        <div class="listings-count">พบ <strong id="listings-total-count">0</strong> รายการ</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="listings-toolbar" id="listings-results-top" style="margin-bottom:16px;flex-direction:column;align-items:stretch;gap:6px">
+        <!-- Row 1: count -->
+        <div class="listings-count" style="font-size:13px;color:var(--tx2)">พบ <strong id="listings-total-count">0</strong> รายการ</div>
+        <!-- Row 2: sort right-aligned -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
           <label style="font-size:12px;font-weight:600;color:var(--tx2)">เรียงโดย:</label>
           <select class="sort-select" id="listings-sort" onchange="listingsSortChange()">
             <option value="default">แนะนำ</option>

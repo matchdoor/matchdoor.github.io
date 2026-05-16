@@ -12050,270 +12050,405 @@ function resetAdvFilter(){
 
 
 <!-- ═══════════════════════════════════════════════════════════════
-     DRAG-TO-CLOSE SYSTEM — ใช้กับทุก modal ในระบบ (prop, all, srv,
-     blog, port, ag, login, signup, cookie, privacy, terms ฯลฯ)
-     • Drag header ลงมากกว่า 80px → ปิด (spring back ถ้าน้อยกว่า)
-     • Swipe overlay ลงมากกว่า 60px → ปิด
-     • รองรับ touch + mouse (desktop drag ก็ทำได้)
-     • ไม่กระทบ scroll ของ .mbody ภายใน
-     • prop-modal ใช้ closeModal() เพื่อ unlock scroll + restore URL
-     • modal อื่นใช้ _closeModal(id) ตามปกติ
+  DRAG-TO-CLOSE  v2 — cross-device (iOS / Android / Desktop)
+  ทำงานกับทุก .ov modal ในระบบ (prop, all, srv, blog, port, ag ฯลฯ)
+
+  กลไก:
+  • จับ touch/mouse ที่ .mhd (header) เท่านั้น
+  • ลาก ≥ CLOSE_PX  → animate slide-down แล้วปิด
+  • ลากน้อยกว่า     → spring-back เด้งกลับ
+  • ขณะ mbody scroll ยังอยู่บนสุด (scrollTop=0) และลากลง → drag
+  • ขณะ mbody scroll ไม่ใช่ 0 → ปล่อยให้ scroll ตามปกติ
+  • ไม่รบกวน mslider swipe (horizontal), 360-drag, map, input
+  • รองรับ iOS safe-area, notch, rubber-band overscroll
+  • prop-modal → triggerClose ผ่าน closeModal() เพื่อ restore URL
+  • modal อื่น   → _closeModal(id)
 ═══════════════════════════════════════════════════════════════ -->
+<style>
+/* ── drag handle pill บน .mhd (visible เฉพาะ mobile/tablet) ── */
+.mhd-drag-pill {
+  display: none;
+  width: 38px; height: 4px;
+  background: #d0d5dd;
+  border-radius: 4px;
+  margin: 0 auto 8px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .mhd-drag-pill { display: block; }
+  /* mhd เปลี่ยน layout เป็น column เพื่อให้ pill อยู่บนสุด */
+  .mhd {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mhd-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+}
+
+/* ── modal ขณะกำลัง drag ── */
+.modal--dragging {
+  transition: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grabbing !important;
+}
+.modal--dragging * { pointer-events: none !important; }
+
+/* ── overlay dim transition ── */
+.ov { transition: background 0.05s; }
+.ov.ov--dragging { transition: none !important; }
+
+/* ── slide-down-close animation ── */
+@keyframes dtc-slide-down {
+  0%   { transform: var(--dtc-from, translateY(0)); opacity: 1; }
+  100% { transform: translateY(105vh);              opacity: 0; }
+}
+/* ── spring-back animation ── */
+@keyframes dtc-spring {
+  0%   { transform: var(--dtc-from, translateY(0)); }
+  55%  { transform: translateY(-7px); }
+  78%  { transform: translateY(3px);  }
+  100% { transform: translateY(0);    }
+}
+.modal--closing {
+  animation: dtc-slide-down 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none !important;
+}
+.modal--spring {
+  animation: dtc-spring 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+</style>
+
 <script>
+/* ══════════════════════════════════════════════════════════════
+   initDragToClose()  — รันครั้งเดียว หลัง DOM พร้อม
+══════════════════════════════════════════════════════════════ */
 (function initDragToClose() {
-  /* ── CSS สำหรับ drag indicator บน header ── */
-  const style = document.createElement('style');
-  style.textContent = `
-    /* Drag handle indicator แสดงบน mhd ของทุก modal */
-    .mhd::before {
-      content: '';
-      display: block;
-      width: 36px;
-      height: 4px;
-      background: #ddd;
-      border-radius: 4px;
-      margin: 0 auto 10px;
-      opacity: 0;
-      transition: opacity .25s;
-    }
-    /* แสดง handle เฉพาะ mobile */
-    @media (max-width: 768px) {
-      .mhd::before { opacity: 1; }
-    }
-    /* Modal กำลัง drag — ปิด transition เพื่อให้ตามนิ้ว real-time */
-    .modal.is-dragging {
-      transition: none !important;
-      will-change: transform;
-      user-select: none;
-    }
-    /* overlay fade เมื่อ drag */
-    .ov.is-dragging-ov {
-      transition: background .05s !important;
-    }
-    /* ── spring-back animation หลังปล่อยนิ้วโดยไม่ปิด ── */
-    @keyframes modalSpringBack {
-      0%   { transform: translateY(var(--drag-start-y, 0px)); }
-      60%  { transform: translateY(-6px); }
-      80%  { transform: translateY(3px); }
-      100% { transform: translateY(0); }
-    }
-    .modal.spring-back {
-      animation: modalSpringBack .38s cubic-bezier(.34,1.56,.64,1) forwards;
-    }
-    /* ── slide-down-out animation เมื่อปิด ── */
-    @keyframes modalSlideDown {
-      to { transform: translateY(110%); opacity: 0; }
-    }
-    .modal.slide-down-out {
-      animation: modalSlideDown .28s cubic-bezier(.4,0,1,1) forwards;
-      pointer-events: none;
-    }
-  `;
-  document.head.appendChild(style);
 
-  /* ── Config ── */
-  const CLOSE_THRESHOLD  = 80;   // px ที่ต้องลากลงเพื่อ trigger ปิด
-  const CLOSE_THRESHOLD_OV = 60; // px สำหรับ swipe overlay ด้านข้าง
-  const RESISTANCE       = 0.45; // ค่า damping เมื่อลากขึ้น (กันลากขึ้นเกิน)
+  /* ─── config ─── */
+  var CLOSE_PX   = 90;   // px ที่ต้องลากก่อน trigger ปิด
+  var RESIST_UP  = 0.3;  // dampen การลากขึ้น (กันลากขึ้นเกิน)
+  var OV_BASE_ALPHA = 0.6; // alpha พื้นฐานของ .ov overlay
 
-  /* ── State ── */
-  let _active    = null; // { modalEl, innerEl, startY, startX, lastY, mode, ovEl }
-  let _animating = false;
+  /* ─── runtime state ─── */
+  var drag = null;  // null หรือ { ovEl, modalEl, mbodyEl, mhdEl, startY, lastDy, identifier }
+  var busy = false; // ป้องกัน double-fire ระหว่าง animation
 
-  /* ── ฟังก์ชัน helper ── */
-  function getClientY(e) {
-    return e.touches ? e.touches[0].clientY : e.clientY;
-  }
-  function getClientX(e) {
-    return e.touches ? e.touches[0].clientX : e.clientX;
+  /* ─── utils ─── */
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  /* หา touch ที่ตรงกับ identifier */
+  function findTouch(touches, id) {
+    for (var i = 0; i < touches.length; i++) {
+      if (touches[i].identifier === id) return touches[i];
+    }
+    return null;
   }
 
-  function getModalId(ovEl) {
-    return ovEl ? ovEl.id : null;
+  /* inject drag-pill + mhd-inner wrapper เข้า .mhd ถ้ายังไม่มี */
+  function ensurePill(mhdEl) {
+    if (mhdEl._dtcReady) return;
+    mhdEl._dtcReady = true;
+
+    /* ห่อ children เดิมด้วย .mhd-inner */
+    var inner = document.createElement('div');
+    inner.className = 'mhd-inner';
+    while (mhdEl.firstChild) inner.appendChild(mhdEl.firstChild);
+
+    /* สร้าง pill */
+    var pill = document.createElement('div');
+    pill.className = 'mhd-drag-pill';
+    pill.setAttribute('aria-hidden', 'true');
+
+    mhdEl.appendChild(pill);
+    mhdEl.appendChild(inner);
   }
 
-  /* trigger close ที่ถูกต้องตาม modal id */
+  /* ─── triggerClose: เรียก close function ที่ถูกต้องตาม modal ─── */
   function triggerClose(ovEl) {
-    const id = getModalId(ovEl);
-    if (!id) return;
-
+    var id = ovEl.id;
     if (id === 'prop-modal') {
-      // prop-modal ต้องผ่าน closeModal() เพื่อ restore URL + unlock scroll
-      if (typeof closeModal === 'function') closeModal({ target: { id: 'prop-modal' } });
+      /* prop-modal ต้องผ่าน closeModal() เพื่อ unlock scroll + restore URL */
+      if (typeof closeModal === 'function') {
+        closeModal({ target: { id: 'prop-modal' } });
+      }
     } else {
-      // modal อื่นใช้ _closeModal
       if (typeof _closeModal === 'function') _closeModal(id);
-      // จัดการ special case
       if (id === 'all-modal') window._modalCurrentType = null;
     }
   }
 
-  /* slide down แล้วปิด */
-  function slideDownAndClose(innerEl, ovEl) {
-    if (_animating) return;
-    _animating = true;
-    innerEl.classList.remove('is-dragging', 'spring-back');
-    innerEl.classList.add('slide-down-out');
-    ovEl.classList.remove('is-dragging-ov');
+  /* ─── animate แล้วปิด ─── */
+  function animateClose(modalEl, ovEl, fromDy) {
+    if (busy) return;
+    busy = true;
+
+    modalEl.style.setProperty('--dtc-from', 'translateY(' + fromDy + 'px)');
+    modalEl.classList.remove('modal--dragging', 'modal--spring');
+    modalEl.classList.add('modal--closing');
+    ovEl.classList.remove('ov--dragging');
+    /* fade overlay */
     ovEl.style.background = 'rgba(0,0,0,0)';
 
-    innerEl.addEventListener('animationend', function handler() {
-      innerEl.removeEventListener('animationend', handler);
-      innerEl.classList.remove('slide-down-out');
-      innerEl.style.transform = '';
+    function onEnd() {
+      modalEl.removeEventListener('animationend', onEnd);
+      modalEl.classList.remove('modal--closing');
+      modalEl.style.transform = '';
+      modalEl.style.removeProperty('--dtc-from');
       ovEl.style.background = '';
-      _animating = false;
+      busy = false;
       triggerClose(ovEl);
-    }, { once: true });
+    }
+    modalEl.addEventListener('animationend', onEnd, { once: true });
   }
 
-  /* spring back (ไม่ปิด) */
-  function springBack(innerEl, ovEl, fromY) {
-    innerEl.style.setProperty('--drag-start-y', fromY + 'px');
-    innerEl.style.transform = '';
-    innerEl.classList.remove('is-dragging');
-    innerEl.classList.add('spring-back');
-    ovEl.classList.remove('is-dragging-ov');
+  /* ─── spring back กลับ ─── */
+  function animateSpring(modalEl, ovEl, fromDy) {
+    modalEl.style.setProperty('--dtc-from', 'translateY(' + fromDy + 'px)');
+    modalEl.style.transform = '';
+    modalEl.classList.remove('modal--dragging');
+    modalEl.classList.add('modal--spring');
+    ovEl.classList.remove('ov--dragging');
     ovEl.style.background = '';
 
-    innerEl.addEventListener('animationend', function handler() {
-      innerEl.removeEventListener('animationend', handler);
-      innerEl.classList.remove('spring-back');
-    }, { once: true });
+    function onEnd() {
+      modalEl.classList.remove('modal--spring');
+      modalEl.style.removeProperty('--dtc-from');
+    }
+    modalEl.addEventListener('animationend', onEnd, { once: true });
   }
 
-  /* ── Pointer start ── */
-  function onPointerStart(e) {
-    if (_animating) return;
-    if (_active) return; // กันซ้อน
+  /* ─── ตรวจว่า element นี้อยู่ใน "no-drag zone" หรือไม่ ─── */
+  function isNoDragTarget(el, modalEl) {
+    if (!el) return false;
+    /* inputs, selects, textareas */
+    var tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' ||
+        tag === 'BUTTON' || tag === 'A') return true;
+    /* mslider (swipe รูป), tour360, map iframe */
+    var noDrag = modalEl.querySelector(
+      '.mslider, .tour360-viewer, iframe, .h-gallery-wrap, .rec-track-wrap'
+    );
+    if (noDrag) {
+      /* ตรวจทุก zone */
+      var zones = modalEl.querySelectorAll(
+        '.mslider, .tour360-viewer, iframe, .h-gallery-wrap, .rec-track-wrap'
+      );
+      for (var i = 0; i < zones.length; i++) {
+        if (zones[i].contains(el)) return true;
+      }
+    }
+    return false;
+  }
 
-    const ovEl    = e.currentTarget;           // .ov overlay
-    const innerEl = ovEl.querySelector('.modal');
-    if (!innerEl) return;
+  /* ─── ตรวจว่า touch อยู่บน .mhd (header) ─── */
+  function isOnHeader(target, mhdEl) {
+    return mhdEl && mhdEl.contains(target);
+  }
 
-    // ตรวจว่า touch อยู่บน innerEl หรือไม่
-    const target = e.target;
-    const isOnModal = innerEl.contains(target);
+  /* ─── mbody scroll guard ─── */
+  function mbodyScrolledDown(mbodyEl) {
+    return mbodyEl && mbodyEl.scrollTop > 2;
+  }
 
-    // ── mode: 'header' — ลากจาก .mhd / .modal-drag-handle ──
-    const mhd = innerEl.querySelector('.mhd');
-    const isOnHeader = mhd && mhd.contains(target);
+  /* ══════════════ TOUCH HANDLERS ══════════════ */
 
-    // ── mode: 'overlay' — ลากบน overlay พื้นหลัง ──
-    const isOnOverlay = !isOnModal;
+  function onTouchStart(e) {
+    if (busy || drag) return;
+    var ovEl    = e.currentTarget;
+    var modalEl = ovEl.querySelector('.modal');
+    if (!modalEl || !modalEl.classList.contains || !ovEl.classList.contains('open')) return;
 
-    if (!isOnHeader && !isOnOverlay) return; // ลากจาก body ไม่ทำอะไร
+    var t = e.touches[0];
+    var target = t.target || e.target;
 
-    const startY = getClientY(e);
-    const startX = getClientX(e);
+    /* ต้องอยู่บน header เท่านั้น */
+    var mhdEl = modalEl.querySelector('.mhd');
+    if (!isOnHeader(target, mhdEl)) return;
+    if (isNoDragTarget(target, modalEl)) return;
 
-    _active = {
-      modalEl : innerEl,
-      ovEl    : ovEl,
-      startY,
-      startX,
-      lastY   : startY,
-      mode    : isOnHeader ? 'header' : 'overlay',
+    var mbodyEl = modalEl.querySelector('.mbody');
+
+    /* ถ้า mbody scroll ไม่ได้อยู่ top → ไม่ drag */
+    if (mbodyScrolledDown(mbodyEl)) return;
+
+    ensurePill(mhdEl);
+
+    drag = {
+      ovEl       : ovEl,
+      modalEl    : modalEl,
+      mbodyEl    : mbodyEl,
+      mhdEl      : mhdEl,
+      startY     : t.clientY,
+      lastDy     : 0,
+      identifier : t.identifier,
+      isTouch    : true,
     };
 
-    innerEl.classList.remove('spring-back', 'slide-down-out');
-    innerEl.classList.add('is-dragging');
-    ovEl.classList.add('is-dragging-ov');
+    modalEl.classList.remove('modal--spring', 'modal--closing');
+    modalEl.classList.add('modal--dragging');
+    ovEl.classList.add('ov--dragging');
   }
 
-  /* ── Pointer move ── */
-  function onPointerMove(e) {
-    if (!_active) return;
-    const { modalEl, ovEl, startY, startX, mode } = _active;
+  function onTouchMove(e) {
+    if (!drag || !drag.isTouch) return;
+    var t = findTouch(e.changedTouches, drag.identifier)
+          || findTouch(e.touches, drag.identifier);
+    if (!t) return;
 
-    const cy = getClientY(e);
-    const cx = getClientX(e);
-    const deltaY = cy - startY;
-    const deltaX = cx - startX;
+    var rawDy = t.clientY - drag.startY;
 
-    // ถ้า scroll horizontal มากกว่า vertical ให้ cancel (กันชนกับ horizontal scroll)
-    if (Math.abs(deltaX) > Math.abs(deltaY) + 10) {
-      _active = null;
-      modalEl.classList.remove('is-dragging');
-      ovEl.classList.remove('is-dragging-ov');
-      return;
+    /* ถ้า swipe horizontal มากกว่า vertical → ยกเลิก drag */
+    if (!drag._dirLocked) {
+      var rawDx = Math.abs(t.clientX - (drag.startX || t.clientX));
+      drag.startX = drag.startX || t.clientX;
+      var absDy = Math.abs(rawDy);
+      if (rawDx > absDy + 8) {
+        cancelDrag();
+        return;
+      }
+      if (absDy > 8) drag._dirLocked = true; /* lock direction */
     }
 
-    // ลากขึ้น: dampen (กันลากขึ้นเกิน)
-    const dy = deltaY < 0 ? deltaY * RESISTANCE : deltaY;
+    /* ถ้าลากขึ้น: dampen */
+    var dy = rawDy < 0 ? rawDy * RESIST_UP : rawDy;
+    drag.lastDy = dy;
 
-    // overlay dim ตาม drag
-    const progress = Math.min(Math.max(dy / CLOSE_THRESHOLD, 0), 1);
-    const overlayAlpha = 0.5 * (1 - progress * 0.7);
-    ovEl.style.background = `rgba(0,0,0,${overlayAlpha.toFixed(3)})`;
+    drag.modalEl.style.transform = 'translateY(' + dy + 'px)';
 
-    modalEl.style.transform = `translateY(${dy}px)`;
-    _active.lastY = cy;
+    /* dim overlay ตาม progress */
+    var prog = clamp(dy / CLOSE_PX, 0, 1);
+    var alpha = OV_BASE_ALPHA * (1 - prog * 0.65);
+    drag.ovEl.style.background = 'rgba(0,0,0,' + alpha.toFixed(3) + ')';
 
-    // ป้องกัน page scroll ขณะลาก
-    if (mode === 'header' || mode === 'overlay') {
-      e.preventDefault();
-    }
+    /* prevent page scroll/bounce เฉพาะ drag ลง */
+    if (rawDy > 0) e.preventDefault();
   }
 
-  /* ── Pointer end ── */
-  function onPointerEnd(e) {
-    if (!_active) return;
-    const { modalEl, ovEl, startY, lastY, mode } = _active;
-    _active = null;
+  function onTouchEnd(e) {
+    if (!drag || !drag.isTouch) return;
+    var t = findTouch(e.changedTouches, drag.identifier);
+    if (!t) return;
+    commitDrag();
+  }
 
-    const deltaY = lastY - startY;
-    const threshold = mode === 'overlay' ? CLOSE_THRESHOLD_OV : CLOSE_THRESHOLD;
+  function onTouchCancel() {
+    if (!drag || !drag.isTouch) return;
+    cancelDrag();
+  }
 
-    if (deltaY >= threshold) {
-      // ลากพอ → ปิด
-      slideDownAndClose(modalEl, ovEl);
+  /* ══════════════ MOUSE HANDLERS (desktop) ══════════════ */
+
+  function onMouseDown(e) {
+    if (busy || drag) return;
+    if (e.button !== 0) return; /* left-click only */
+
+    var ovEl    = e.currentTarget;
+    var modalEl = ovEl.querySelector('.modal');
+    if (!modalEl || !ovEl.classList.contains('open')) return;
+
+    var target  = e.target;
+    var mhdEl   = modalEl.querySelector('.mhd');
+    if (!isOnHeader(target, mhdEl)) return;
+    if (isNoDragTarget(target, modalEl)) return;
+
+    var mbodyEl = modalEl.querySelector('.mbody');
+    if (mbodyScrolledDown(mbodyEl)) return;
+
+    ensurePill(mhdEl);
+
+    drag = {
+      ovEl    : ovEl,
+      modalEl : modalEl,
+      mbodyEl : mbodyEl,
+      mhdEl   : mhdEl,
+      startY  : e.clientY,
+      lastDy  : 0,
+      isTouch : false,
+    };
+
+    modalEl.classList.remove('modal--spring', 'modal--closing');
+    modalEl.classList.add('modal--dragging');
+    ovEl.classList.add('ov--dragging');
+
+    e.preventDefault();
+  }
+
+  /* mouse move / up: attach บน window เพื่อรองรับ drag ออกนอก element */
+  window.addEventListener('mousemove', function(e) {
+    if (!drag || drag.isTouch) return;
+    var rawDy = e.clientY - drag.startY;
+    var dy = rawDy < 0 ? rawDy * RESIST_UP : rawDy;
+    drag.lastDy = dy;
+    drag.modalEl.style.transform = 'translateY(' + dy + 'px)';
+    var prog = clamp(dy / CLOSE_PX, 0, 1);
+    var alpha = OV_BASE_ALPHA * (1 - prog * 0.65);
+    drag.ovEl.style.background = 'rgba(0,0,0,' + alpha.toFixed(3) + ')';
+  }, { passive: true });
+
+  window.addEventListener('mouseup', function() {
+    if (!drag || drag.isTouch) return;
+    commitDrag();
+  });
+
+  /* ─── commitDrag: ตัดสินใจปิดหรือ spring back ─── */
+  function commitDrag() {
+    if (!drag) return;
+    var dy      = drag.lastDy;
+    var modalEl = drag.modalEl;
+    var ovEl    = drag.ovEl;
+    drag = null;
+
+    if (dy >= CLOSE_PX) {
+      animateClose(modalEl, ovEl, dy);
     } else {
-      // ลากไม่พอ → spring back
-      springBack(modalEl, ovEl, deltaY < 0 ? deltaY * RESISTANCE : deltaY);
+      animateSpring(modalEl, ovEl, dy);
     }
   }
 
-  /* ── Pointer cancel ── */
-  function onPointerCancel() {
-    if (!_active) return;
-    const { modalEl, ovEl } = _active;
-    _active = null;
-    springBack(modalEl, ovEl, 0);
+  /* ─── cancelDrag: ยกเลิก (swipe horizontal หรือ cancel event) ─── */
+  function cancelDrag() {
+    if (!drag) return;
+    var modalEl = drag.modalEl;
+    var ovEl    = drag.ovEl;
+    drag = null;
+    animateSpring(modalEl, ovEl, 0);
   }
 
-  /* ── Attach listeners ไปยังทุก .ov ── */
+  /* ══════════════ ATTACH ══════════════ */
   function attachToOv(ovEl) {
-    // Touch
-    ovEl.addEventListener('touchstart',  onPointerStart,  { passive: true });
-    ovEl.addEventListener('touchmove',   onPointerMove,   { passive: false });
-    ovEl.addEventListener('touchend',    onPointerEnd,    { passive: true });
-    ovEl.addEventListener('touchcancel', onPointerCancel, { passive: true });
-    // Mouse (desktop)
-    ovEl.addEventListener('mousedown', onPointerStart);
-    window.addEventListener('mousemove', function(e) {
-      if (_active && _active.ovEl === ovEl) onPointerMove(e);
-    });
-    window.addEventListener('mouseup', function(e) {
-      if (_active && _active.ovEl === ovEl) onPointerEnd(e);
-    });
+    if (ovEl._dtcAttached) return;
+    ovEl._dtcAttached = true;
+
+    /* touch */
+    ovEl.addEventListener('touchstart',  onTouchStart,  { passive: true });
+    ovEl.addEventListener('touchmove',   onTouchMove,   { passive: false }); /* passive:false เพื่อ preventDefault */
+    ovEl.addEventListener('touchend',    onTouchEnd,    { passive: true });
+    ovEl.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+    /* mouse (desktop) */
+    ovEl.addEventListener('mousedown', onMouseDown);
   }
 
-  /* ── Init: attach ทุก .ov ที่มีอยู่ + observe ถ้าเพิ่มทีหลัง ── */
+  /* ─── init: attach ทุก .ov ที่มีตอนนี้ + MutationObserver ─── */
   function init() {
     document.querySelectorAll('.ov').forEach(attachToOv);
 
-    // MutationObserver รองรับกรณี modal inject ทีหลัง
-    const obs = new MutationObserver(function(mutations) {
-      mutations.forEach(function(m) {
+    /* รองรับ modal ที่อาจ inject ทีหลัง */
+    new MutationObserver(function(muts) {
+      muts.forEach(function(m) {
         m.addedNodes.forEach(function(node) {
           if (node.nodeType !== 1) return;
           if (node.classList && node.classList.contains('ov')) attachToOv(node);
-          node.querySelectorAll && node.querySelectorAll('.ov').forEach(attachToOv);
+          if (node.querySelectorAll) node.querySelectorAll('.ov').forEach(attachToOv);
         });
       });
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
@@ -12321,6 +12456,7 @@ function resetAdvFilter(){
   } else {
     init();
   }
+
 })();
 </script>
 

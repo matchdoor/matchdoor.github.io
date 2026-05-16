@@ -732,6 +732,8 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 /* Btn styles */
 .btn-search{background:linear-gradient(135deg,var(--a),#a855f7);color:#fff;padding:10px 22px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:.2s}
 .btn-search:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,107,157,.4);opacity:1}
+.btn-reset{background:rgba(255,255,255,0.18);backdrop-filter:blur(8px);color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:.2s;border:1.5px solid rgba(255,255,255,0.35);cursor:pointer}
+.btn-reset:hover{background:rgba(255,255,255,0.28);transform:translateY(-1px)}
 .btn-line{background:var(--ln);border-radius:8px;padding:0 10px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:4px;height:34px}
 .btn-line-nav{display:none}
 @media(min-width:951px){.btn-line-nav{display:flex}}
@@ -1053,12 +1055,14 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 .tx-tabs{display:flex;margin-bottom:18px;border-radius:10px;overflow:hidden;border:1.5px solid var(--bd)}
 .tx-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;background:#F5F0E8;color:var(--tx2);transition:.2s}
 .tx-tab.active{background:var(--p);color:#F0ECE3}
-.sf{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+.sf{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr auto auto;gap:8px;align-items:end}
 .sf label{display:block;font-size:13px;font-weight:800;color:#1a2744;margin-bottom:5px;text-shadow:none;letter-spacing:.2px}
 .sf select,.sf input{width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:14px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600}
 .sf select:focus,.sf input:focus{outline:none;border-color:var(--p)}
 .btn-search{background:var(--a);color:#fff;padding:10px 22px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-search:hover{opacity:.9}
+.btn-reset{background:rgba(255,255,255,0.12);color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;height:44px;white-space:nowrap;display:flex;align-items:center;gap:6px;border:1.5px solid rgba(255,255,255,0.35);cursor:pointer;transition:.2s}
+.btn-reset:hover{background:rgba(255,255,255,0.22)}
 .cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;padding-top:2px;-ms-overflow-style:none;scrollbar-width:none}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-card{flex-shrink:0;background:#fff;border-radius:var(--r);border:2px solid var(--bd);padding:16px 20px;text-align:center;cursor:pointer;min-width:100px;transition:.2s}
@@ -1467,7 +1471,15 @@ footer::after{
   .nav-links{display:none!important;flex-direction:column;position:absolute;top:64px;left:0;right:0;background:var(--p2);padding:12px;z-index:999}
   .nav-links.mob-open{display:flex!important}
   .hamburger{display:flex}
-  .sf{grid-template-columns:1fr 1fr}
+  .sf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sf .ac-wrap{grid-column:1/-1}
+  .sf>div:nth-child(2){grid-column:1}
+  .sf>div:nth-child(3){grid-column:2}
+  .sf>div:nth-child(4){grid-column:1}
+  .sf>div:nth-child(5){grid-column:2}
+  .sf .btn-search,.sf .btn-reset{grid-column:span 1}
+  .sf .btn-search{grid-column:1}
+  .sf .btn-reset{grid-column:2}
   .price-grid{grid-template-columns:repeat(2,1fr)}
   /* Footer mobile: 2+2 layout - เมนูหลัก+ประเภท side by side, ข้อมูล+brand */
   .footer-inner{grid-template-columns:1fr 1fr!important}
@@ -1494,7 +1506,14 @@ footer::after{
   .dep-panel .fg input,.dep-panel .fg select,.dep-panel .fg textarea{padding:9px 10px;font-size:13px}
 }
 @media(max-width:600px){
-  .sf{grid-template-columns:1fr}
+  .sf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sf .ac-wrap{grid-column:1/-1}
+  .sf>div:nth-child(2){grid-column:1}
+  .sf>div:nth-child(3){grid-column:2}
+  .sf>div:nth-child(4){grid-column:1}
+  .sf>div:nth-child(5){grid-column:2}
+  .sf .btn-search{grid-column:1}
+  .sf .btn-reset{grid-column:2}
   .price-grid{grid-template-columns:1fr}
   .specs{grid-template-columns:repeat(2,1fr)}
   .frow{grid-template-columns:1fr}
@@ -1531,7 +1550,7 @@ footer::after{
   .quick-search-bar{gap:8px;flex-wrap:wrap}
   .search-box{padding:16px}
   .sf select,.sf input{padding:8px 10px;font-size:13px}
-  .btn-search{padding:8px 16px;height:40px}
+  .btn-search,.btn-reset{padding:8px 12px;height:40px;justify-content:center}
   .price-card{padding:14px 16px}
   .price-card h3{font-size:14px}
   .prop-thumb{height:170px}
@@ -2706,6 +2725,7 @@ footer::after{
     <div><label><i class="fas fa-tag"></i> ราคาต่ำสุด</label><select id="s-min" onchange="updatePriceMax()" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <div><label><i class="fas fa-tag"></i> ราคาสูงสุด</label><select id="s-max" style="width:100%;padding:10px 12px;border:1.5px solid rgba(200,146,42,.4);border-radius:10px;font-size:13px;color:#1a2744;background:rgba(255,255,255,0.95);font-weight:600"></select></div>
     <button class="btn-search" onclick="doSearch()"><i class="fas fa-search"></i> ค้นหา</button>
+    <button class="btn-reset" onclick="resetSearch()" title="ล้างการค้นหา"><i class="fas fa-undo"></i> Reset</button>
    </div>
    <!-- loc-search-layer removed: use native select dropdown -->
   </div>

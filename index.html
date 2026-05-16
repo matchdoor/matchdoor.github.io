@@ -3067,7 +3067,7 @@ footer::after{
     </div>
   </div>
 </section>
- <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
+ <div class="wrap" id="all-sec"><div class="sec-hd" style="flex-wrap:nowrap"><div class="sec-title" id="all-title" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ประกาศทั้งหมด</div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span id="res-count" style="font-size:13px;color:var(--gr);white-space:nowrap"></span><button onclick="openHomeMapModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:linear-gradient(135deg,var(--a),var(--a2));color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(200,146,42,.35);flex-shrink:0"><i class="fas fa-map-marked-alt"></i> <span>แผนที่</span></button><span class="view-all" onclick="openAllModal('all')">ดูทั้งหมด →</span></div></div><div class="prop-grid" id="all-grid"></div><div class="pagination" id="all-grid-pagination" style="display:none"><div class="pg-info" id="all-pg-info"></div><div class="pg-controls" id="all-pg-controls"></div></div></div>
  <div id="osrv-sec" class="osrv-sec" style="padding:32px 0 28px">
   <div style="max-width:1320px;margin:0 auto;padding:0 20px">
     <div class="sec-hd">
@@ -10113,6 +10113,9 @@ function closeApplyModal(type){
 // Close on ESC
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){
+    // ปิด home map modal
+    const hmm = document.getElementById('home-map-modal');
+    if(hmm && hmm.style.display !== 'none') { closeHomeMapModal(); return; }
     // ปิด apply modals
     closeApplyModal('agent'); closeApplyModal('other');
     // ปิด modal ทั่วไปผ่าน helper (scroll restore อัตโนมัติ)
@@ -10841,6 +10844,30 @@ function closeSeoDrawer(){
   const drawer = document.getElementById('seo-drawer');
   if(overlay) overlay.classList.remove('open');
   if(drawer) drawer.classList.remove('open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
+  if(!stillOpen){
+    document.body.style.removeProperty('overflow');
+    document.body.classList.remove('modal-open');
+  }
+}
+
+function openHomeMapModal(){
+  const overlay = document.getElementById('home-map-overlay');
+  const modal   = document.getElementById('home-map-modal');
+  // Lazy-load iframe on first open
+  const iframe  = document.getElementById('home-google-map');
+  if(iframe && !iframe.getAttribute('src') && iframe.dataset.deferredSrc){
+    iframe.src = iframe.dataset.deferredSrc;
+  }
+  if(overlay){ overlay.style.display = 'block'; }
+  if(modal)  { modal.style.display   = 'flex'; }
+  document.body.classList.add('modal-open');
+}
+function closeHomeMapModal(){
+  const overlay = document.getElementById('home-map-overlay');
+  const modal   = document.getElementById('home-map-modal');
+  if(overlay) overlay.style.display = 'none';
+  if(modal)   modal.style.display   = 'none';
   const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
@@ -12198,6 +12225,21 @@ function resetAdvFilter(){
 
 <!-- ===== SEO DRAWER (mobile ≤768px) ===== -->
 <div class="seo-drawer-overlay" id="seo-drawer-overlay" onclick="closeSeoDrawer()"></div>
+
+<!-- ===== HOME MAP MODAL ===== -->
+<div id="home-map-overlay" onclick="closeHomeMapModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4500;backdrop-filter:blur(4px)"></div>
+<div id="home-map-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(900px,94vw);max-height:90vh;background:#0A1628;border-radius:18px;border:2px solid rgba(200,146,42,.35);z-index:4501;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1.5px solid rgba(200,146,42,.25);flex-shrink:0">
+    <div style="color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-map-marked-alt" style="color:var(--a)"></i> แผนที่อสังหาริมทรัพย์ <span style="font-size:11px;opacity:.55;font-weight:400">— กดที่ pin บนแผนที่เพื่อดูพื้นที่</span></div>
+    <button onclick="closeHomeMapModal()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="fas fa-times"></i> ปิด</button>
+  </div>
+  <div style="padding:16px;flex:1">
+    <div style="border-radius:12px;overflow:hidden;border:2px solid rgba(200,146,42,.3);height:500px;position:relative">
+      <iframe id="home-google-map" data-deferred-src="https://www.google.com/maps/d/u/0/embed?mid=1z39rekBQwIHBp5BneTY-wZmJGQcIEVk&ehbc=2E312F" width="100%" height="100%" style="border:0;display:block" allowfullscreen></iframe>
+      <div style="position:absolute;bottom:12px;right:12px;background:rgba(10,22,40,.85);color:#fff;font-size:11px;padding:6px 12px;border-radius:8px;backdrop-filter:blur(8px)"><i class="fas fa-info-circle" style="color:var(--a)"></i> กดที่ปักหมุดในแผนที่เพื่อดูรายละเอียด</div>
+    </div>
+  </div>
+</div>
 <div class="seo-drawer" id="seo-drawer">
   <div class="seo-drawer-hd">
     <h3><i class="fas fa-chart-bar" style="color:var(--a)"></i> ข้อมูลอสังหาฯ</h3>

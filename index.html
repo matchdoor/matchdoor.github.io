@@ -5177,6 +5177,7 @@ document.addEventListener('DOMContentLoaded', function initRouter() {
           if (props.find(x => String(x.id) === String(pid))) {
             const _origFlag = _routerReady;
             _routerReady = false;
+            if(typeof scrollToEl === 'function') scrollToEl('all-sec');
             openModal(pid);
             _routerReady = _origFlag;
           }

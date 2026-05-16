@@ -5078,7 +5078,9 @@ window.openModal = function(id) {
 const _origCloseModal = closeModal;
 window.closeModal = function(e) {
   _origCloseModal(e);
-  if (!e || e.target.id === 'prop-modal') _closePropertyUrl();
+  // ถ้ามาจากหน้าประกาศทั้งหมด → ไม่ต้อง restore URL เดิม เพราะ showListingsPage จัดการเอง
+  const _fromListings = (window._pageBeforeModal || 'home') === 'listings';
+  if (!_fromListings && (!e || e.target.id === 'prop-modal')) _closePropertyUrl();
 };
 
 // Add "ดูหน้าเต็ม" share button inside property modal after it's opened
@@ -6329,11 +6331,10 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
-  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
+  // ── เมื่อเปิดการ์ดจากหน้าประกาศทั้งหมด → แสดงหน้าประกาศทั้งหมด และ restore scroll ตำแหน่งเดิม
   const _prevPage = window._pageBeforeModal || 'home';
   requestAnimationFrame(function() {
-    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
+    // reset render flags ก่อนเสมอ
     if(typeof window._listingsRenderGen !== 'undefined') {
       window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
     }
@@ -6341,13 +6342,19 @@ function closeModal(e){
     _listingsRenderPending = false;
     window._listingsRenderQueued = false;
     window._listingsBatchInFlight = false;
-    // restore scroll position
-    if(savedY > 0) window.scrollTo(0, savedY);
-    // ถ้าเปิดการ์ดมาจากหน้า listings → ทำงานเหมือนกดปุ่ม "ดูประกาศทั้งหมด" ทันที
+
     if(_prevPage === 'listings') {
+      // แสดงหน้าประกาศทั้งหมดทันที เหมือนกดปุ่ม "ดูประกาศทั้งหมด"
       if(typeof showListingsPage === 'function') {
         showListingsPage('ประกาศทั้งหมด', props.length ? [...props] : (typeof MOCK !== 'undefined' ? [...MOCK.props] : []));
       }
+      // restore scroll ไปตำแหน่งเดิมก่อนกดการ์ด หลัง render เสร็จ
+      if(savedY > 0) {
+        requestAnimationFrame(function() { window.scrollTo(0, savedY); });
+      }
+    } else {
+      // หน้าอื่น → restore scroll ตามปกติ
+      if(savedY > 0) window.scrollTo(0, savedY);
     }
   });
 }

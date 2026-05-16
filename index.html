@@ -222,12 +222,9 @@ body.modal-open{
   overflow:hidden!important;
   /* ห้ามใส่ position:fixed, top, left, width ใดๆ ที่นี่ */
 }
-/* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ
-   ใช้ @supports เพื่อ fallback ใน Safari < 16 และ Android WebView เก่าที่ไม่รองรับ :has() */
-@supports selector(:has(*)) {
-  body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
-    overflow:auto!important;
-  }
+/* Safety: ถ้าไม่มี modal/overlay เปิดอยู่เลย ให้ body ไม่มี scroll lock เสมอ */
+body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.open)):not(:has(.adv-sheet.open)):not(:has(.adv-filter-panel.open)).modal-open{
+  overflow:auto!important;
 }
 
 /* ── ปิด backdrop-filter ทุกที่บนมือถือ (GPU-heavy มาก) ── */
@@ -1222,92 +1219,97 @@ footer::after{
 .sort-select{padding:7px 10px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:inherit;color:var(--tx);background:#fff;cursor:pointer}
 .sub-page-footer{}
 
-/* ══ LISTINGS PAGE v2 — CLEAN RESPONSIVE (ไม่มี !important ซ้อนกัน) ══
-   Desktop ≥1101px : 4-col grid + 280px sidebar
-   Tablet  901-1100 : 3-col grid + ซ่อน sidebar
-   Mobile  ≤900px  : 2-col grid, full-width, ไม่มี sidebar
-   ══════════════════════════════════════════════════════════════════════ */
+/* ══ LISTINGS PAGE — UNIFIED RESPONSIVE SYSTEM ══════════════════════════
+   กฎเดียว ไม่มีขัดแย้ง: desktop=4col, tablet=3col, mobile=2col
+   search bar: desktop=8col, tablet=4col, mobile=2col (keyword full-width)
+   ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Layout wrapper ── */
-.listings-main-wrap{
-  display:grid;
-  grid-template-columns:1fr 280px;
-  gap:24px;
-  max-width:1320px;
-  margin:0 auto;
-  padding:20px;
-  box-sizing:border-box;
-}
-.listings-seo-sidebar{
-  min-width:0;
-  position:sticky;
-  top:72px;
-  align-self:start;
-}
+/* Base: desktop — 4 col grid + 280px sidebar */
+.listings-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.listings-main-wrap{display:grid;grid-template-columns:1fr 280px;gap:24px;max-width:1320px;margin:0 auto;padding:20px}
+.listings-seo-sidebar{min-width:0;position:sticky;top:72px;align-self:start}
 
-/* ── Card grid ── */
-.listings-grid-4{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:16px;
-}
-
-/* ── Search bar: 7 fields + 2 buttons ── */
+/* Search bar: desktop 8-col */
 .listings-search-sf{
   display:grid;
-  grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr auto;
+  grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;
   gap:8px;
   align-items:end;
 }
+/* buttons wrapper: use contents so buttons sit in grid */
 .ls-btn-row{display:contents}
 
-/* ── Tablet landscape 901-1100px ── */
+/* ── Tablet landscape ≤1100px: 3 col grid ── */
 @media(max-width:1100px){
-  .listings-grid-4{grid-template-columns:repeat(3,1fr)}
-  .listings-search-sf{grid-template-columns:1fr 1fr 1fr 1fr}
-  .listings-seo-sidebar{display:none}
-  .listings-main-wrap{grid-template-columns:1fr;padding:16px}
+  .listings-grid-4{grid-template-columns:repeat(3,1fr)!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr 1fr 1fr!important}
 }
 
-/* ── Tablet portrait ≤900px ── */
+/* ── Tablet portrait ≤900px: sidebar hidden, 3-col grid ── */
 @media(max-width:900px){
-  .listings-main-wrap{grid-template-columns:1fr;padding:12px}
-  .listings-grid-4{grid-template-columns:repeat(2,1fr);gap:10px}
-  .listings-seo-sidebar{display:none}
-  .listings-search-sf{grid-template-columns:1fr 1fr;gap:8px}
-  .listings-search-sf .ls-ac-wrap,
-  .listings-search-sf > div:first-child{grid-column:1/-1}
-  .ls-btn-row{display:flex;grid-column:1/-1;gap:8px}
-  .ls-btn-row button{flex:1;justify-content:center}
-  #ls-kw{font-size:16px;box-sizing:border-box;width:100%}
-  .listings-search-sf label{font-size:10px}
-  .listings-search-sf select,
-  .listings-search-sf input{padding:8px 10px;font-size:13px}
+  .listings-main-wrap{grid-template-columns:1fr!important;padding:12px!important}
+  .listings-grid-4{grid-template-columns:repeat(3,1fr)!important;gap:10px}
+  .listings-seo-sidebar{display:none!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr 1fr!important}
 }
 
-/* ── Mobile ≤480px ── */
+/* ── Mobile ≤640px: 2-col grid, 2-col filter ── */
+@media(max-width:640px){
+  .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .listings-main-wrap{padding:8px!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  /* keyword spans full width */
+  .listings-search-sf > div:first-child,
+  .listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  /* buttons: exit contents mode, become a full-width flex row */
+  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
+  .ls-btn-row button{flex:1;justify-content:center}
+  #ls-kw{width:100%!important;font-size:16px!important;box-sizing:border-box!important}
+  .listings-search-sf label{font-size:10px!important}
+  .listings-search-sf select,.listings-search-sf input{padding:8px 10px!important;font-size:13px!important}
+}
+
+/* ── Mobile compact ≤480px ── */
 @media(max-width:480px){
-  .listings-main-wrap{padding:8px}
-  .listings-grid-4{grid-template-columns:repeat(2,1fr);gap:8px}
-  .listings-toolbar{flex-direction:column;align-items:flex-start;gap:6px}
+  .listings-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:6px}
+  .listings-main-wrap{padding:6px!important}
+  .listings-search-sf{grid-template-columns:1fr 1fr!important;gap:6px!important}
+  .listings-search-sf > div:first-child,
+  .listings-search-sf > .ls-ac-wrap:first-child{grid-column:1/-1!important}
+  .ls-btn-row{display:flex!important;grid-column:1/-1;gap:8px}
+  .ls-btn-row button{flex:1;justify-content:center}
+  #ls-kw{font-size:16px!important;box-sizing:border-box!important}
+  .listings-search-sf label{font-size:10px!important}
+  .listings-search-sf select,.listings-search-sf input{padding:8px 10px!important;font-size:13px!important}
+  /* Map toggle — ซ่อน text label บนหน้าจอเล็กมาก */
+  .ls-map-btn-label{display:none}
+  #listings-map-toggle-btn{padding:8px 10px!important}
+  /* TX tabs */
+  #ls-tab-all,#ls-tab-buy,#ls-tab-rent,#ls-tab-hot,#ls-tab-new{padding:4px 10px!important;font-size:11px!important}
+}
+
+/* ── Hide scrollbar on tabs row ── */
+.ls-tabs-row::-webkit-scrollbar{display:none}
+.ls-tabs-row{-ms-overflow-style:none;scrollbar-width:none}
+
+/* ── Listings toolbar: stack on very small screens ── */
+@media(max-width:480px){
+  .listings-toolbar{flex-direction:column;align-items:flex-start!important;gap:6px!important}
   .listings-count{font-size:13px}
   .sort-select{font-size:12px;padding:5px 8px}
-  .ls-map-btn-label{display:none}
-  #listings-map-toggle-btn{padding:8px 10px}
-  #ls-tab-all,#ls-tab-buy,#ls-tab-rent,#ls-tab-hot,#ls-tab-new{padding:4px 10px;font-size:11px}
+}
+
+/* ── Pagination ── */
+@media(max-width:480px){
   .pg-btn{min-width:32px;height:32px;font-size:12px;padding:0 7px}
   .pg-label{display:none}
   .pg-first,.pg-last{display:none}
 }
 
-/* ── Tabs scrollbar hidden ── */
-.ls-tabs-row::-webkit-scrollbar{display:none}
-.ls-tabs-row{-ms-overflow-style:none;scrollbar-width:none}
-
-/* ── Adv filter sheet ── */
+/* ── Adv filter sheet footer buttons ── */
 .adv-sheet-foot .adv-apply-btn,.adv-sheet-foot .adv-reset-btn{min-height:48px;font-size:14px}
 
-/* ── SEO sidebar toggle (mobile drawer button) ── */
+/* ── SEO sidebar toggle: mobile only ── */
 @media(max-width:900px){.seo-toggle-btn[data-page="listings"]{display:flex}}
 .seo-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;backdrop-filter:blur(3px)}
 .seo-drawer-overlay.open{display:block}
@@ -3988,8 +3990,8 @@ function _closeModal(id){
   const m = document.getElementById(id);
   if(!m) return;
   m.classList.remove('open');
-  /* unlock scroll เฉพาะเมื่อไม่มี modal/overlay/sheet อื่นเปิดอยู่ */
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open');
+  /* unlock scroll เฉพาะเมื่อไม่มี modal อื่นเปิดอยู่ */
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -3999,7 +4001,7 @@ function _closeModalEl(el){
   /* ปิด modal จาก element reference แทน id */
   if(!el) return;
   el.classList.remove('open');
-  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open, .apply-overlay.open, .adv-sheet.open, .seo-drawer.open, .adv-filter-panel.open');
+  const stillOpen = document.querySelector('.ov.open, [id$="-modal"].open, [id$="-overlay"].open');
   if(!stillOpen){
     document.body.style.removeProperty('overflow');
     document.body.classList.remove('modal-open');
@@ -4896,18 +4898,21 @@ window.addEventListener('popstate', function(e) {
       document.body.classList.remove('modal-open');
       propModal.classList.remove('open');
       window._currentModalId = null;
-      // reset flags + restore scroll เท่านั้น — grid ยังมีข้อมูลครบ ไม่ re-render
-      window._listingsRenderAbort = false;
-      _listingsRenderPending = false;
-      window._listingsRenderQueued = false;
-      window._listingsBatchInFlight = false;
-      if(typeof window._listingsRenderGen !== 'undefined') {
-        window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-      }
+      // scroll restore + show page ใน rAF — reset flags ก่อน _silentShowPage ทุกครั้ง
       requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          if(savedY > 0) window.scrollTo(0, savedY);
-        });
+        if(savedY > 0) window.scrollTo(0, savedY);
+        // ── FIX: bump generation อีกครั้งก่อน reset — ป้องกัน idle batch เก่ารัน append หลัง reset
+        if(typeof window._listingsRenderGen !== 'undefined') {
+          window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+        }
+        // ── FIX: reset abort flags ก่อน _silentShowPage เสมอ
+        // เพราะ _silentShowPage จะเรียก renderListingsPage ทันที
+        // ถ้า _listingsRenderAbort ยังเป็น true อยู่ render จะถูก abort ทันที
+        window._listingsRenderAbort = false;
+        _listingsRenderPending = false;
+        window._listingsRenderQueued = false;
+        window._listingsBatchInFlight = false;
+        _silentShowPage(state.name, true);
       });
     } else {
       _silentShowPage(state.name);
@@ -4971,12 +4976,7 @@ function _silentShowPage(name, skipScrollTop) {
     // _pageBeforeModal จะถูก set ใหม่ใน openModal ทุกครั้งที่เปิดการ์ด
     // ถ้า _listingsDataReady → render ทันที
     // ถ้ายังไม่พร้อม → ตั้ง flag ให้ afterLoad() render แทน (ไม่ต้อง poll)
-    // ถ้า grid ยังมีข้อมูลอยู่ (กลับมาจาก modal) — ข้ามการ render ซ้ำ
-    const _lsGrid = document.getElementById('listings-grid');
-    const _gridHasData = _lsGrid && _lsGrid.querySelector('.prop-card');
-    if(_gridHasData) {
-      // grid ยังครบ — ไม่ต้องทำอะไร รอ scroll restore จาก closeModal เท่านั้น
-    } else if(window._listingsDataReady && typeof renderListingsPage === 'function') {
+    if(window._listingsDataReady && typeof renderListingsPage === 'function') {
       renderListingsPage();
     } else {
       window._pendingListingsRender = true;
@@ -5256,9 +5256,8 @@ function propCard(p){
 let _listingsData = [];
 let _listingsCurPage = 1;
 // แสดง 32 ทรัพย์ต่อหน้าทุกอุปกรณ์ — logic เหมือนกับ desktop ทุกหน้าจอ
-// Desktop >=1101px → 32 การ์ด | Tablet/Mobile <1101px → 16 การ์ด
 function _listingsPerPage() {
-  return window.innerWidth >= 1101 ? 32 : 16;
+  return 32;
 }
 let _listingsMapInitialized = false;
 let _listingsMapInstance = null;
@@ -5291,17 +5290,19 @@ function listingsSortChange() {
   renderListingsPage();
 }
 
-// render generation counter
+// render generation counter — เพิ่มทุกครั้งที่ render ใหม่เริ่ม
+// batch idle ที่ค้างจาก render เก่าจะตรวจ generation ก่อน append
 if(typeof window._listingsRenderGen === 'undefined') window._listingsRenderGen = 0;
 
 function renderListingsPage() {
-  // Guard: ถ้าหน้าไม่ได้ active อยู่ ข้ามทันที
-  const pageEl = document.getElementById('page-listings');
-  if(pageEl && !pageEl.classList.contains('active')) {
+  // ── guard: ถ้าหน้า listings ไม่ได้ active อยู่ ไม่ต้อง render ──
+  // ป้องกัน idle batch จากหน้า home มา append เข้า listings-grid เมื่อ navigate
+  const _listingsPageEl = document.getElementById('page-listings');
+  if(_listingsPageEl && !_listingsPageEl.classList.contains('active')) {
     _listingsRenderPending = false;
     return;
   }
-  // Debounce: ป้องกัน render ซ้อน
+  // ── debounce: ถ้ากำลัง render อยู่แล้ว (pending) ให้ queue ครั้งเดียวเท่านั้น ──
   if(_listingsRenderPending) {
     if(!window._listingsRenderQueued) {
       window._listingsRenderQueued = true;
@@ -5314,121 +5315,175 @@ function renderListingsPage() {
     return;
   }
   _listingsRenderPending = true;
+  // เพิ่ม generation ทุกครั้ง — batch idle เก่าจะ abort ตัวเองทันที
   window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-  const myGen = window._listingsRenderGen;
-
-  requestAnimationFrame(function() {
-    // Abort ถ้า generation เปลี่ยนไปแล้ว
-    if(window._listingsRenderGen !== myGen) { _listingsRenderPending = false; return; }
-
-    // ตรวจ active อีกครั้ง
-    const lpCheck = document.getElementById('page-listings');
-    if(lpCheck && !lpCheck.classList.contains('active')) { _listingsRenderPending = false; return; }
-
+  const _myGen = window._listingsRenderGen;
+  const _doRender = () => {
+  // ── ตรวจ generation + abort ก่อนทำอะไรเลย — ป้องกัน stale rAF รัน render ผิด ──
+  if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen) {
     _listingsRenderPending = false;
+    window._listingsBatchInFlight = false;
+    return;
+  }
+  // ── ตรวจ page-listings active ก่อนด้วย ──
+  const _lsActivePre = document.getElementById('page-listings');
+  if(_lsActivePre && !_lsActivePre.classList.contains('active')) {
+    _listingsRenderPending = false;
+    window._listingsBatchInFlight = false;
+    return;
+  }
+  _listingsRenderPending = false;
+  window._listingsBatchInFlight = false; // reset ก่อนทุก render — ป้องกันค่าค้างจาก render ก่อน
 
-    // โหลด props ถ้ายังไม่มี
-    const allProps = (typeof props !== 'undefined' && props && props.length) ? props :
-                     (typeof MOCK !== 'undefined' && MOCK.props && MOCK.props.length ? MOCK.props : []);
+  // ── ถ้า props ยังโหลดไม่เสร็จ ให้ retry ──────────────────────────
+  const _allProps = (typeof props !== 'undefined' && props && props.length) ? [...props] :
+                   (typeof MOCK !== 'undefined' && MOCK.props && MOCK.props.length ? [...MOCK.props] : []);
 
-    if(!allProps.length) {
-      const grid = document.getElementById('listings-grid');
-      if(grid && !grid.querySelector('.prop-card') && !grid.querySelector('.loading-sk')) {
-        grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
-      }
-      _listingsRenderPending = false;
-      setTimeout(renderListingsPage, 300);
-      return;
-    }
-
-    // ตั้งค่า base data ครั้งแรก
-    if(!_listingsBaseData.length) {
-      _listingsBaseData = allProps;
-      _listingsData = sortListings([...allProps], 'default');
-      _listingsCurPage = 1;
-    }
-
-    // Apply query string filter จาก URL เมื่อ refresh หน้า /listings
-    if(window._pendingListingsSearch && _listingsBaseData.length) {
-      const qs = window._pendingListingsSearch;
-      delete window._pendingListingsSearch;
-      const params = new URLSearchParams(qs);
-      const qVal = params.get('q');
-      const typeVal = params.get('type');
-      const txVal = params.get('tx');
-      if(qVal) {
-        const inp = document.getElementById('ls-kw');
-        if(inp) inp.value = qVal;
-        _listingsData = _listingsBaseData.filter(function(p){
-          return JSON.stringify(p).toLowerCase().indexOf(qVal.toLowerCase()) !== -1;
-        });
-      }
-      if(typeVal) {
-        _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){ return p.type === typeVal; });
-      }
-      if(txVal) {
-        _listingsTxFilter = txVal;
-        _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){ return txVal === 'ALL' || p.tx === txVal; });
-      }
-      _listingsCurPage = 1;
-    }
-
-    const total = _listingsData.length;
-    const perPage = _listingsPerPage();
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
-    _listingsCurPage = Math.max(1, Math.min(_listingsCurPage, totalPages));
-
-    const start = (_listingsCurPage - 1) * perPage;
-    const end   = Math.min(start + perPage, total);
-    const pageData = _listingsData.slice(start, end);
-
-    // อัปเดต count
-    const lsCountWrap = document.querySelector('#page-listings .listings-count');
-    if(lsCountWrap) {
-      const countTpl = (typeof ui === 'function') ? ui('ls.count') : 'พบ {n} รายการ';
-      lsCountWrap.innerHTML = countTpl.replace('{n}', '<strong id="listings-total-count">' + total.toLocaleString() + '</strong>');
-    }
-
+  if(!_allProps.length) {
+    // Props ยังไม่พร้อม — แสดง skeleton แล้ว retry หลัง 300ms
     const grid = document.getElementById('listings-grid');
-    if(!grid) { return; }
+    if(grid && !grid.innerHTML.includes('prop-card') && !grid.innerHTML.includes('loading-sk')) {
+      grid.innerHTML = Array(8).fill(0).map(()=>`<div class="prop-card loading-sk"><div class="prop-thumb"><div class="sk-img skeleton"></div></div><div class="prop-body"><div class="sk-title skeleton"></div><div class="sk-loc skeleton"></div><div class="sk-price skeleton"></div></div></div>`).join('');
+    }
+    // reset pending ก่อน retry — ป้องกัน throttle block
+    _listingsRenderPending = false;
+    setTimeout(renderListingsPage, 300);
+    return;
+  }
 
+  // ── ใช้ทรัพย์ทั้งหมดเป็น base เฉพาะตอนที่ base ยังว่างอยู่ครั้งแรก ─
+  if(!_listingsBaseData.length) {
+    _listingsBaseData = _allProps;
+    _listingsData = sortListings([..._allProps], 'default');
+    _listingsCurPage = 1;
+  }
+
+  // ── apply query string filter จาก URL เมื่อ refresh หน้า /listings ──
+  // หมายเหตุ: ทำหลัง _listingsBaseData พร้อมแล้วเท่านั้น
+  if(window._pendingListingsSearch && _listingsBaseData.length) {
+    var qs = window._pendingListingsSearch;
+    delete window._pendingListingsSearch;
+    var params = new URLSearchParams(qs);
+    var qVal = params.get('q');
+    var typeVal = params.get('type');
+    var txVal = params.get('tx');
+    if(qVal) {
+      var qInput = document.getElementById('ls-q');
+      if(qInput) qInput.value = qVal;
+      _listingsData = _listingsBaseData.filter(function(p){
+        return JSON.stringify(p).toLowerCase().indexOf(qVal.toLowerCase()) !== -1;
+      });
+    }
+    if(typeVal) {
+      _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){
+        return p.type === typeVal;
+      });
+    }
+    if(txVal) {
+      _listingsTxFilter = txVal;
+      _listingsData = (_listingsData.length ? _listingsData : _listingsBaseData).filter(function(p){
+        return txVal === 'ALL' || p.tx === txVal;
+      });
+    }
+    _listingsCurPage = 1;
+  }
+
+  const total = _listingsData.length;
+  const totalPages = Math.max(1, Math.ceil(total / _listingsPerPage()));
+  _listingsCurPage = Math.max(1, Math.min(_listingsCurPage, totalPages));
+
+  const start = (_listingsCurPage - 1) * _listingsPerPage();
+  const end   = Math.min(start + _listingsPerPage(), total);
+  const pageData = _listingsData.slice(start, end);
+
+  // Update count
+  const countEl = document.getElementById('listings-total-count');
+  if(countEl) countEl.textContent = total.toLocaleString();
+  const lsCountWrap = document.querySelector('#page-listings .listings-count');
+  if(lsCountWrap){
+    const countTpl = (typeof ui==='function') ? ui('ls.count') : 'พบ {n} รายการ';
+    lsCountWrap.innerHTML = countTpl.replace('{n}','<strong id="listings-total-count">'+total.toLocaleString()+'</strong>');
+  }
+
+  // Render cards or empty state
+  const grid = document.getElementById('listings-grid');
+  if(grid) {
     if(pageData.length) {
-      // ── Render สองรอบ: 8 ก่อน (sync) แล้วค่อย append ที่เหลือ ──
-      const firstBatch  = pageData.slice(0, 8);
-      const secondBatch = pageData.slice(8);
+      // ── Batch sizes: แสดง 32 ทรัพย์ทุก device — render แบ่ง batch เพื่อ performance ──
+      const FIRST_BATCH = 8;   // render ทันที (sync)
+      const SECOND_BATCH = 16; // render batch 2
+      // restBatch: ส่วนที่เหลือ (ถึง 32)
+      const firstBatch  = pageData.slice(0, FIRST_BATCH);
+      const secondBatch = pageData.slice(FIRST_BATCH, FIRST_BATCH + SECOND_BATCH);
+      const restBatch   = pageData.slice(FIRST_BATCH + SECOND_BATCH);
 
-      // Render batch แรกทันที
+      // render batch แรกทันที (sync) — ให้ first paint เร็ว
       grid.innerHTML = firstBatch.map(propCard).join('');
 
-      if(secondBatch.length) {
-        const idle = window.requestIdleCallback || function(cb){ setTimeout(cb, 50); };
-        idle(function() {
-          if(window._listingsRenderGen !== myGen) return;
+      // batch ถัดไป: ใช้ idle callback ป้องกัน main thread block
+      const idle = window.requestIdleCallback
+        ? function(cb){ window.requestIdleCallback(cb, {timeout: 300}); }
+        : function(cb){ setTimeout(cb, 80); };
+
+      if(secondBatch.length){
+        window._listingsBatchInFlight = true;
+        idle(function(){
+          if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
+          // ตรวจว่า listings page ยัง active ก่อน append — ป้องกัน stale batch append หลัง navigate
+          const _lsPageCheck = document.getElementById('page-listings');
+          if(!_lsPageCheck || !_lsPageCheck.classList.contains('active')){ window._listingsBatchInFlight = false; return; }
           const frag = document.createDocumentFragment();
           const tmp = document.createElement('div');
           tmp.innerHTML = secondBatch.map(propCard).join('');
           while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+          if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
           grid.appendChild(frag);
-          if(typeof initAllCardSwipes === 'function') {
-            requestAnimationFrame(function() {
-              if(window._listingsRenderGen === myGen) initAllCardSwipes(grid);
+          // ไม่เรียก initAllCardSwipes ตรงนี้ — MutationObserver จัดการแทน
+
+          if(restBatch.length){
+            idle(function(){
+              if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
+              // ตรวจอีกครั้งก่อน batch สุดท้าย
+              const _lsPageCheck2 = document.getElementById('page-listings');
+              if(!_lsPageCheck2 || !_lsPageCheck2.classList.contains('active')){ window._listingsBatchInFlight = false; return; }
+              const frag2 = document.createDocumentFragment();
+              const tmp2 = document.createElement('div');
+              tmp2.innerHTML = restBatch.map(propCard).join('');
+              while(tmp2.firstChild) frag2.appendChild(tmp2.firstChild);
+              if(window._listingsRenderAbort || window._listingsRenderGen !== _myGen){ window._listingsBatchInFlight = false; return; }
+              grid.appendChild(frag2);
+              // เรียก initAllCardSwipes ครั้งเดียวหลัง batch สุดท้ายเสร็จ
+              if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ if(window._listingsRenderGen===_myGen) initAllCardSwipes(grid); });
+              window._listingsBatchInFlight = false;
             });
+          } else {
+            // ไม่มี restBatch → เรียก initAllCardSwipes หลัง secondBatch แทน
+            if(typeof initAllCardSwipes==='function') requestAnimationFrame(function(){ if(window._listingsRenderGen===_myGen) initAllCardSwipes(grid); });
+            window._listingsBatchInFlight = false;
           }
         });
-      } else {
-        if(typeof initAllCardSwipes === 'function') {
-          setTimeout(function() { if(window._listingsRenderGen === myGen) initAllCardSwipes(grid); }, 80);
-        }
       }
     } else {
-      // Empty state
-      const lang = (typeof _lang !== 'undefined' && _lang) ? _lang : 'th';
-      const lineHref = (typeof C !== 'undefined' && C && C.LINE) ? 'https://line.me/R/ti/p/' + C.LINE : 'https://line.me/ti/p/@matchdoor';
+      // ── Empty state: แสดง CTA ให้ฝากความต้องการแทนการ reset ─────
+      const lang = (typeof _lang!=='undefined' && _lang) ? _lang : 'th';
+      const lineHref = (typeof C!=='undefined' && C && C.LINE) ? 'https://line.me/R/ti/p/'+C.LINE : 'https://line.me/ti/p/matchdoor';
       const t = {
-        th:{ ico:'🔍', h:'ไม่พบทรัพย์ที่ตรงกับเงื่อนไข', sub:'ลองปรับเงื่อนไขการค้นหา หรือ<br>ให้ทีมงานของเราช่วยหาทรัพย์ที่ใช่ให้คุณโดยตรง', cta:'📩 ฝากความต้องการซื้อ-เช่า ให้ทีมงานหาให้', reset:'🔄 ล้างการค้นหา' },
-        en:{ ico:'🔍', h:'No listings match your criteria', sub:"Try adjusting your filters, or let our team find<br>the perfect property for you.", cta:"📩 Leave your requirements — we'll find it for you", reset:'🔄 Reset search' },
-        cn:{ ico:'🔍', h:'没有找到符合条件的房源', sub:'请尝试调整筛选条件，<br>或让我们的团队为您寻找合适的房产。', cta:'📩 留下需求，让我们为您寻找', reset:'🔄 重置搜索' },
-        ja:{ ico:'🔍', h:'条件に合う物件が見つかりません', sub:'検索条件を調整するか、<br>担当チームに理想の物件を探してもらいましょう。', cta:'📩 ご要望を送る — スタッフが探します', reset:'🔄 検索をリセット' },
+        th:{ ico:'🔍', h:'ไม่พบทรัพย์ที่ตรงกับเงื่อนไข',
+             sub:'ลองปรับเงื่อนไขการค้นหา หรือ<br>ให้ทีมงานของเราช่วยหาทรัพย์ที่ใช่ให้คุณโดยตรง',
+             cta:'📩 ฝากความต้องการซื้อ-เช่า ให้ทีมงานหาให้',
+             reset:'🔄 ล้างการค้นหา' },
+        en:{ ico:'🔍', h:'No listings match your criteria',
+             sub:"Try adjusting your filters, or let our team find<br>the perfect property for you.",
+             cta:'📩 Leave your requirements — we\'ll find it for you',
+             reset:'🔄 Reset search' },
+        cn:{ ico:'🔍', h:'没有找到符合条件的房源',
+             sub:'请尝试调整筛选条件，<br>或让我们的团队为您寻找合适的房产。',
+             cta:'📩 留下需求，让我们为您寻找',
+             reset:'🔄 重置搜索' },
+        ja:{ ico:'🔍', h:'条件に合う物件が見つかりません',
+             sub:'検索条件を調整するか、<br>担当チームに理想の物件を探してもらいましょう。',
+             cta:'📩 ご要望を送る — スタッフが探します',
+             reset:'🔄 検索をリセット' },
       };
       const m = t[lang] || t.th;
       grid.innerHTML = `
@@ -5439,12 +5494,19 @@ function renderListingsPage() {
             <p style="font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:28px">${m.sub}</p>
             <div style="display:flex;flex-direction:column;gap:10px">
               <a href="${lineHref}" target="_blank" rel="noopener"
-                 style="display:flex;align-items:center;justify-content:center;gap:10px;background:#06C755;color:#fff;text-decoration:none;border-radius:12px;padding:14px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 18px rgba(6,199,85,.38);transition:.2s"
+                 style="display:flex;align-items:center;justify-content:center;gap:10px;
+                        background:#06C755;color:#fff;text-decoration:none;
+                        border-radius:12px;padding:14px 20px;font-size:14px;font-weight:700;
+                        box-shadow:0 4px 18px rgba(6,199,85,.38);transition:.2s"
                  onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter=''">
                 <i class="fab fa-line" style="font-size:20px"></i> ${m.cta}
               </a>
               <button onclick="listingsResetSearch()"
-                 style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--lt);color:var(--tx);border:1.5px solid var(--bd);border-radius:12px;padding:13px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s"
+                 style="display:flex;align-items:center;justify-content:center;gap:8px;
+                        background:var(--lt);color:var(--tx);
+                        border:1.5px solid var(--bd);border-radius:12px;
+                        padding:13px 20px;font-size:13px;font-weight:600;cursor:pointer;
+                        transition:.2s"
                  onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--bd)'">
                 ${m.reset}
               </button>
@@ -5452,19 +5514,22 @@ function renderListingsPage() {
           </div>
         </div>`;
     }
+    // init swipe สำหรับ batch แรก (ถ้าไม่มี secondBatch/restBatch)
+    if(pageData.length <= 4) setTimeout(function(){ if(typeof initAllCardSwipes==='function') initAllCardSwipes(grid); }, 80);
+  }
+  // scroll ขึ้นเฉพาะกรณีเปลี่ยนหน้า (ไม่ใช่ filter ใหม่บนหน้าเดิม)
+  if(window._listingsScrollOnRender){
+    window._listingsScrollOnRender = false;
+    requestAnimationFrame(function(){ window.scrollTo({top: 0, behavior: 'smooth'}); });
+  }
+  // render pagination
+  const _totalPg = Math.max(1, Math.ceil(_listingsData.length / _listingsPerPage()));
+  if(typeof renderListingsPagination==='function') renderListingsPagination(_totalPg);
+  }; // end _doRender
 
-    // Scroll ถ้าเปลี่ยนหน้า
-    if(window._listingsScrollOnRender) {
-      window._listingsScrollOnRender = false;
-      requestAnimationFrame(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); });
-    }
-
-    // Pagination
-    if(typeof renderListingsPagination === 'function') renderListingsPagination(totalPages);
-  });
+  // ใช้ requestAnimationFrame เพื่อไม่บล็อก paint ก่อน render
+  requestAnimationFrame(_doRender);
 }
-
-// [END OF NEW renderListingsPage — old batched code removed]
 
 function renderListingsPagination(totalPages) {
   const pg = document.getElementById('listings-pagination');
@@ -6054,8 +6119,6 @@ function openModal(id){
 
   // เปิด modal ก่อน — ทำให้ user เห็นทันที
   $('prop-modal').classList.add('open');
-  // บันทึกเวลาเปิด — ป้องกัน iOS ghost-tap ปิด modal ทันที
-  $('prop-modal')._openedAt = Date.now();
 
   // ── iOS scroll-lock: ใช้ overflow:hidden บน body เท่านั้น ──
   // ห้ามใช้ position:fixed เด็ดขาด — สร้าง layout recalc ขนาดใหญ่บน iOS/iPad
@@ -6222,10 +6285,6 @@ function closeModal(e){
   const modal = $('prop-modal');
   if(!modal) return;
 
-  // ป้องกัน iOS ghost-tap / accidental close ภายใน 300ms หลัง openModal
-  // (iOS ยิง touchend → click ในกรอบเวลาสั้น ซึ่งอาจทำให้ปิดทันทีที่เปิด)
-  if(modal._openedAt && (Date.now() - modal._openedAt) < 300) return;
-
   // Safety net: ถ้า modal ไม่ได้ open อยู่ ให้ reset lock ทุกอย่างแล้วออก
   if(!modal.classList.contains('open')) {
     document.body.style.removeProperty('overflow');
@@ -6270,30 +6329,25 @@ function closeModal(e){
   modal.classList.remove('open');
   window._currentModalId = null;
 
-  // ── reset flags + restore scroll เท่านั้น — ห้าม re-render grid ซ้ำ ──
-  // grid ยังมีข้อมูลครบอยู่แล้ว การ render ใหม่คือต้นเหตุที่ทำให้ช้าบน mobile/tablet
-  window._listingsRenderAbort = false;
-  _listingsRenderPending = false;
-  window._listingsRenderQueued = false;
-  window._listingsBatchInFlight = false;
-  if(typeof window._listingsRenderGen !== 'undefined') {
-    window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
-  }
-  // restore scroll position ใน double rAF — iOS/iPad ต้องรอ layout คำนวณใหม่หลัง overflow unlock
-  // single rAF ไม่พอบน iOS Safari เพราะ overflow:hidden ถูกปลดใน frame เดียวกัน
+  // ── FIX ข้อ 6: restore listings page หลัง modal ปิด — ใช้ logic เดียวกับ ข้อ 1-4 ──
+  // ใช้ requestAnimationFrame เดียว ไม่มี nested setTimeout ป้องกัน race condition
+  const _prevPage = window._pageBeforeModal || 'home';
   requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      if(savedY > 0) window.scrollTo(0, savedY);
-      // กู้คืน listings grid ถ้า abort ทำให้ render ไม่สมบูรณ์ (grid ว่างหรือมีแค่ skeleton)
-      const listingsPage = document.getElementById('page-listings');
-      if(listingsPage && listingsPage.classList.contains('active')) {
-        const grid = document.getElementById('listings-grid');
-        const hasRealCards = grid && grid.querySelector('.prop-card:not(.loading-sk)');
-        if(!hasRealCards && typeof renderListingsPage === 'function') {
-          setTimeout(renderListingsPage, 50);
-        }
-      }
-    });
+    // bump generation + reset flags ทั้งหมดก่อน render เสมอ
+    if(typeof window._listingsRenderGen !== 'undefined') {
+      window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
+    }
+    window._listingsRenderAbort = false;
+    _listingsRenderPending = false;
+    window._listingsRenderQueued = false;
+    window._listingsBatchInFlight = false;
+    // restore scroll position
+    if(savedY > 0) window.scrollTo(0, savedY);
+    // render listings ถ้าเปิดการ์ดมาจากหน้า listings
+    const listingsPage = document.getElementById('page-listings');
+    if(_prevPage === 'listings' && listingsPage && listingsPage.classList.contains('active')) {
+      if(typeof renderListingsPage === 'function') renderListingsPage();
+    }
   });
 }
 // Helper: build SEO-friendly property URL from prop object
@@ -6937,9 +6991,6 @@ function selectLsAC(id, title, loc) {
 
 function initSwipe(sliderEl, prevFn, nextFn) {
   if(!sliderEl) return;
-  // ป้องกัน bind ซ้ำ — ถ้าเคย init แล้วให้ข้ามทันที
-  if(sliderEl._swipeInitDone) return;
-  sliderEl._swipeInitDone = true;
   let startX=0, isDragging=false, moved=0;
   sliderEl.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; isDragging=true; moved=0; }, {passive:true});
   sliderEl.addEventListener('touchmove', e=>{ if(!isDragging) return; moved=e.touches[0].clientX-startX; }, {passive:true});
@@ -6947,32 +6998,22 @@ function initSwipe(sliderEl, prevFn, nextFn) {
     if(!isDragging) return; isDragging=false;
     if(moved < -50) nextFn();
     else if(moved > 50) prevFn();
-    moved=0;
   });
-  // ใช้ AbortController เพื่อไม่ให้ global listeners รั่วไหล
-  let _ac = null;
-  sliderEl.addEventListener('mousedown', e=>{
-    startX=e.clientX; isDragging=true; moved=0;
-    sliderEl.classList.add('dragging'); e.preventDefault();
-    if(_ac) _ac.abort();
-    _ac = new AbortController();
-    const sig = { signal: _ac.signal };
-    window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; }, sig);
-    window.addEventListener('mouseup', ()=>{
-      if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
-      if(moved < -50) nextFn();
-      else if(moved > 50) prevFn();
-      moved=0;
-      if(_ac){ _ac.abort(); _ac=null; }
-    }, sig);
+  sliderEl.addEventListener('mousedown', e=>{ startX=e.clientX; isDragging=true; moved=0; sliderEl.classList.add('dragging'); e.preventDefault(); });
+  window.addEventListener('mousemove', e=>{ if(!isDragging) return; moved=e.clientX-startX; });
+  window.addEventListener('mouseup', ()=>{
+    if(!isDragging) return; isDragging=false; sliderEl.classList.remove('dragging');
+    if(moved < -50) nextFn();
+    else if(moved > 50) prevFn();
   });
 }
 
 function initModalSwipe() {
   const ms = document.querySelector('#prop-modal .mslider');
-  if(!ms) return;
-  // initSwipe มีการ์ด _swipeInitDone ภายในตัวเองแล้ว — เรียกได้ทุกครั้งที่ modal เปิด โดยไม่ leak
-  initSwipe(ms, ()=>slide(-1), ()=>slide(1));
+  if(ms && !ms._swipeInit) {
+    ms._swipeInit = true;
+    initSwipe(ms, ()=>slide(-1), ()=>slide(1));
+  }
 }
 
 function lazyLoadImages() {
@@ -7364,14 +7405,10 @@ function initCardSwipeOn(containerEl) {
     if (didDrag) moved = dx;
   }, { passive: true });
 
-  surface.addEventListener('touchend', function(e) {
+  surface.addEventListener('touchend', function() {
     if (!active) return;
     active = false;
-    if (didDrag && Math.abs(moved) > THRESHOLD) {
-      // หยุด bubble เมื่อ swipe รูป — ป้องกัน .ov onclick closeModal ถูกเรียกโดยไม่ตั้งใจ
-      e.stopPropagation();
-      _doCardSlide(pid, moved < 0 ? 1 : -1);
-    }
+    if (didDrag && Math.abs(moved) > THRESHOLD) _doCardSlide(pid, moved < 0 ? 1 : -1);
     moved = 0; didDrag = false;
   });
 
@@ -8142,29 +8179,24 @@ function initHGallerySwipe(wrapId) {
     // If vertical, do nothing — browser handles page scroll
   }, {passive:true});
   wrap.addEventListener('touchend', () => { isDragging = false; moved = 0; isVertical = false; });
-  // Mouse drag (desktop) — ใช้ AbortController ป้องกัน listener รั่ว
-  let _hgAc = null;
+  // Mouse drag (desktop)
   wrap.addEventListener('mousedown', e => {
     startX = e.clientX;
     startScroll = wrap.scrollLeft;
     isDragging = true;
     moved = 0;
     wrap.classList.add('dragging');
-    if(_hgAc) _hgAc.abort();
-    _hgAc = new AbortController();
-    const sig = { signal: _hgAc.signal };
-    window.addEventListener('mousemove', e => {
-      if(!isDragging) return;
-      const dx = startX - e.clientX;
-      moved = Math.abs(dx);
-      wrap.scrollLeft = startScroll + dx;
-    }, sig);
-    window.addEventListener('mouseup', () => {
-      if(!isDragging) return;
-      isDragging = false;
-      wrap.classList.remove('dragging');
-      if(_hgAc){ _hgAc.abort(); _hgAc=null; }
-    }, sig);
+  });
+  window.addEventListener('mousemove', e => {
+    if(!isDragging) return;
+    const dx = startX - e.clientX;
+    moved = Math.abs(dx);
+    wrap.scrollLeft = startScroll + dx;
+  });
+  window.addEventListener('mouseup', () => {
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
   });
   // Block click only if dragged
   wrap.addEventListener('click', e => {

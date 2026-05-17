@@ -7095,13 +7095,13 @@ function startCooldownUI(btnId, ms = COOLDOWN_MS) {
 // ── Layer 2: Cloudflare Turnstile ────────────────────────────────
 // ⚠️ แทนค่า TURNSTILE_SITE_KEY ด้วย Site Key จริงจาก Cloudflare Dashboard
 // ไปที่: https://dash.cloudflare.com → Turnstile → Add site → Invisible
-const TURNSTILE_SITE_KEY = 'YOUR_TURNSTILE_SITE_KEY_HERE';
+const TURNSTILE_SITE_KEY = '0x4AAAAAADQ7zD-eh7X1mJjC';
 
 const _turnstileWidgets = {};
 const _turnstileTokens = {};
 
 function initTurnstile() {
-  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === 'YOUR_TURNSTILE_SITE_KEY_HERE') {
+  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === '0x4AAAAAADQ7zD-eh7X1mJjC') {
     // ยังไม่ได้ตั้งค่า site key → ข้ามการใช้งาน Turnstile (dev mode)
     console.warn('[Turnstile] Site key not configured — CAPTCHA disabled. Set TURNSTILE_SITE_KEY before going live.');
     return;
@@ -7121,7 +7121,7 @@ function initTurnstile() {
 
 // เรียก Turnstile token แบบ async (execute → รอ callback)
 async function getTurnstileToken(key, timeoutMs = 6000) {
-  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === 'YOUR_TURNSTILE_SITE_KEY_HERE') {
+  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === '0x4AAAAAADQ7zD-eh7X1mJjC') {
     return null; // dev mode: ไม่มี token แต่ไม่ block
   }
   _turnstileTokens[key] = null;

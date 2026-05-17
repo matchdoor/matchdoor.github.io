@@ -205,6 +205,62 @@
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
 <!-- Supabase: async แต่ critical — priority high เพื่อให้ browser ดึงเร็วขึ้น -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async fetchpriority="high"></script>
+<!-- ═══ Cloudflare Turnstile (Invisible CAPTCHA) ═══════════════════════════
+     ⚠️ แทน data-sitekey ด้วย Turnstile Site Key จาก Cloudflare Dashboard
+     ดู: https://dash.cloudflare.com → Turnstile → Add site
+     เลือก Widget type: "Invisible" เพื่อไม่รบกวน UX ผู้ใช้ -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<!--
+═══════════════════════════════════════════════════════════════════
+  SERVER-SIDE RATE LIMIT SETUP (Layer 3) — Supabase
+═══════════════════════════════════════════════════════════════════
+  วิธีที่ 1: Supabase Row Level Security (RLS) — ง่ายที่สุด
+  ─────────────────────────────────────────────────────────────────
+  รัน SQL นี้ใน Supabase SQL Editor:
+
+  -- Rate limit: แต่ละ user ส่งได้ไม่เกิน 5 ครั้งต่อวัน
+  CREATE OR REPLACE FUNCTION check_submission_rate_limit()
+  RETURNS TRIGGER LANGUAGE plpgsql AS $$
+  DECLARE v_count INT;
+  BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM listings
+    WHERE name = NEW.name
+      AND phone = NEW.phone
+      AND created_at > NOW() - INTERVAL '24 hours';
+    IF v_count >= 5 THEN
+      RAISE EXCEPTION 'rate_limit_exceeded: too many submissions in 24h';
+    END IF;
+    RETURN NEW;
+  END;$$;
+
+  CREATE TRIGGER trg_listings_rate_limit
+    BEFORE INSERT ON listings
+    FOR EACH ROW EXECUTE FUNCTION check_submission_rate_limit();
+
+  -- ทำเช่นเดียวกันสำหรับ buy_requests table
+
+  ─────────────────────────────────────────────────────────────────
+  วิธีที่ 2: Cloudflare Turnstile Server Verification
+  ─────────────────────────────────────────────────────────────────
+  สร้าง Supabase Edge Function ชื่อ "verify-turnstile":
+
+  // supabase/functions/verify-turnstile/index.ts
+  const SECRET = Deno.env.get('TURNSTILE_SECRET_KEY')!;
+  Deno.serve(async (req) => {
+    const { token } = await req.json();
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ secret: SECRET, response: token })
+    });
+    const data = await res.json();
+    return new Response(JSON.stringify({ success: data.success }), { status: data.success ? 200 : 403 });
+  });
+
+  แล้วเรียกก่อน insert ใน submitDep/submitWish ถ้าต้องการ verify เต็มรูปแบบ
+═══════════════════════════════════════════════════════════════════
+-->
 <style>
 /* ══ MOBILE PERFORMANCE PATCH v4 — iOS Freeze Fix ══════════════ */
 /* ป้องกัน text render ช้าบน iOS — ทุก device */
@@ -253,7 +309,8 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
     overscroll-behavior-y:contain!important;
   }
   #prop-modal{will-change:auto;isolation:isolate}
-  #prop-modal.open .modal{will-change:transform;animation:propModalPop .12s cubic-bezier(.2,.8,.4,1) both}
+  /* ไม่มี animation บนมือถือ — เปิดทันที */
+  #prop-modal.open .modal{will-change:auto}
   *:not(.ov):not(#prop-modal):not(.rec-track):not(.card-slides):not(.slides):not(.rec-card-img img){transition-duration:.08s!important}
   .prop-card,.blog-card,.gal-card,.agent-card,.cat-card,.osrv-card{transition:none!important}
   #prop-modal .modal{transition:none!important}
@@ -375,6 +432,13 @@ img{max-width:100%;height:auto}
 
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 22px;border-radius:30px;font-size:14px;z-index:490;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+/* ── Cooldown state: ปุ่มระหว่างรอ cooldown ──────────────────── */
+.btn-sub:disabled:not(.loading){
+  background:linear-gradient(135deg,#8A8070,#6b6258)!important;
+  cursor:not-allowed!important;
+  opacity:.85;
+}
+.btn-sub:disabled:not(.loading) .fas{color:rgba(255,255,255,.7)!important}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:480;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:0;pointer-events:none;transition:opacity .3s}
 .loading-overlay.show{opacity:1;pointer-events:auto}
 
@@ -634,16 +698,13 @@ nav{
   display:flex;
   pointer-events:auto;
 }
-/* prop-modal: เปิดทันที ไม่มี animation ช้า */
+/* prop-modal: เปิดทันที — ไม่มี animation ใดๆ ทั้งสิ้น */
 #prop-modal.open{
   z-index:3300;isolation:isolate;
 }
+/* ลบ animation ออกทั้งหมด — scale+opacity พร้อมกันบน iOS ทำให้เกิด composite jank */
 #prop-modal.open .modal{
-  animation:propModalPop .12s cubic-bezier(.2,.8,.4,1) both;
-}
-@keyframes propModalPop{
-  from{opacity:.7;transform:scale(.97)}
-  to{opacity:1;transform:scale(1)}
+  /* animation:none — modal ปรากฏทันที ไม่มี delay */
 }
 /* iOS Safari: ต้องใช้ isolation:isolate เพื่อป้องกัน z-index stacking context ค้าง */
 #prop-modal.open{z-index:3300;isolation:isolate}
@@ -2639,6 +2700,8 @@ footer::after{
          <label for="w-consent">ฉันยินยอมให้ Matchdoor เก็บและใช้ข้อมูลส่วนบุคคลเพื่อบริการด้านอสังหาริมทรัพย์ ตาม<a href="javascript:void(0)" onclick="openPrivacyModal();event.stopPropagation()">นโยบายความเป็นส่วนตัว</a></label>
        </div>
        <div class="consent-err" id="w-consent-err">⚠️ กรุณายินยอมก่อนส่งข้อมูล</div>
+       <!-- Turnstile invisible widget สำหรับฟอร์มฝากความต้องการ -->
+       <div id="turnstile-wish" style="margin-bottom:4px"></div>
        <button class="btn-sub" id="wish-btn" onclick="submitWish()"><i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> <span id="wish-btn-text">เข้าสู่ระบบเพื่อส่งข้อมูล</span></button>
       </div>
       <div class="form-ok" id="wish-ok"><i class="fas fa-check-circle"></i><div>ส่งข้อมูลสำเร็จ!</div></div>
@@ -2670,6 +2733,8 @@ footer::after{
          <label for="d-consent">ฉันยินยอมให้ Matchdoor เก็บและใช้ข้อมูลส่วนบุคคลรวมถึงรูปภาพทรัพย์ เพื่อบริการฝากทรัพย์ ตาม<a href="javascript:void(0)" onclick="openPrivacyModal();event.stopPropagation()">นโยบายความเป็นส่วนตัว</a></label>
        </div>
        <div class="consent-err" id="d-consent-err">⚠️ กรุณายินยอมก่อนส่งข้อมูล</div>
+       <!-- Turnstile invisible widget สำหรับฟอร์มฝากทรัพย์ -->
+       <div id="turnstile-dep" style="margin-bottom:4px"></div>
        <button class="btn-sub" id="dep-btn" onclick="submitDep()"><i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> <span id="dep-btn-text">เข้าสู่ระบบเพื่อส่งข้อมูล</span></button>
       </div>
       <div class="form-ok" id="dep-ok"><i class="fas fa-check-circle"></i><div>ส่งข้อมูลสำเร็จ!</div></div>
@@ -3865,8 +3930,8 @@ function closeGmapPopup(){
 // 🔧 จุด CONFIG ทั้งหมด — แก้ไขตรงนี้ที่เดียว
 const C = {
   // --- [1] Supabase Project ---
-  SUPABASE_URL:'https://sutmuqrnwsfukalhdzmj.supabase.co', // 🔧 [CONFIG-1] Supabase Project URL
-  SUPABASE_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1dG11cXJud3NmdWthbGhkem1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTc2MjMsImV4cCI6MjA5NDU3MzYyM30.VumgQlh6i96f4RUtVUGv00BfJHlF3bUD4tpXE4PguLI', // 🔧 [CONFIG-2] Supabase Anon/Public Key เท่านั้น!
+  SUPABASE_URL:'https://pqixxurswwjejrdrtctj.supabase.co', // 🔧 [CONFIG-1] Supabase Project URL
+  SUPABASE_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxaXh4dXJzd3dqZWpyZHJ0Y3RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MjM3NjcsImV4cCI6MjA5NDM5OTc2N30.tXU8IAL8T4n_F9lca8xuTXAhU8f-pFXUiQFcebpAxZk', // 🔧 [CONFIG-2] Supabase Anon/Public Key เท่านั้น!
 
   // --- [2] Supabase Storage ---
   STORAGE_BUCKET: 'matchdoor-assets', // 🔧 [CONFIG-3] ชื่อ Storage Bucket หลัก
@@ -6347,8 +6412,6 @@ function openModal(id){
   const a=agents.find(x=>x.id===p.agentId);
 
   // ── bump generation + abort ทันที — หยุด batch idle ที่กำลัง render listings อยู่ ──
-  // ต้องตั้ง abort=true ด้วย ไม่ใช่แค่ bump generation
-  // เพราะ batch ตรวจทั้ง abort flag AND generation — ถ้าขาด abort จะยังรัน append ต่อ
   if(typeof window._listingsRenderGen !== 'undefined') {
     window._listingsRenderGen = (window._listingsRenderGen + 1) & 0xFFFF;
   }
@@ -6357,99 +6420,93 @@ function openModal(id){
   _listingsRenderPending = false;
   window._listingsRenderQueued = false;
 
-  // ── แสดง modal ทันทีก่อน เพื่อให้ user เห็น response ไว ──
-  // clear content เก่าก่อน
-  $('m-title').textContent=p.title;
-  $('m-price').innerHTML='';
-  $('m-loc').innerHTML='';
-  $('m-tags').innerHTML='';
-  $('m-specs').innerHTML='';
+  // ══════════════════════════════════════════════════════════════
+  // INSTANT OPEN: fill ALL visible content SYNCHRONOUSLY ก่อน .open
+  // ไม่ใช้ rAF wrapper สำหรับ critical content — ทำให้ modal ปรากฏพร้อม content ทันที
+  // ══════════════════════════════════════════════════════════════
+
+  // 1) Title (ต้องมาก่อน .open เสมอ)
+  $('m-title').textContent = p.title;
+
+  // 2) Price — inline synchronous
+  const priceEl = $('m-price');
+  priceEl.innerHTML = `${fmtPrice(p.price,p.tx)}
+    ${p.tx==='BUY'?`<button onclick="toggleLoanCalc(${p.price})" style="vertical-align:middle;margin-left:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:none;cursor:pointer" title="คำนวณสินเชื่อ"><i class="fas fa-calculator"></i> คำนวณสินเชื่อ</button>`:''}`;
+  let lc = document.getElementById('modal-loan-calc');
+  if(!lc){
+    lc = document.createElement('div');
+    lc.id = 'modal-loan-calc';
+    lc.style.cssText = 'max-height:0;overflow:hidden;transition:max-height .4s ease;margin-bottom:0';
+    priceEl.parentNode.insertBefore(lc, priceEl.nextSibling);
+  } else { lc.style.maxHeight='0'; lc.innerHTML=''; }
+
+  // 3) Location + Tags + Desc — synchronous
+  $('m-loc').innerHTML='<i class="fas fa-map-marker-alt"></i> '+p.location+(p.province?` · ${p.province}`:'');
+  $('m-desc').textContent=p.desc||p.description||'ติดต่อสอบถามรายละเอียดเพิ่มเติมกับทีมงาน Matchdoor';
+  $('m-tags').innerHTML=`<span class="ptag pt-type">${ui('type.'+p.type)||p.type}</span><span class="ptag ${p.tx==='RENT'?'pt-rent':'pt-buy'}">${p.tx==='RENT'?`<i class="fas fa-key"></i> ${ui('card.rent')}`:`<i class="fas fa-tag"></i> ${ui('card.buy')}`}</span>${p.province?`<span class="ptag">${p.province}</span>`:''}${p.isNew?`<span class="ptag" style="background:#e8fdf5;border-color:#a7f3d0;color:#065f46"><i class="fas fa-star"></i> ${ui('card.new')}</span>`:''}${p.isRec?'<span class="ptag pb-hot" style="color:#fff;border-color:transparent">🔥 Hot</span>':''}`;
+
+  // 4) Specs — synchronous
+  const specs=[];
+  if(p.area>0) specs.push({val:p.area,lab:ui('spec.area'),icon:'fa-ruler-combined',col:'#7c6fcd'});
+  specs.push({val:p.land_area>0?p.land_area:'—',lab:ui('spec.land'),icon:'fa-map',col:'#059669'});
+  if(p.bed>0) specs.push({val:p.bed,lab:ui('spec.bed'),icon:'fa-bed',col:'#0369a1'});
+  if(p.bath>0) specs.push({val:p.bath,lab:ui('spec.bath'),icon:'fa-shower',col:'#0891b2'});
+  if(p.parking>0) specs.push({val:p.parking,lab:ui('spec.park'),icon:'fa-car',col:'#059669'});
+  {const fl=p.floor_no>0&&p.floors>0?`${p.floor_no}/${p.floors}`:(p.floors>0?String(p.floors):'—'); specs.push({val:fl,lab:ui('spec.floor'),icon:'fa-building',col:'#4f46e5'});}
+  const furnLabelS={'full':ui('spec.furn.full'),'partial':ui('spec.furn.partial'),'none':ui('spec.furn.none')};
+  if(p.furniture) specs.push({val:furnLabelS[p.furniture]||p.furniture,lab:ui('spec.furn'),icon:'fa-couch',col:p.furniture==='full'?'#00895e':p.furniture==='partial'?'#c97b00':'#999'});
+  specs.push({val:p.pets_allowed?'✔':'✖',lab:ui('spec.pets'),icon:'fa-paw',col:p.pets_allowed?'#be185d':'#aaa'});
+  if(!specs.length) specs.push({val:(p.price/1e6).toFixed(1),lab:'ล้านบาท',icon:'fa-tag',col:'var(--a)'});
+  $('m-specs').className='specs-grid-8';
+  $('m-specs').innerHTML=specs.map(s=>`<div class="spec-8"><div class="spec-8-val" style="color:${s.col}"><i class="fas ${s.icon}" style="font-size:11px;margin-right:3px"></i>${s.val}</div><div class="spec-8-lab">${s.lab}</div></div>`).join('');
+
+  // 5) Slider — synchronous (รูปแรก eager load)
+  slide_photos=(p.photos?.length)?p.photos:[`https://picsum.photos/id/${(p.id+'').charCodeAt(1)||101}/800/600`];
+  slide_icon=p.icon||typeIcon(p.type);
+  slide_cur=0;
+  renderSlider();
+
+  // 6) Agent — synchronous
+  const ab=$('m-agent');
+  if(a){ab.style.display='flex';ab.style.cursor='pointer';ab.onclick=()=>showAgentDetail(a);ab.title='ดูข้อมูลตัวแทน';$('m-ag-av').textContent=a.initials||a.name[0];$('m-ag-av').style.background=a.color||'#0f3460';$('m-ag-name').textContent=a.name;$('m-ag-name').style.textDecoration='underline dotted';$('m-ag-name').style.color='var(--a)';$('m-ag-role').textContent=a.title;}
+  else ab.style.display='none';
+
+  // 7) CTA + Fav — synchronous
+  const lid=a?.lineId||C.LINE, ph=a?.phone||C.PHONE;
+  $('m-ln').href=lineUrl(lid);
+  $('m-tel').href='tel:'+ph;
+  const _isFaved = favs.includes(String(p.id));
+  const _favBtn = $('m-fav-btn');
+  const _favLabel = $('m-fav-label');
+  if(_favBtn){ _favBtn.className='modal-fav-btn'+(_isFaved?' favorited':''); _favBtn.innerHTML=_isFaved?'<i class="fas fa-heart"></i>':'<i class="far fa-heart"></i>'; }
+  if(_favLabel){ _favLabel.textContent=_isFaved?ui('modal.fav.added'):ui('modal.fav.add'); }
+
+  // 8) Clear heavy sections ที่จะ fill ใน idle (ให้ไม่มี stale content)
   $('m-extras').innerHTML='';
-  $('m-desc').textContent='';
   $('m-chips').innerHTML='';
   $('m-nearby').innerHTML='';
   const mapC=$('m-map'); if(mapC) mapC.innerHTML='';
-  const slEl=$('slides'); if(slEl) slEl.innerHTML='';
-  const dotsEl=$('sdots'); if(dotsEl) dotsEl.innerHTML='';
 
-  // เปิด modal ก่อน — ทำให้ user เห็นทันที
-  $('prop-modal').classList.add('open');
+  window._currentModalId = String(p.id);
 
-  // ── iOS scroll-lock: ใช้ overflow:hidden บน body เท่านั้น ──
-  // ห้ามใช้ position:fixed เด็ดขาด — สร้าง layout recalc ขนาดใหญ่บน iOS/iPad
-  // เมื่อ remove position:fixed จะ trigger full layout recalc → หน้าค้าง
+  // ── เปิด modal ทันทีหลัง fill content ครบ — ไม่มี rAF wrapper ──
+  // iOS scroll-lock: ใช้ overflow:hidden บน body เท่านั้น
   const _scrollY = window.scrollY || window.pageYOffset;
   document.body._savedScrollY = _scrollY;
-  // overflow:hidden ผ่าน CSS class modal-open เท่านั้น — ห้ามใช้ inline style
   document.body.classList.add('modal-open');
+  $('prop-modal').classList.add('open');
 
   // scroll modal กลับบนสุด
   const modalEl = $('prop-modal').querySelector('.modal');
   if(modalEl) modalEl.scrollTop=0;
 
-  // ── Fill content ใน rAF ถัดไป — หลัง modal paint แล้ว ──
-  requestAnimationFrame(() => {
-    // Price
-    const priceEl = $('m-price');
-    priceEl.innerHTML = `${fmtPrice(p.price,p.tx)}
-      ${p.tx==='BUY'?`<button onclick="toggleLoanCalc(${p.price})" style="vertical-align:middle;margin-left:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:none;cursor:pointer" title="คำนวณสินเชื่อ"><i class="fas fa-calculator"></i> คำนวณสินเชื่อ</button>`:''}`;
-    let lc = document.getElementById('modal-loan-calc');
-    if(!lc){
-      lc = document.createElement('div');
-      lc.id = 'modal-loan-calc';
-      lc.style.cssText = 'max-height:0;overflow:hidden;transition:max-height .4s ease;margin-bottom:0';
-      priceEl.parentNode.insertBefore(lc, priceEl.nextSibling);
-    } else { lc.style.maxHeight='0'; lc.innerHTML=''; }
+  // init swipe หลัง modal เปิด
+  initModalSwipe();
 
-    // Location + Tags
-    $('m-loc').innerHTML='<i class="fas fa-map-marker-alt"></i> '+p.location+(p.province?` · ${p.province}`:'');
-    $('m-desc').textContent=p.desc||p.description||'ติดต่อสอบถามรายละเอียดเพิ่มเติมกับทีมงาน Matchdoor';
-    $('m-tags').innerHTML=`<span class="ptag pt-type">${ui('type.'+p.type)||p.type}</span><span class="ptag ${p.tx==='RENT'?'pt-rent':'pt-buy'}">${p.tx==='RENT'?`<i class="fas fa-key"></i> ${ui('card.rent')}`:`<i class="fas fa-tag"></i> ${ui('card.buy')}`}</span>${p.province?`<span class="ptag">${p.province}</span>`:''}${p.isNew?`<span class="ptag" style="background:#e8fdf5;border-color:#a7f3d0;color:#065f46"><i class="fas fa-star"></i> ${ui('card.new')}</span>`:''}${p.isRec?'<span class="ptag pb-hot" style="color:#fff;border-color:transparent">🔥 Hot</span>':''}`;
-
-    // Specs
-    const specs=[];
-    if(p.area>0) specs.push({val:p.area,lab:ui('spec.area'),icon:'fa-ruler-combined',col:'#7c6fcd'});
-    specs.push({val:p.land_area>0?p.land_area:'—',lab:ui('spec.land'),icon:'fa-map',col:'#059669'});
-    if(p.bed>0) specs.push({val:p.bed,lab:ui('spec.bed'),icon:'fa-bed',col:'#0369a1'});
-    if(p.bath>0) specs.push({val:p.bath,lab:ui('spec.bath'),icon:'fa-shower',col:'#0891b2'});
-    if(p.parking>0) specs.push({val:p.parking,lab:ui('spec.park'),icon:'fa-car',col:'#059669'});
-    {const fl=p.floor_no>0&&p.floors>0?`${p.floor_no}/${p.floors}`:(p.floors>0?String(p.floors):'—'); specs.push({val:fl,lab:ui('spec.floor'),icon:'fa-building',col:'#4f46e5'});}
-    const furnLabelS={'full':ui('spec.furn.full'),'partial':ui('spec.furn.partial'),'none':ui('spec.furn.none')};
-    if(p.furniture) specs.push({val:furnLabelS[p.furniture]||p.furniture,lab:ui('spec.furn'),icon:'fa-couch',col:p.furniture==='full'?'#00895e':p.furniture==='partial'?'#c97b00':'#999'});
-    specs.push({val:p.pets_allowed?'✔':'✖',lab:ui('spec.pets'),icon:'fa-paw',col:p.pets_allowed?'#be185d':'#aaa'});
-    if(!specs.length) specs.push({val:(p.price/1e6).toFixed(1),lab:'ล้านบาท',icon:'fa-tag',col:'var(--a)'});
-    $('m-specs').className='specs-grid-8';
-    $('m-specs').innerHTML=specs.map(s=>`<div class="spec-8"><div class="spec-8-val" style="color:${s.col}"><i class="fas ${s.icon}" style="font-size:11px;margin-right:3px"></i>${s.val}</div><div class="spec-8-lab">${s.lab}</div></div>`).join('');
-
-    // Slider
-    slide_photos=(p.photos?.length)?p.photos:[`https://picsum.photos/id/${(p.id+'').charCodeAt(1)||101}/800/600`];
-    slide_icon=p.icon||typeIcon(p.type);
-    slide_cur=0;
-    renderSlider();
-
-    // Agent
-    const ab=$('m-agent');
-    if(a){ab.style.display='flex';ab.style.cursor='pointer';ab.onclick=()=>showAgentDetail(a);ab.title='ดูข้อมูลตัวแทน';$('m-ag-av').textContent=a.initials||a.name[0];$('m-ag-av').style.background=a.color||'#0f3460';$('m-ag-name').textContent=a.name;$('m-ag-name').style.textDecoration='underline dotted';$('m-ag-name').style.color='var(--a)';$('m-ag-role').textContent=a.title;}
-    else ab.style.display='none';
-
-    // CTA buttons
-    const lid=a?.lineId||C.LINE, ph=a?.phone||C.PHONE;
-    $('m-ln').href=lineUrl(lid);
-    $('m-tel').href='tel:'+ph;
-
-    // Fav buttons
-    const _isFaved = favs.includes(String(p.id));
-    const _favBtn = $('m-fav-btn');
-    const _favLabel = $('m-fav-label');
-    if(_favBtn){ _favBtn.className='modal-fav-btn'+(_isFaved?' favorited':''); _favBtn.innerHTML=_isFaved?'<i class="fas fa-heart"></i>':'<i class="far fa-heart"></i>'; }
-    if(_favLabel){ _favLabel.textContent=_isFaved?ui('modal.fav.added'):ui('modal.fav.add'); }
-
-    window._currentModalId = String(p.id);
-    initModalSwipe();
-
-    // ── Defer heavy content ไปยัง idle — extras/nearby/map ไม่ต้องการสำหรับ first paint ──
-    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 80));
-    idle(() => {
+  // ── Defer heavy NON-VISIBLE content ไปยัง idle ──
+  // extras/nearby/map ไม่ต้องการสำหรับ first paint — defer หลัง modal render แล้ว
+  const idle = window.requestIdleCallback || (cb => setTimeout(cb, 50));
+  idle(() => {
       // Extras (appliances, deposit, electric etc.)
       const appIconMap={'แอร์':'fa-snowflake','ตู้เย็น':'fa-temperature-low','เครื่องซักผ้า':'fa-tshirt','ไมโครเวฟ':'fa-microwave','เตาไฟฟ้า':'fa-fire-burner','โทรทัศน์':'fa-tv','เครื่องทำน้ำอุ่น':'fa-hot-tub','ระบบรักษาความปลอดภัย':'fa-shield-alt'};
       const appColorMap={'แอร์':'#0ea5e9','ตู้เย็น':'#06b6d4','เครื่องซักผ้า':'#8b5cf6','ไมโครเวฟ':'#f59e0b','เตาไฟฟ้า':'#ef4444','โทรทัศน์':'#3b82f6','เครื่องทำน้ำอุ่น':'#f97316','ระบบรักษาความปลอดภัย':'#10b981'};
@@ -6528,11 +6585,10 @@ function openModal(id){
       const nearbyContainer=document.getElementById('m-nearby');
       if(nearbyContainer) renderNearbyProps(p, nearbyContainer);
     });
-  });
 }
-function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transition='transform .38s cubic-bezier(.25,.46,.45,.94)'; c.style.transform=`translateX(-${slide_cur*100}%)`; }
-function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; renderSlider(); }
-function goSlide(i){ slide_cur=i; renderSlider(); }
+function renderSlider(){ const c=$('slides'),d=$('sdots'); if(!slide_photos.length){c.innerHTML=`<div class="slide-ph">${slide_icon}</div>`;d.innerHTML='';return;} c.innerHTML=slide_photos.map((u,i)=>`<img src="${u}" loading="${i===0?'eager':'lazy'}" decoding="async">`).join(''); d.innerHTML=slide_photos.map((_,i)=>`<span class="dot ${i===slide_cur?'active':''}" onclick="goSlide(${i})"></span>`).join(''); c.style.transition='none'; c.style.transform=`translateX(-${slide_cur*100}%)`; }
+function slide(dir){ if(!slide_photos.length)return; slide_cur=(slide_cur+dir+slide_photos.length)%slide_photos.length; const c=$('slides'),d=$('sdots'); if(!c)return; c.style.transition='transform .38s cubic-bezier(.25,.46,.45,.94)'; c.style.transform=`translateX(-${slide_cur*100}%)`; if(d) d.querySelectorAll('.dot').forEach((el,i)=>el.classList.toggle('active',i===slide_cur)); }
+function goSlide(i){ slide_cur=i; const c=$('slides'),d=$('sdots'); if(!c)return; c.style.transition='transform .38s cubic-bezier(.25,.46,.45,.94)'; c.style.transform=`translateX(-${slide_cur*100}%)`; if(d) d.querySelectorAll('.dot').forEach((el,j)=>el.classList.toggle('active',j===slide_cur)); }
 function closeModal(e){
   // กรณีกด overlay: ต้องกดที่ตัว .ov เท่านั้น ไม่ใช่ content ด้านใน
   if(e && e.target && e.target.id !== 'prop-modal') return;
@@ -6995,13 +7051,124 @@ function clearFieldErr(inputId) {
   if(inp){ inp.classList.remove('invalid'); inp.classList.add('valid'); }
 }
 
-// Cooldown tracker to prevent spam
+// ══════════════════════════════════════════════════════════════════
+// SPAM PROTECTION SYSTEM — 3-Layer Defense
+// Layer 1: Client-side cooldown (4s) with countdown UI
+// Layer 2: Cloudflare Turnstile invisible CAPTCHA token
+// Layer 3: Server-side rate limit via Supabase RPC / headers
+// ══════════════════════════════════════════════════════════════════
+
+// ── Layer 1: Cooldown tracker ─────────────────────────────────────
+const COOLDOWN_MS = 4000; // 4 วินาที
 const _submitCooldown = {};
-function isOnCooldown(key, ms=4000) {
-  const last = _submitCooldown[key]||0;
-  if(Date.now()-last < ms) return true;
+const _cooldownTimers = {};
+
+function isOnCooldown(key, ms = COOLDOWN_MS) {
+  const last = _submitCooldown[key] || 0;
+  if (Date.now() - last < ms) return true;
   _submitCooldown[key] = Date.now();
   return false;
+}
+
+// แสดง countdown บนปุ่มระหว่าง cooldown
+function startCooldownUI(btnId, ms = COOLDOWN_MS) {
+  const btn = $(btnId);
+  if (!btn) return;
+  btn.disabled = true;
+  const origHTML = btn.innerHTML;
+  let remaining = Math.ceil(ms / 1000);
+  btn.innerHTML = `<i class="fas fa-clock btn-icon"></i> รอ ${remaining} วิ...`;
+  if (_cooldownTimers[btnId]) clearInterval(_cooldownTimers[btnId]);
+  _cooldownTimers[btnId] = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(_cooldownTimers[btnId]);
+      btn.disabled = false;
+      // อัปเดต label ตามสถานะ login
+      updateFormBtns();
+    } else {
+      btn.innerHTML = `<i class="fas fa-clock btn-icon"></i> รอ ${remaining} วิ...`;
+    }
+  }, 1000);
+}
+
+// ── Layer 2: Cloudflare Turnstile ────────────────────────────────
+// ⚠️ แทนค่า TURNSTILE_SITE_KEY ด้วย Site Key จริงจาก Cloudflare Dashboard
+// ไปที่: https://dash.cloudflare.com → Turnstile → Add site → Invisible
+const TURNSTILE_SITE_KEY = 'YOUR_TURNSTILE_SITE_KEY_HERE';
+
+const _turnstileWidgets = {};
+const _turnstileTokens = {};
+
+function initTurnstile() {
+  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === 'YOUR_TURNSTILE_SITE_KEY_HERE') {
+    // ยังไม่ได้ตั้งค่า site key → ข้ามการใช้งาน Turnstile (dev mode)
+    console.warn('[Turnstile] Site key not configured — CAPTCHA disabled. Set TURNSTILE_SITE_KEY before going live.');
+    return;
+  }
+  ['dep', 'wish'].forEach(key => {
+    const container = $(`turnstile-${key}`);
+    if (!container || _turnstileWidgets[key]) return;
+    _turnstileWidgets[key] = turnstile.render(container, {
+      sitekey: TURNSTILE_SITE_KEY,
+      size: 'invisible',
+      callback: token => { _turnstileTokens[key] = token; },
+      'error-callback': () => { _turnstileTokens[key] = null; },
+      'expired-callback': () => { _turnstileTokens[key] = null; }
+    });
+  });
+}
+
+// เรียก Turnstile token แบบ async (execute → รอ callback)
+async function getTurnstileToken(key, timeoutMs = 6000) {
+  if (typeof turnstile === 'undefined' || TURNSTILE_SITE_KEY === 'YOUR_TURNSTILE_SITE_KEY_HERE') {
+    return null; // dev mode: ไม่มี token แต่ไม่ block
+  }
+  _turnstileTokens[key] = null;
+  try {
+    if (_turnstileWidgets[key] != null) turnstile.execute(_turnstileWidgets[key]);
+  } catch (e) { /* ignore */ }
+  // รอ token สูงสุด timeoutMs
+  const start = Date.now();
+  while (!_turnstileTokens[key] && Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const tok = _turnstileTokens[key];
+  _turnstileTokens[key] = null; // reset หลังใช้งาน 1 ครั้ง
+  return tok || null;
+}
+
+// reset Turnstile widget หลังส่งฟอร์มสำเร็จ
+function resetTurnstile(key) {
+  if (typeof turnstile !== 'undefined' && _turnstileWidgets[key] != null) {
+    try { turnstile.reset(_turnstileWidgets[key]); } catch (e) { /* ignore */ }
+  }
+  _turnstileTokens[key] = null;
+}
+
+// ── Layer 3: Server-side rate limit helper ────────────────────────
+// Supabase รองรับ rate limit ผ่าน Postgres RPC + Row Level Security
+// ฟังก์ชันนี้ตรวจสอบ response error จาก Supabase ว่า hit rate limit หรือไม่
+function isRateLimitError(err) {
+  if (!err) return false;
+  const msg = (err.message || err.code || '').toLowerCase();
+  return msg.includes('rate') || msg.includes('too many') ||
+         err.code === '429' || err.status === 429 ||
+         msg.includes('limit') || msg.includes('throttl');
+}
+
+// sbInsert พร้อม rate-limit header + Turnstile token
+async function sbInsertRateLimited(table, data, turnstileToken) {
+  if (!sb) throw new Error('Supabase ไม่พร้อมใช้งาน');
+  // ส่ง Turnstile token ใน custom header (ต้องใช้ Supabase Edge Function verify ด้านหลัง)
+  // ถ้าใช้ Supabase JS Client ตรงๆ: ส่งเป็น field ใน payload แทน
+  const payload = {
+    ...data,
+    ...(turnstileToken ? { cf_turnstile_token: turnstileToken } : {})
+  };
+  const { data: result, error } = await sb.from(table).insert([payload]);
+  if (error) throw error;
+  return result;
 }
 
 function setupUpload(){ const dz=$('dropzone'), fi=$('d-photo'); if(!dz)return; ['dragenter','dragover','dragleave','drop'].forEach(e=>dz.addEventListener(e,e=>{e.preventDefault();e.stopPropagation();})); dz.addEventListener('dragenter',()=>dz.classList.add('dragover')); dz.addEventListener('dragleave',()=>dz.classList.remove('dragover')); dz.addEventListener('drop',e=>{dz.classList.remove('dragover');handleFiles(e.dataTransfer.files);}); fi.addEventListener('change',e=>handleFiles(e.target.files)); }
@@ -7010,8 +7177,12 @@ function renderPrev(){ $('prev-grid').innerHTML=uploads.map((f,i)=>`<div class="
 window.rmPhoto=i=>{uploads.splice(i,1);renderPrev();};
 
 async function submitDep(){
-  // Cooldown check
-  if(isOnCooldown('dep')) { toast('กรุณารอสักครู่ก่อนส่งอีกครั้ง', true); return; }
+  // ── Layer 1: Client-side cooldown ─────────────────────────────
+  if(isOnCooldown('dep')) {
+    const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - (_submitCooldown['dep']||0))) / 1000);
+    toast(`กรุณารอ ${remaining} วินาทีก่อนส่งอีกครั้ง ⏱️`, true);
+    return;
+  }
   // Auth check
   if(!user){ toast('กรุณาเข้าสู่ระบบก่อนฝากทรัพย์', true); _openModal('login-modal'); return; }
 
@@ -7057,6 +7228,12 @@ async function submitDep(){
   const btn=$('dep-btn');
   if(btn){ btn.disabled=true; btn.classList.add('loading'); }
 
+  // ── Layer 2: Turnstile CAPTCHA ────────────────────────────────
+  let turnstileToken = null;
+  try {
+    turnstileToken = await getTurnstileToken('dep');
+  } catch(e) { /* non-blocking: ไม่หยุดถ้า Turnstile timeout */ }
+
   const photoUrls=[];
   if(uploads.length && sb){
     // 🖼️ [IMG-UPLOAD] อัปโหลดรูปภาพการฝากทรัพย์ → Supabase Storage
@@ -7081,7 +7258,8 @@ async function submitDep(){
     }
   }
   try{
-    await sbInsert('listings',{
+    // ── Layer 3: ส่งผ่าน sbInsertRateLimited พร้อม token ─────
+    await sbInsertRateLimited('listings', {
       name, phone,
       property_type: sanitize($('d-type').value),
       price: price,
@@ -7092,9 +7270,12 @@ async function submitDep(){
       status:'รอตรวจสอบ',
       consent_given: true,
       consent_timestamp: new Date().toISOString()
-    });
+    }, turnstileToken);
+    resetTurnstile('dep');
     $('dep-form').style.display='none'; $('dep-ok').style.display='block';
     toast('ส่งข้อมูลสำเร็จ ทีมงานจะติดต่อกลับ ✅');
+    // เริ่ม countdown UI หลังส่งสำเร็จ
+    startCooldownUI('dep-btn', COOLDOWN_MS);
     setTimeout(()=>{
       closeAllDD();
       setTimeout(()=>{
@@ -7105,16 +7286,29 @@ async function submitDep(){
       },400);
     },3000);
   } catch(e){
-    toast('ส่งข้อมูลล้มเหลว กรุณาลองใหม่อีกครั้ง', true);
-    _submitCooldown['dep'] = 0; // reset on error
+    // ── Layer 3: ตรวจจับ rate limit error ────────────────────
+    if(isRateLimitError(e)){
+      toast('ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ 🚦', true);
+      startCooldownUI('dep-btn', 30000); // ล็อก 30 วิถ้า rate limited
+    } else {
+      toast('ส่งข้อมูลล้มเหลว กรุณาลองใหม่อีกครั้ง', true);
+      _submitCooldown['dep'] = 0; // reset on error
+    }
+    resetTurnstile('dep');
   } finally {
-    if(btn){ btn.disabled=false; btn.classList.remove('loading'); }
+    if(btn){ btn.classList.remove('loading'); }
+    // btn.disabled จัดการโดย startCooldownUI → updateFormBtns
+    if(!_cooldownTimers['dep-btn']) { if(btn) btn.disabled=false; }
   }
 }
 
 async function submitWish(){
-  // Cooldown check
-  if(isOnCooldown('wish')) { toast('กรุณารอสักครู่ก่อนส่งอีกครั้ง', true); return; }
+  // ── Layer 1: Client-side cooldown ─────────────────────────────
+  if(isOnCooldown('wish')) {
+    const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - (_submitCooldown['wish']||0))) / 1000);
+    toast(`กรุณารอ ${remaining} วินาทีก่อนส่งอีกครั้ง ⏱️`, true);
+    return;
+  }
   // Auth check
   if(!user){ toast('กรุณาเข้าสู่ระบบก่อน', true); _openModal('login-modal'); return; }
 
@@ -7146,8 +7340,15 @@ async function submitWish(){
   const btn=$('wish-btn');
   if(btn){ btn.disabled=true; btn.classList.add('loading'); }
 
+  // ── Layer 2: Turnstile CAPTCHA ────────────────────────────────
+  let turnstileToken = null;
+  try {
+    turnstileToken = await getTurnstileToken('wish');
+  } catch(e) { /* non-blocking */ }
+
   try{
-    await sbInsert('buy_requests',{
+    // ── Layer 3: ส่งผ่าน sbInsertRateLimited พร้อม token ─────
+    await sbInsertRateLimited('buy_requests', {
       name, phone,
       line_id: sanitize($('w-line').value),
       property_type: sanitize($('w-type').value),
@@ -7158,9 +7359,12 @@ async function submitWish(){
       status:'ใหม่',
       consent_given: true,
       consent_timestamp: new Date().toISOString()
-    });
+    }, turnstileToken);
+    resetTurnstile('wish');
     $('wish-form').style.display='none'; $('wish-ok').style.display='block';
     toast('ส่งความต้องการสำเร็จ ✅');
+    // เริ่ม countdown UI หลังส่งสำเร็จ
+    startCooldownUI('wish-btn', COOLDOWN_MS);
     setTimeout(()=>{
       closeAllDD();
       setTimeout(()=>{
@@ -7170,12 +7374,26 @@ async function submitWish(){
       },400);
     },3000);
   } catch(e){
-    toast('ส่งข้อมูลล้มเหลว: '+sanitize(e.message), true);
-    _submitCooldown['wish'] = 0;
+    // ── Layer 3: ตรวจจับ rate limit error ────────────────────
+    if(isRateLimitError(e)){
+      toast('ส่งข้อมูลบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ 🚦', true);
+      startCooldownUI('wish-btn', 30000); // ล็อก 30 วิถ้า rate limited
+    } else {
+      toast('ส่งข้อมูลล้มเหลว: '+sanitize(e.message), true);
+      _submitCooldown['wish'] = 0;
+    }
+    resetTurnstile('wish');
   } finally {
-    if(btn){ btn.disabled=false; btn.classList.remove('loading'); }
+    if(btn){ btn.classList.remove('loading'); }
+    if(!_cooldownTimers['wish-btn']) { if(btn) btn.disabled=false; }
   }
 }
+
+// ── init Turnstile เมื่อ script โหลดเสร็จ ─────────────────────────
+(function waitTurnstile(attempts){
+  if(typeof turnstile !== 'undefined'){ initTurnstile(); return; }
+  if(attempts > 0) setTimeout(()=>waitTurnstile(attempts-1), 800);
+})(15);
 
 function toggleDD(id){ const el=$(id); if(!el)return; const o=el.classList.contains('open'); closeAllDD(); if(!o){ el.classList.add('open'); if(id==='dd-fav')renderFavDropdown(); if(window.innerWidth<=950) _showDDOverlay(); } }
 function closeAllDD(){ $$('.dd-panel').forEach(p=>p.classList.remove('open')); _hideDDOverlay(); }

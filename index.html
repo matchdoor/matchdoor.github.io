@@ -233,8 +233,8 @@ body:not(:has(.ov.open)):not(:has(.apply-overlay.open)):not(:has(.seo-drawer.ope
 }
 
 @media(max-width:768px){
-  .door-left,.door-right,.pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
-  #hero-canvas,#ph-canvas-ag,#ph-canvas-port,.page-hero-canvas{display:none!important}
+  .pb-rec,.pb-hot,.logo-shimmer{animation:none!important}
+  #ph-canvas-ag,#ph-canvas-port,.page-hero-canvas{display:none!important}
   .prop-card:hover,.price-card:hover,.cat-card:hover,
   .blog-card:hover,.gal-card:hover,.agent-card:hover,
   .osrv-card:hover{transform:none!important;box-shadow:none!important}
@@ -813,16 +813,16 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 #hero-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .hero-content{position:relative;z-index:2;padding-bottom:20px}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(10,22,48,0.65);border:1.5px solid rgba(232,184,75,.7);border-radius:30px;padding:8px 22px;font-size:13px;font-weight:700;color:#FFE082;margin-bottom:24px;backdrop-filter:blur(16px);letter-spacing:.5px;font-family:'Kanit','Noto Sans Thai',sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.6);box-shadow:0 2px 12px rgba(0,0,0,.3)}
-.hero h1{font-size:clamp(30px,5vw,54px);font-weight:700;margin-bottom:14px;text-align:center;line-height:1.15;letter-spacing:-.5px;font-family:'Playfair Display','Sarabun','Noto Sans Thai',serif;color:#FFFFFF;text-shadow:0 1px 6px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.35)}
-.hero h1 span{background:linear-gradient(135deg,#F5D060,#E8B84B,#C8922A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;font-weight:700;text-shadow:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)) drop-shadow(0 2px 10px rgba(200,146,42,.3))}
-.hero h1 span.hero-white{background:none;-webkit-background-clip:unset;background-clip:unset;-webkit-text-fill-color:#fff!important;color:#fff!important;filter:none;text-shadow:0 1px 6px rgba(0,0,0,.25)}
-.hero p{opacity:1;font-size:clamp(14px,2vw,18px);margin-bottom:32px;text-align:center;font-weight:600;font-family:'Sarabun','Noto Sans Thai',sans-serif;letter-spacing:.6px;line-height:1.8;color:#FFF5CC;text-shadow:0 1px 6px rgba(0,0,0,.6),0 2px 14px rgba(0,0,0,.35)}
+.hero h1{font-size:clamp(30px,5vw,54px);font-weight:700;margin-bottom:14px;text-align:center;line-height:1.15;letter-spacing:-.5px;font-family:'Playfair Display','Sarabun','Noto Sans Thai',serif;color:#FFFFFF;text-shadow:0 1px 3px rgba(0,0,0,.30),0 4px 16px rgba(0,0,0,.18),0 8px 32px rgba(0,0,0,.10)}
+.hero h1 span{background:linear-gradient(135deg,#F5D060,#E8B84B,#C8922A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;font-weight:700;text-shadow:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.30)) drop-shadow(0 3px 8px rgba(0,0,0,.15))}
+.hero h1 span.hero-white{background:none;-webkit-background-clip:unset;background-clip:unset;-webkit-text-fill-color:#fff!important;color:#fff!important;filter:none;text-shadow:0 1px 3px rgba(0,0,0,.25),0 4px 12px rgba(0,0,0,.12)}
+.hero p{opacity:1;font-size:clamp(14px,2vw,18px);margin-bottom:32px;text-align:center;font-weight:600;font-family:'Sarabun','Noto Sans Thai',sans-serif;letter-spacing:.6px;line-height:1.8;color:#FFF5CC;text-shadow:0 1px 3px rgba(0,0,0,.28),0 3px 10px rgba(0,0,0,.14)}
 @media(max-width:768px){
-  .hero h1{font-size:clamp(26px,7vw,38px);text-shadow:0 1px 5px rgba(0,0,0,.65),0 2px 10px rgba(0,0,0,.4)}
-  .hero h1 span{filter:drop-shadow(0 1px 3px rgba(0,0,0,.55))}
-  .hero h1 span.hero-white{text-shadow:0 1px 5px rgba(0,0,0,.65)}
-  .hero p{font-size:14px;font-weight:700;color:#FFF8DC;text-shadow:0 1px 5px rgba(0,0,0,.7),0 2px 8px rgba(0,0,0,.45);letter-spacing:.3px}
-  .hero-badge{background:rgba(5,15,35,0.78)!important;border-color:rgba(232,184,75,.85)!important;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .hero h1{font-size:clamp(26px,7vw,38px);text-shadow:0 1px 3px rgba(0,0,0,.28),0 3px 12px rgba(0,0,0,.15)}
+  .hero h1 span{filter:drop-shadow(0 1px 2px rgba(0,0,0,.28)) drop-shadow(0 2px 6px rgba(0,0,0,.12))}
+  .hero h1 span.hero-white{text-shadow:0 1px 3px rgba(0,0,0,.25),0 3px 10px rgba(0,0,0,.12)}
+  .hero p{font-size:14px;font-weight:700;color:#FFF8DC;text-shadow:0 1px 3px rgba(0,0,0,.26),0 2px 8px rgba(0,0,0,.12);letter-spacing:.3px}
+  .hero-badge{background:rgba(5,15,35,0.78)!important;border-color:rgba(232,184,75,.85)!important;text-shadow:0 1px 2px rgba(0,0,0,.3)}
 }
 
 .page-hero{
@@ -988,7 +988,7 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 /* Mobile sheet */
 .adv-sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:410}
 .adv-sheet-overlay.open{display:block}
-.adv-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:420;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.adv-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:420;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,1,.56,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;touch-action:pan-x}
 .adv-sheet.open{transform:translateY(0)}
 .adv-sheet-drag{width:40px;height:4px;background:#ddd;border-radius:4px;margin:10px auto 0}
 .adv-sheet-hd{padding:12px 20px 8px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
@@ -1939,7 +1939,7 @@ footer::after{
   font-size:24px;font-weight:800;
   font-family:'Playfair Display','Sarabun','Noto Sans Thai',serif;
   color:#FFFFFF;line-height:1;display:inline;
-  text-shadow:0 1px 6px rgba(0,0,0,.5);
+  text-shadow:0 1px 3px rgba(0,0,0,.28);
 }
 .stat-counter-num .suf{font-size:16px;font-weight:700;color:#E8B84B;}
 .stat-text-group{display:flex;flex-direction:column;align-items:flex-start;}
@@ -1949,7 +1949,7 @@ footer::after{
   margin-top:1px;display:block;
   font-family:'Sarabun','Noto Sans Thai',sans-serif;
   letter-spacing:.3px;line-height:1.35;
-  text-shadow:0 1px 3px rgba(0,0,0,.4);
+  text-shadow:0 1px 2px rgba(0,0,0,.22);
 }
 @media(max-width:480px){
   .stat-counters{gap:8px;}
@@ -12481,6 +12481,170 @@ function resetAdvFilter(){
   </div>
   <div class="seo-drawer-body" id="seo-drawer-body"><!-- filled by JS --></div>
 </div>
+
+<!-- ===== DRAG-TO-DISMISS: Bottom Sheets ===== -->
+<style>
+/* drag handle cursor */
+.adv-sheet-drag,.qs-mob-sheet-drag{cursor:grab}
+.adv-sheet-drag:active,.qs-mob-sheet-drag:active{cursor:grabbing}
+/* apply-modal on mobile: draggable */
+@media(max-width:600px){
+  .apply-modal{touch-action:pan-x}
+}
+</style>
+<script>
+(function(){
+  /* ────────────────────────────────────────────────────
+   * initSheetDrag(sheetEl, closeFn, overlayEl?)
+   * Adds touch + pointer drag-to-dismiss on any bottom-sheet element.
+   * Drag down > 80px OR velocity > 0.4px/ms → close.
+   * ──────────────────────────────────────────────────── */
+  function initSheetDrag(sheet, closeFn, overlayEl) {
+    if (!sheet || sheet._dragInited) return;
+    sheet._dragInited = true;
+
+    var startY = 0, startTime = 0, curY = 0, dragging = false;
+    var DISMISS_DIST = 90;   // px down
+    var DISMISS_VEL  = 0.45; // px/ms
+
+    function getSheetHeight(){ return sheet.offsetHeight || 400; }
+
+    /* drag handle = first child with drag class, or the header area */
+    var handle = sheet.querySelector('.adv-sheet-drag, .qs-mob-sheet-drag, [data-drag-handle]') || sheet;
+
+    function onStart(e) {
+      if (e.touches && e.touches.length > 1) return;
+      var touch = e.touches ? e.touches[0] : e;
+      startY = touch.clientY;
+      startTime = Date.now();
+      curY = 0;
+      dragging = true;
+      sheet.style.transition = 'none';
+      if (overlayEl) overlayEl.style.transition = 'none';
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      var touch = e.touches ? e.touches[0] : e;
+      curY = touch.clientY - startY;
+      if (curY < 0) curY = 0; // only allow drag down
+      sheet.style.transform = 'translateY(' + curY + 'px)';
+      if (overlayEl) {
+        var opacity = Math.max(0, 0.5 * (1 - curY / getSheetHeight()));
+        overlayEl.style.opacity = opacity;
+      }
+      /* prevent page scroll only if swiping down on sheet */
+      if (curY > 4 && e.cancelable) e.preventDefault();
+    }
+    function onEnd() {
+      if (!dragging) return;
+      dragging = false;
+      var elapsed = Date.now() - startTime;
+      var velocity = elapsed > 0 ? curY / elapsed : 0;
+      sheet.style.transition = '';
+      if (overlayEl) { overlayEl.style.transition = ''; overlayEl.style.opacity = ''; }
+      if (curY > DISMISS_DIST || velocity > DISMISS_VEL) {
+        /* animate out then close */
+        sheet.style.transition = 'transform .28s cubic-bezier(.32,.6,.56,1)';
+        sheet.style.transform = 'translateY(110%)';
+        setTimeout(function(){
+          sheet.style.transform = '';
+          sheet.style.transition = '';
+          closeFn();
+        }, 280);
+      } else {
+        /* snap back */
+        sheet.style.transform = '';
+      }
+      curY = 0;
+    }
+
+    handle.addEventListener('touchstart', onStart, {passive: true});
+    document.addEventListener('touchmove', function(e){ if(dragging) onMove(e); }, {passive: false});
+    document.addEventListener('touchend', onEnd, {passive: true});
+  }
+
+  /* ── Wire up adv-sheet ── */
+  function initAdvSheetDrag(){
+    var sheet = document.getElementById('adv-sheet');
+    var overlay = document.getElementById('adv-sheet-overlay');
+    if (sheet && !sheet._dragInited) initSheetDrag(sheet, function(){ closeAdvFilter(); }, overlay);
+  }
+
+  /* ── Wire up apply-overlay modals (mobile bottom-sheet) ── */
+  function initApplyDrag(){
+    ['apply-agent-modal','apply-other-modal'].forEach(function(id){
+      var modal = document.getElementById(id);
+      if (!modal || modal._dragInited) return;
+      modal._dragInited = true; // prevent re-init
+      var overlay = modal.closest('.apply-overlay');
+      var startY=0,startTime=0,curY=0,dragging=false;
+      var DISMISS_DIST=80, DISMISS_VEL=0.4;
+      var header = modal.querySelector('.apply-modal-hd') || modal;
+      function onStart(e){
+        if(window.innerWidth>600) return;
+        if(e.touches&&e.touches.length>1) return;
+        var t=e.touches?e.touches[0]:e;
+        startY=t.clientY; startTime=Date.now(); curY=0; dragging=true;
+        modal.style.transition='none';
+      }
+      function onMove(e){
+        if(!dragging||window.innerWidth>600) return;
+        var t=e.touches?e.touches[0]:e;
+        curY=t.clientY-startY; if(curY<0)curY=0;
+        modal.style.transform='translateY('+curY+'px)';
+        if(overlay){ var op=Math.max(0,0.55*(1-curY/modal.offsetHeight)); overlay.style.background='rgba(10,22,40,'+op+')'; }
+        if(curY>4&&e.cancelable) e.preventDefault();
+      }
+      function onEnd(){
+        if(!dragging) return; dragging=false;
+        var vel=(Date.now()-startTime)>0?curY/(Date.now()-startTime):0;
+        modal.style.transition='';
+        if(overlay) overlay.style.background='';
+        var type=id.replace('apply-','').replace('-modal','');
+        if(curY>DISMISS_DIST||vel>DISMISS_VEL){
+          modal.style.transition='transform .28s cubic-bezier(.32,.6,.56,1)';
+          modal.style.transform='translateY(110%)';
+          setTimeout(function(){ modal.style.transform=''; modal.style.transition=''; closeApplyModal(type); },280);
+        } else { modal.style.transform=''; }
+        curY=0;
+      }
+      header.addEventListener('touchstart',onStart,{passive:true});
+      document.addEventListener('touchmove',function(e){if(dragging)onMove(e);},{passive:false});
+      document.addEventListener('touchend',onEnd,{passive:true});
+    });
+  }
+
+  /* ── Wire up qs-mob-sheet (dynamically created) ── */
+  var _origOpenQsSheet = window.openQsSheet;
+  window.openQsSheet = function(panelId, btn){
+    if(_origOpenQsSheet) _origOpenQsSheet(panelId, btn);
+    requestAnimationFrame(function(){
+      var sheet = document.getElementById('qs-mob-sheet');
+      var overlay = document.getElementById('qs-mob-overlay');
+      if (sheet && !sheet._dragInited) initSheetDrag(sheet, function(){ if(window.closeQsSheet) closeQsSheet(); }, overlay);
+    });
+  };
+
+  /* ── Init on DOM ready ── */
+  function tryInit(){
+    initAdvSheetDrag();
+    initApplyDrag();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', tryInit);
+  else tryInit();
+  /* Also re-init when adv-sheet is opened (in case it wasn't in DOM at startup) */
+  var _origOpenAdvSheet = window.openAdvSheet;
+  window.openAdvSheet = function(){
+    if(_origOpenAdvSheet) _origOpenAdvSheet();
+    requestAnimationFrame(initAdvSheetDrag);
+  };
+  var _origOpenApply = window.openApplyModal;
+  window.openApplyModal = function(type){
+    if(_origOpenApply) _origOpenApply(type);
+    requestAnimationFrame(initApplyDrag);
+  };
+})();
+</script>
 
 <!-- ===== ADVANCED FILTER SHEET (Mobile) ===== -->
 <div class="adv-sheet-overlay" id="adv-sheet-overlay" onclick="closeAdvFilter()"></div>

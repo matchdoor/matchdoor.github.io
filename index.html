@@ -4203,7 +4203,7 @@ function initAuthListener(){
   });
 }
 function renderAuthUI(){ const el=$('auth-ui'); const elD=$('auth-ui-desktop'); let html=''; if(user){ const init=(user.email||'U')[0].toUpperCase(); html=`<div class="user-nav"><div class="user-av">${init}</div><div class="user-email">${user.email.split('@')[0]}</div><button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button></div>`; } else { html=`<button class="btn-login" onclick="_openModal('login-modal')"><i class="fas fa-sign-in-alt"></i> LogIn</button>`; } if(el)el.innerHTML=html; if(elD)elD.innerHTML=html; }
-function updateFormBtns(){ const logged=!!user; const deps=[['dep-btn','submitDep','ส่งข้อมูลฝากทรัพย์'],['wish-btn','submitWish','ส่งความต้องการ']]; deps.forEach(([id,fn,label])=>{ const b=$(id); if(!b)return; if(logged){ b.innerHTML=`<i class="fas fa-paper-plane btn-icon"></i><span class="btn-spinner"></span> ${sanitize(label)}`; b.onclick=window[fn]; } else{ b.innerHTML='<i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> เข้าสู่ระบบเพื่อส่งข้อมูล'; b.onclick=()=>_openModal('login-modal'); } }); }
+function updateFormBtns(){ const logged=!!user; const deps=[['dep-btn','submitDep','form.dep.submit'],['wish-btn','submitWish','form.wish.submit']]; deps.forEach(([id,fn,labelKey])=>{ const b=$(id); if(!b)return; if(logged){ b.innerHTML=`<i class="fas fa-paper-plane btn-icon"></i><span class="btn-spinner"></span> ${sanitize(ui(labelKey))}`; b.onclick=window[fn]; } else{ b.innerHTML='<i class="fas fa-lock btn-icon"></i><span class="btn-spinner"></span> '+ui('form.login'); b.onclick=()=>_openModal('login-modal'); } }); }
 async function loginWith(p){
   if(!sb){ toast('ระบบยังไม่ได้เชื่อมต่อ Supabase',true); return; }
   const btn = document.querySelector(`#login-modal .login-provider[onclick*="${p}"]`);
@@ -8967,7 +8967,7 @@ const UI_TEXT = {
     'sf.type.label':'ประเภท','sf.type.all':'ทุกประเภท',
     'sf.prov.label':'จังหวัด / ทำเล','sf.prov.all':'ทุกทำเล',
     'sf.min.label':'ราคาต่ำสุด','sf.max.label':'ราคาสูงสุด',
-    'sf.btn':'ค้นหา',
+    'sf.btn':'ค้นหา','sf.btn.reset':'รีเซ็ต',
     /* quick search bar */
     'qs.popular':'ทำเลยอดนิยม','qs.bkk':'📍 กรุงเทพฯ — ทำเลยอดนิยม','qs.other':'🏙️ โซนอื่น',
     'qs.prov':'จังหวัด','qs.central':'🌆 ภาคกลาง & ปริมณฑล','qs.east':'🌊 ภาคตะวันออก & ใต้','qs.north':'🏔️ ภาคเหนือ & อีสาน',
@@ -9046,17 +9046,20 @@ const UI_TEXT = {
     'fl.bkk.buy':'ซื้อ-ขาย กรุงเทพฯ','fl.nnb.buy':'ซื้อ-ขาย นนทบุรี','fl.cbl.buy':'ซื้อ-ขาย ชลบุรี',
     'fl.bkk.rent':'เช่า กรุงเทพฯ','fl.loc':'ทำเลยอดนิยม','fl.uni':'ใกล้มหาวิทยาลัย',
     'fl.sell.house.bkk':'ขายบ้านเดี่ยว กรุงเทพฯ','fl.sell.town.bkk':'ขายทาวน์โฮม กรุงเทพฯ',
-    'fl.sell.condo.bkk':'ขายคอนโด กรุงเทพฯ','fl.sell.land.bkk':'ขายที่ดิน กรุงเทพฯ',
+    'fl.sell.condo.bkk':'ขายคอนโด กรุงเทพฯ','fl.sell.land.bkk':'ขายที่ดิน กรุงเทพฯ','fl.sell.comm.bkk':'ขายอาคารพาณิชย์ กทม.',
     'fl.sell.house.nnb':'ขายบ้านเดี่ยว นนทบุรี','fl.sell.town.nnb':'ขายทาวน์โฮม นนทบุรี',
     'fl.sell.condo.nnb':'ขายคอนโด นนทบุรี','fl.sell.land.nnb':'ขายที่ดิน นนทบุรี',
-    'fl.sell.house.cbl':'ขายบ้านเดี่ยว ชลบุรี','fl.sell.town.cbl':'ขายทาวน์โฮม ชลบุรี','fl.sell.condo.cbl':'ขายคอนโด ชลบุรี',
+    'fl.sell.house.cbl':'ขายบ้านเดี่ยว ชลบุรี','fl.sell.town.cbl':'ขายทาวน์โฮม ชลบุรี','fl.sell.condo.cbl':'ขายคอนโด ชลบุรี','fl.pattaya':'อสังหาฯ พัทยา',
     'fl.rent.house.bkk':'เช่าบ้านเดี่ยว กรุงเทพฯ','fl.rent.town.bkk':'เช่าทาวน์โฮม กรุงเทพฯ','fl.rent.condo.bkk':'เช่าคอนโด กรุงเทพฯ',
+    'fl.rent.condo.sukhumvit':'เช่าคอนโดสุขุมวิท','fl.rent.condo.asok':'เช่าคอนโดอโศก',
     'fl.loc.sukhumvit':'คอนโดใกล้สุขุมวิท','fl.loc.sathorn':'อสังหาฯ ย่านสาทร',
     'fl.loc.rachada':'บ้าน-คอนโด รัชดา','fl.loc.ladprao':'ทรัพย์ย่านลาดพร้าว',
     'fl.loc.asok':'คอนโดใกล้อโศก','fl.loc.rama9':'อสังหาฯ พระราม 9',
+    'fl.loc.thonglor':'คอนโดทองหล่อ','fl.loc.phrakhanong':'คอนโดพระโขนง-BTS',
     'fl.uni.chula':'คอนโดใกล้จุฬาฯ','fl.uni.thammasat':'ห้องเช่าใกล้ธรรมศาสตร์',
     'fl.uni.kaset':'ทรัพย์ใกล้เกษตรฯ','fl.uni.mahidol':'คอนโดใกล้มหิดล',
     'fl.uni.rangsit':'ห้องเช่าใกล้ ม.รังสิต','fl.uni.abac':'อสังหาฯ ใกล้ ABAC',
+    'fl.uni.silpakorn':'คอนโดใกล้ศิลปากร','fl.uni.siam':'คอนโดใกล้สยาม',
     /* footer columns */
     'ft.col.prop':'อสังหาริมทรัพย์','ft.col.svc':'บริการ','ft.col.info':'ข้อมูล','ft.col.legal':'กฎหมาย','ft.col.contact':'ติดต่อ',
     /* footer legal bar */
@@ -9084,7 +9087,7 @@ const UI_TEXT = {
     'form.consent.wish':'ฉันยินยอมให้ Matchdoor เก็บและใช้ข้อมูลส่วนบุคคลเพื่อบริการด้านอสังหาริมทรัพย์ ตาม',
     'form.consent.link':'นโยบายความเป็นส่วนตัว',
     'form.consent.err':'⚠️ กรุณายินยอมก่อนส่งข้อมูล',
-    'form.login':'เข้าสู่ระบบเพื่อส่งข้อมูล','form.ok':'ส่งข้อมูลสำเร็จ!',
+    'form.login':'เข้าสู่ระบบเพื่อส่งข้อมูล','form.ok':'ส่งข้อมูลสำเร็จ!','form.dep.submit':'ส่งข้อมูลฝากทรัพย์','form.wish.submit':'ส่งความต้องการ',
     'form.select':'-- เลือก --',
     /* advanced filter panel */
     'af.title':'Filter เพิ่มเติม','af.btn.label':'Filter เพิ่มเติม',
@@ -9185,7 +9188,7 @@ const UI_TEXT = {
     'sf.type.label':'Type','sf.type.all':'All Types',
     'sf.prov.label':'Province / Area','sf.prov.all':'All Areas',
     'sf.min.label':'Min Price','sf.max.label':'Max Price',
-    'sf.btn':'Search',
+    'sf.btn':'Search','sf.btn.reset':'Reset',
     'qs.popular':'Popular Areas','qs.bkk':'📍 Bangkok — Popular Areas','qs.other':'🏙️ Other Zones',
     'qs.prov':'Province','qs.central':'🌆 Central & Greater Bangkok','qs.east':'🌊 Eastern & Southern','qs.north':'🏔️ Northern & Northeastern',
     'qs.bts':'BTS','qs.bts.suk':'🟢 Sukhumvit Line (N–CEN–E)','qs.bts.sil':'🟢 Silom Line (S–W)',
@@ -9250,17 +9253,20 @@ const UI_TEXT = {
     'fl.bkk.buy':'Buy/Sell in Bangkok','fl.nnb.buy':'Buy/Sell in Nonthaburi','fl.cbl.buy':'Buy/Sell in Chonburi',
     'fl.bkk.rent':'Rent in Bangkok','fl.loc':'Popular Areas','fl.uni':'Near Universities',
     'fl.sell.house.bkk':'Houses for Sale Bangkok','fl.sell.town.bkk':'Townhomes for Sale Bangkok',
-    'fl.sell.condo.bkk':'Condos for Sale Bangkok','fl.sell.land.bkk':'Land for Sale Bangkok',
+    'fl.sell.condo.bkk':'Condos for Sale Bangkok','fl.sell.land.bkk':'Land for Sale Bangkok','fl.sell.comm.bkk':'Commercial for Sale Bangkok',
     'fl.sell.house.nnb':'Houses for Sale Nonthaburi','fl.sell.town.nnb':'Townhomes for Sale Nonthaburi',
     'fl.sell.condo.nnb':'Condos for Sale Nonthaburi','fl.sell.land.nnb':'Land for Sale Nonthaburi',
-    'fl.sell.house.cbl':'Houses for Sale Chonburi','fl.sell.town.cbl':'Townhomes for Sale Chonburi','fl.sell.condo.cbl':'Condos for Sale Chonburi',
+    'fl.sell.house.cbl':'Houses for Sale Chonburi','fl.sell.town.cbl':'Townhomes for Sale Chonburi','fl.sell.condo.cbl':'Condos for Sale Chonburi','fl.pattaya':'Property in Pattaya',
     'fl.rent.house.bkk':'Houses for Rent Bangkok','fl.rent.town.bkk':'Townhomes for Rent Bangkok','fl.rent.condo.bkk':'Condos for Rent Bangkok',
+    'fl.rent.condo.sukhumvit':'Rent Condo Sukhumvit','fl.rent.condo.asok':'Rent Condo Asok',
     'fl.loc.sukhumvit':'Condos near Sukhumvit','fl.loc.sathorn':'Properties in Sathorn',
     'fl.loc.rachada':'Homes near Rachada','fl.loc.ladprao':'Properties in Lat Phrao',
     'fl.loc.asok':'Condos near Asok','fl.loc.rama9':'Properties near Rama 9',
+    'fl.loc.thonglor':'Condos in Thonglor','fl.loc.phrakhanong':'Condos Phrakhanong-BTS',
     'fl.uni.chula':'Condos near Chulalongkorn','fl.uni.thammasat':'Rentals near Thammasat',
     'fl.uni.kaset':'Properties near Kasetsart','fl.uni.mahidol':'Condos near Mahidol',
     'fl.uni.rangsit':'Rentals near Rangsit Uni','fl.uni.abac':'Properties near ABAC',
+    'fl.uni.silpakorn':'Condos near Silpakorn','fl.uni.siam':'Condos near Siam',
     'ft.col.prop':'Properties','ft.col.svc':'Services','ft.col.info':'Info','ft.col.legal':'Legal','ft.col.contact':'Contact',
     'ft.legal.privacy':'Privacy Policy','ft.legal.terms':'Terms of Use',
     'ft.legal.buysell':'Buy-Sell Terms','ft.legal.aup':'Acceptable Use Policy',
@@ -9283,7 +9289,7 @@ const UI_TEXT = {
     'form.consent.wish':'I consent to Matchdoor collecting and using my personal data for real estate services, per the ',
     'form.consent.link':'Privacy Policy',
     'form.consent.err':'⚠️ Please accept before submitting',
-    'form.login':'Login to Submit','form.ok':'Submitted Successfully!',
+    'form.login':'Login to Submit','form.ok':'Submitted Successfully!','form.dep.submit':'Submit Property Listing','form.wish.submit':'Submit Request',
     'form.select':'-- Select --',
     /* advanced filter panel */
     'af.title':'Advanced Filter','af.btn.label':'Advanced Filter',
@@ -9368,7 +9374,7 @@ const UI_TEXT = {
     'sf.type.label':'类型','sf.type.all':'所有类型',
     'sf.prov.label':'省份 / 地区','sf.prov.all':'所有地区',
     'sf.min.label':'最低价格','sf.max.label':'最高价格',
-    'sf.btn':'搜索',
+    'sf.btn':'搜索','sf.btn.reset':'重置',
     'qs.popular':'热门地区','qs.bkk':'📍 曼谷 — 热门地区','qs.other':'🏙️ 其他区域',
     'qs.prov':'省份','qs.central':'🌆 中部及大曼谷地区','qs.east':'🌊 东部及南部','qs.north':'🏔️ 北部及东北部',
     'qs.bts':'BTS','qs.bts.suk':'🟢 素坤逸线 (N–CEN–E)','qs.bts.sil':'🟢 是隆线 (S–W)',
@@ -9433,17 +9439,20 @@ const UI_TEXT = {
     'fl.bkk.buy':'曼谷买卖','fl.nnb.buy':'暖武里买卖','fl.cbl.buy':'春武里买卖',
     'fl.bkk.rent':'曼谷出租','fl.loc':'热门地段','fl.uni':'大学周边',
     'fl.sell.house.bkk':'曼谷独栋别墅出售','fl.sell.town.bkk':'曼谷联排别墅出售',
-    'fl.sell.condo.bkk':'曼谷公寓出售','fl.sell.land.bkk':'曼谷土地出售',
+    'fl.sell.condo.bkk':'曼谷公寓出售','fl.sell.land.bkk':'曼谷土地出售','fl.sell.comm.bkk':'曼谷商业地产出售',
     'fl.sell.house.nnb':'暖武里独栋别墅出售','fl.sell.town.nnb':'暖武里联排别墅出售',
     'fl.sell.condo.nnb':'暖武里公寓出售','fl.sell.land.nnb':'暖武里土地出售',
-    'fl.sell.house.cbl':'春武里独栋别墅出售','fl.sell.town.cbl':'春武里联排别墅出售','fl.sell.condo.cbl':'春武里公寓出售',
+    'fl.sell.house.cbl':'春武里独栋别墅出售','fl.sell.town.cbl':'春武里联排别墅出售','fl.sell.condo.cbl':'春武里公寓出售','fl.pattaya':'芭提雅房产',
     'fl.rent.house.bkk':'曼谷独栋别墅出租','fl.rent.town.bkk':'曼谷联排别墅出租','fl.rent.condo.bkk':'曼谷公寓出租',
+    'fl.rent.condo.sukhumvit':'素坤逸公寓出租','fl.rent.condo.asok':'阿索克公寓出租',
     'fl.loc.sukhumvit':'素坤逸周边公寓','fl.loc.sathorn':'是隆区房产',
     'fl.loc.rachada':'叻差达房产','fl.loc.ladprao':'拉披劳房产',
     'fl.loc.asok':'阿索克周边公寓','fl.loc.rama9':'拉玛9房产',
+    'fl.loc.thonglor':'通罗公寓','fl.loc.phrakhanong':'帕卡农-BTS公寓',
     'fl.uni.chula':'朱拉隆功大学周边公寓','fl.uni.thammasat':'法政大学周边出租',
     'fl.uni.kaset':'卡塞特大学周边房产','fl.uni.mahidol':'玛希隆大学周边公寓',
     'fl.uni.rangsit':'兰实大学周边出租','fl.uni.abac':'ABAC大学周边房产',
+    'fl.uni.silpakorn':'西巴顿大学周边公寓','fl.uni.siam':'暹罗周边公寓',
     'ft.col.prop':'房产','ft.col.svc':'服务','ft.col.info':'信息','ft.col.legal':'法律','ft.col.contact':'联系我们',
     'ft.legal.privacy':'隐私政策','ft.legal.terms':'使用条款',
     'ft.legal.buysell':'买卖条款','ft.legal.aup':'可接受使用政策',
@@ -9466,7 +9475,7 @@ const UI_TEXT = {
     'form.consent.wish':'我同意Matchdoor收集和使用我的个人信息用于房产服务，依据',
     'form.consent.link':'隐私政策',
     'form.consent.err':'⚠️ 请先同意后再提交',
-    'form.login':'登录后提交','form.ok':'提交成功！',
+    'form.login':'登录后提交','form.ok':'提交成功！','form.dep.submit':'提交房产信息','form.wish.submit':'提交需求',
     'form.select':'-- 请选择 --',
     /* advanced filter panel */
     'af.title':'高级筛选','af.btn.label':'高级筛选',
@@ -9551,7 +9560,7 @@ const UI_TEXT = {
     'sf.type.label':'タイプ','sf.type.all':'すべてのタイプ',
     'sf.prov.label':'県 / エリア','sf.prov.all':'すべてのエリア',
     'sf.min.label':'最低価格','sf.max.label':'最高価格',
-    'sf.btn':'検索',
+    'sf.btn':'検索','sf.btn.reset':'リセット',
     'qs.popular':'人気エリア','qs.bkk':'📍 バンコク — 人気エリア','qs.other':'🏙️ その他のゾーン',
     'qs.prov':'県','qs.central':'🌆 中部・大バンコク','qs.east':'🌊 東部・南部','qs.north':'🏔️ 北部・東北部',
     'qs.bts':'BTS','qs.bts.suk':'🟢 スクンビット線 (N–CEN–E)','qs.bts.sil':'🟢 シーロム線 (S–W)',
@@ -9616,17 +9625,20 @@ const UI_TEXT = {
     'fl.bkk.buy':'バンコク売買','fl.nnb.buy':'ノンタブリー売買','fl.cbl.buy':'チョンブリー売買',
     'fl.bkk.rent':'バンコク賃貸','fl.loc':'人気エリア','fl.uni':'大学周辺',
     'fl.sell.house.bkk':'バンコク一戸建て売却','fl.sell.town.bkk':'バンコクタウンハウス売却',
-    'fl.sell.condo.bkk':'バンコクコンド売却','fl.sell.land.bkk':'バンコク土地売却',
+    'fl.sell.condo.bkk':'バンコクコンド売却','fl.sell.land.bkk':'バンコク土地売却','fl.sell.comm.bkk':'バンコク商業物件売却',
     'fl.sell.house.nnb':'ノンタブリー一戸建て売却','fl.sell.town.nnb':'ノンタブリータウンハウス売却',
     'fl.sell.condo.nnb':'ノンタブリーコンド売却','fl.sell.land.nnb':'ノンタブリー土地売却',
-    'fl.sell.house.cbl':'チョンブリー一戸建て売却','fl.sell.town.cbl':'チョンブリータウンハウス売却','fl.sell.condo.cbl':'チョンブリーコンド売却',
+    'fl.sell.house.cbl':'チョンブリー一戸建て売却','fl.sell.town.cbl':'チョンブリータウンハウス売却','fl.sell.condo.cbl':'チョンブリーコンド売却','fl.pattaya':'パタヤの物件',
     'fl.rent.house.bkk':'バンコク一戸建て賃貸','fl.rent.town.bkk':'バンコクタウンハウス賃貸','fl.rent.condo.bkk':'バンコクコンド賃貸',
+    'fl.rent.condo.sukhumvit':'スクンビットコンド賃貸','fl.rent.condo.asok':'アソークコンド賃貸',
     'fl.loc.sukhumvit':'スクンビット周辺コンド','fl.loc.sathorn':'サートーンの物件',
     'fl.loc.rachada':'ラチャダー周辺物件','fl.loc.ladprao':'ラープラーオの物件',
     'fl.loc.asok':'アソーク周辺コンド','fl.loc.rama9':'ラマ9周辺物件',
+    'fl.loc.thonglor':'トンロー周辺コンド','fl.loc.phrakhanong':'プラカノン-BTS周辺コンド',
     'fl.uni.chula':'チュラロンコン大学周辺コンド','fl.uni.thammasat':'タマサート大学周辺賃貸',
     'fl.uni.kaset':'カセサート大学周辺物件','fl.uni.mahidol':'マヒドン大学周辺コンド',
     'fl.uni.rangsit':'ランシット大学周辺賃貸','fl.uni.abac':'ABAC大学周辺物件',
+    'fl.uni.silpakorn':'シラパコン大学周辺コンド','fl.uni.siam':'サイアム周辺コンド',
     'ft.col.prop':'物件','ft.col.svc':'サービス','ft.col.info':'情報','ft.col.legal':'法律','ft.col.contact':'お問い合わせ',
     'ft.legal.privacy':'プライバシーポリシー','ft.legal.terms':'利用規約',
     'ft.legal.buysell':'売買条件','ft.legal.aup':'利用規則',
@@ -9649,7 +9661,7 @@ const UI_TEXT = {
     'form.consent.wish':'不動産サービスのため、個人情報の収集・利用に同意します。詳細は',
     'form.consent.link':'プライバシーポリシー',
     'form.consent.err':'⚠️ 送信前にご同意ください',
-    'form.login':'ログインして送信','form.ok':'送信完了！',
+    'form.login':'ログインして送信','form.ok':'送信完了！','form.dep.submit':'物件情報を送信','form.wish.submit':'希望を送信',
     'form.select':'-- 選択してください --',
     /* advanced filter panel */
     'af.title':'詳細フィルター','af.btn.label':'詳細フィルター',
@@ -9719,6 +9731,7 @@ function toggleLangDD(){
   const trigger=document.getElementById('lang-trigger');
   if(!panel||!trigger)return;
   const isOpen=panel.classList.contains('open');
+  if(!isOpen) closeAllDD();
   panel.classList.toggle('open',!isOpen);
   trigger.classList.toggle('open',!isOpen);
 }
@@ -9865,6 +9878,8 @@ function applyLang(){
   if(sProv&&sProv.options[0])sProv.options[0].textContent=ui('sf.prov.all');
   const btnSearch=document.querySelector('.btn-search');
   if(btnSearch){const ico=btnSearch.querySelector('i');btnSearch.textContent=ui('sf.btn');if(ico)btnSearch.insertBefore(ico,btnSearch.firstChild);}
+  const btnReset=document.querySelector('.btn-reset-search');
+  if(btnReset){const ico=btnReset.querySelector('i');btnReset.textContent=' '+ui('sf.btn.reset');if(ico)btnReset.insertBefore(ico,btnReset.firstChild);}
 
   // ── Quick search bar labels ──
   const qsBtns=document.querySelectorAll('.qs-dd-btn');
@@ -9954,7 +9969,7 @@ function applyLang(){
     if(cols[0]){
       const h4=cols[0].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.buy');
       const links=cols[0].querySelectorAll('a');
-      const lk=['fl.sell.house.bkk','fl.sell.town.bkk','fl.sell.condo.bkk','fl.sell.land.bkk'];
+      const lk=['fl.sell.house.bkk','fl.sell.town.bkk','fl.sell.condo.bkk','fl.sell.land.bkk','fl.sell.comm.bkk'];
       links.forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});
     }
     if(cols[1]){
@@ -9966,25 +9981,25 @@ function applyLang(){
     if(cols[2]){
       const h4=cols[2].querySelector('h4');if(h4)h4.textContent=ui('fl.cbl.buy');
       const links=cols[2].querySelectorAll('a');
-      const lk=['fl.sell.house.cbl','fl.sell.town.cbl','fl.sell.condo.cbl'];
+      const lk=['fl.sell.house.cbl','fl.sell.town.cbl','fl.sell.condo.cbl','fl.pattaya'];
       links.forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});
     }
     if(cols[3]){
       const h4=cols[3].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.rent');
       const links=cols[3].querySelectorAll('a');
-      const lk=['fl.rent.house.bkk','fl.rent.town.bkk','fl.rent.condo.bkk'];
+      const lk=['fl.rent.house.bkk','fl.rent.town.bkk','fl.rent.condo.bkk','fl.rent.condo.sukhumvit','fl.rent.condo.asok'];
       links.forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});
     }
     if(cols[4]){
       const h4=cols[4].querySelector('h4');if(h4)h4.textContent=ui('fl.loc');
       const links=cols[4].querySelectorAll('a');
-      const lk=['fl.loc.sukhumvit','fl.loc.sathorn','fl.loc.rachada','fl.loc.ladprao','fl.loc.asok','fl.loc.rama9'];
+      const lk=['fl.loc.sukhumvit','fl.loc.sathorn','fl.loc.rachada','fl.loc.ladprao','fl.loc.asok','fl.loc.rama9','fl.loc.thonglor','fl.loc.phrakhanong'];
       links.forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});
     }
     if(cols[5]){
       const h4=cols[5].querySelector('h4');if(h4)h4.textContent=ui('fl.uni');
       const links=cols[5].querySelectorAll('a');
-      const lk=['fl.uni.chula','fl.uni.thammasat','fl.uni.kaset','fl.uni.mahidol','fl.uni.rangsit','fl.uni.abac'];
+      const lk=['fl.uni.chula','fl.uni.thammasat','fl.uni.kaset','fl.uni.mahidol','fl.uni.rangsit','fl.uni.abac','fl.uni.silpakorn','fl.uni.siam'];
       links.forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});
     }
   }
@@ -10030,7 +10045,8 @@ function applyLang(){
       if(privLink){privLink.textContent=ui('form.consent.link');depConsentLabel.appendChild(privLink);}
     }
     const depConsentErr=document.getElementById('d-consent-err');if(depConsentErr)depConsentErr.textContent=ui('form.consent.err');
-    const depBtnText=document.getElementById('dep-btn-text');if(depBtnText)depBtnText.textContent=ui('form.login');
+    // Re-render form submit buttons so text matches current language
+    if(typeof updateFormBtns==='function') updateFormBtns();
     const depOk=document.getElementById('dep-ok');if(depOk){const ico=depOk.querySelector('i');const div=depOk.querySelector('div');if(div)div.textContent=ui('form.ok');}
 
     // wish form labels
@@ -10053,7 +10069,6 @@ function applyLang(){
       if(privLink){privLink.textContent=ui('form.consent.link');wishConsentLabel.appendChild(privLink);}
     }
     const wishConsentErr=document.getElementById('w-consent-err');if(wishConsentErr)wishConsentErr.textContent=ui('form.consent.err');
-    const wishBtnText=document.getElementById('wish-btn-text');if(wishBtnText)wishBtnText.textContent=ui('form.login');
     const wishOk=document.getElementById('wish-ok');if(wishOk){const div=wishOk.querySelector('div');if(div)div.textContent=ui('form.ok');}
   })();
 
@@ -10071,12 +10086,12 @@ function applyLang(){
     });
     // Also update hardcoded h4/a text (same structure as main flink-inner)
     const cols=flInnerClone.querySelectorAll('div');
-    if(cols[0]){const h4=cols[0].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.buy');const lk=['fl.sell.house.bkk','fl.sell.town.bkk','fl.sell.condo.bkk','fl.sell.land.bkk'];cols[0].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[0]){const h4=cols[0].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.buy');const lk=['fl.sell.house.bkk','fl.sell.town.bkk','fl.sell.condo.bkk','fl.sell.land.bkk','fl.sell.comm.bkk'];cols[0].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
     if(cols[1]){const h4=cols[1].querySelector('h4');if(h4)h4.textContent=ui('fl.nnb.buy');const lk=['fl.sell.house.nnb','fl.sell.town.nnb','fl.sell.condo.nnb','fl.sell.land.nnb'];cols[1].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
-    if(cols[2]){const h4=cols[2].querySelector('h4');if(h4)h4.textContent=ui('fl.cbl.buy');const lk=['fl.sell.house.cbl','fl.sell.town.cbl','fl.sell.condo.cbl'];cols[2].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
-    if(cols[3]){const h4=cols[3].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.rent');const lk=['fl.rent.house.bkk','fl.rent.town.bkk','fl.rent.condo.bkk'];cols[3].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
-    if(cols[4]){const h4=cols[4].querySelector('h4');if(h4)h4.textContent=ui('fl.loc');const lk=['fl.loc.sukhumvit','fl.loc.sathorn','fl.loc.rachada','fl.loc.ladprao','fl.loc.asok','fl.loc.rama9'];cols[4].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
-    if(cols[5]){const h4=cols[5].querySelector('h4');if(h4)h4.textContent=ui('fl.uni');const lk=['fl.uni.chula','fl.uni.thammasat','fl.uni.kaset','fl.uni.mahidol','fl.uni.rangsit','fl.uni.abac'];cols[5].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[2]){const h4=cols[2].querySelector('h4');if(h4)h4.textContent=ui('fl.cbl.buy');const lk=['fl.sell.house.cbl','fl.sell.town.cbl','fl.sell.condo.cbl','fl.pattaya'];cols[2].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[3]){const h4=cols[3].querySelector('h4');if(h4)h4.textContent=ui('fl.bkk.rent');const lk=['fl.rent.house.bkk','fl.rent.town.bkk','fl.rent.condo.bkk','fl.rent.condo.sukhumvit','fl.rent.condo.asok'];cols[3].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[4]){const h4=cols[4].querySelector('h4');if(h4)h4.textContent=ui('fl.loc');const lk=['fl.loc.sukhumvit','fl.loc.sathorn','fl.loc.rachada','fl.loc.ladprao','fl.loc.asok','fl.loc.rama9','fl.loc.thonglor','fl.loc.phrakhanong'];cols[4].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
+    if(cols[5]){const h4=cols[5].querySelector('h4');if(h4)h4.textContent=ui('fl.uni');const lk=['fl.uni.chula','fl.uni.thammasat','fl.uni.kaset','fl.uni.mahidol','fl.uni.rangsit','fl.uni.abac','fl.uni.silpakorn','fl.uni.siam'];cols[5].querySelectorAll('a').forEach((a,i)=>{if(lk[i])a.textContent=ui(lk[i]);});}
   });
 
   // ── Modal static span labels ──
@@ -10957,15 +10972,15 @@ function _updateRangeSummary(summaryId, type){
   const minV = +minEl.value;
   const maxV = +maxEl.value;
   const maxMax = +maxEl.max;
-  const unit = isLand ? 'ตร.ว.' : 'ตร.ม.';
+  const unit = ui(isLand ? 'pdi.land' : 'pdi.area');
 
   let text;
   if(minV===0 && maxV>=maxMax){
-    text = 'ทุกขนาด';
+    text = ui('af.all.size');
   } else if(maxV>=maxMax){
-    text = 'ตั้งแต่ '+minV.toLocaleString()+' '+unit+' ขึ้นไป';
+    text = minV.toLocaleString()+' '+unit+'+';
   } else if(minV===0){
-    text = 'ไม่เกิน '+maxV.toLocaleString()+' '+unit;
+    text = '0 – '+maxV.toLocaleString()+' '+unit;
   } else {
     text = minV.toLocaleString()+' – '+maxV.toLocaleString()+' '+unit;
   }
@@ -12453,26 +12468,6 @@ function resetAdvFilter(){
       </div>
     </section>
 
-    <!-- SEO Article Content -->
-    <section aria-label="คู่มือซื้อขายอสังหาริมทรัพย์กรุงเทพ" style="background:#fff;border-radius:16px;border:1.5px solid var(--bd);padding:28px;margin-bottom:24px">
-      <h2 style="font-size:17px;font-weight:800;color:var(--p);margin-bottom:12px;font-family:'Kanit',sans-serif">
-        <i class="fas fa-info-circle" style="color:var(--a)"></i> เกี่ยวกับอสังหาริมทรัพย์ในกรุงเทพมหานคร
-      </h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
-        <div>
-          <h3 style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">คอนโดใกล้ BTS ในกรุงเทพ</h3>
-          <p style="font-size:12px;color:var(--tx2);line-height:1.7">กรุงเทพมีระบบรถไฟฟ้า BTS ครอบคลุมมากกว่า 60 สถานี ทำให้ <strong>คอนโดใกล้ BTS</strong> เป็นที่ต้องการสูง โดยเฉพาะสายสุขุมวิท (E1–E23, N1–N24) และสายสีลม (S1–S12) ทำเล <strong>อโศก ทองหล่อ เอกมัย พร้อมพงษ์</strong> ราคาเช่าเริ่มที่ 12,000–80,000 บาท/เดือน</p>
-        </div>
-        <div>
-          <h3 style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">บ้านใกล้ MRT กรุงเทพ</h3>
-          <p style="font-size:12px;color:var(--tx2);line-height:1.7">MRT สายสีน้ำเงินผ่านใจกลางกรุงเทพ ทำเล <strong>พระราม 9 รัชดา ลาดพร้าว จตุจักร</strong> เป็นย่านธุรกิจและที่อยู่อาศัยยอดนิยม <strong>คอนโดพระราม 9</strong> ราคาเริ่มต้น 2.5–8 ล้านบาท บ้านเดี่ยวย่านรัชดาราคา 5–20 ล้านบาท</p>
-        </div>
-        <div>
-          <h3 style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">ราคาอสังหาฯ กรุงเทพ 2024-2025</h3>
-          <p style="font-size:12px;color:var(--tx2);line-height:1.7">ราคา<strong>คอนโดกรุงเทพ</strong>ใกล้รถไฟฟ้าเริ่มต้นที่ 1.5–3 ล้านบาท (สถานีรอบนอก) และ 3–15 ล้านบาท (ใจกลางเมือง) <strong>บ้านเดี่ยว</strong>เริ่ม 3–50 ล้านบาทตามทำเล Matchdoor มีทรัพย์ทุกระดับราคา ปรึกษาฟรีไม่มีค่าใช้จ่าย</p>
-        </div>
-      </div>
-    </section>
   </div>
   <div class="sub-page-footer"></div>
 </div>

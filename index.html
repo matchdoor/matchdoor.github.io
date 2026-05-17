@@ -809,10 +809,17 @@ footer{background:linear-gradient(135deg,#2d2650 0%,#3d3373 100%);color:rgba(255
 #hero-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .hero-content{position:relative;z-index:2;padding-bottom:20px}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(10,22,48,0.65);border:1.5px solid rgba(232,184,75,.7);border-radius:30px;padding:8px 22px;font-size:13px;font-weight:700;color:#FFE082;margin-bottom:24px;backdrop-filter:blur(16px);letter-spacing:.5px;font-family:'Kanit','Noto Sans Thai',sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.6);box-shadow:0 2px 12px rgba(0,0,0,.3)}
-.hero h1{font-size:clamp(30px,5vw,54px);font-weight:700;margin-bottom:14px;text-align:center;line-height:1.15;letter-spacing:-.5px;font-family:'Playfair Display','Sarabun','Noto Sans Thai',serif;color:#FFFFFF;text-shadow:0 2px 18px rgba(0,0,0,.38),0 4px 32px rgba(0,0,0,.22)}
-.hero h1 span{background:linear-gradient(135deg,#E8B84B,#C8922A,#F0D080);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;font-weight:700;text-shadow:none;filter:drop-shadow(0 2px 8px rgba(200,146,42,.7)) drop-shadow(0 4px 20px rgba(232,184,75,.4))}
+.hero h1{font-size:clamp(30px,5vw,54px);font-weight:700;margin-bottom:14px;text-align:center;line-height:1.15;letter-spacing:-.5px;font-family:'Playfair Display','Sarabun','Noto Sans Thai',serif;color:#FFFFFF;text-shadow:0 1px 6px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.35)}
+.hero h1 span{background:linear-gradient(135deg,#F5D060,#E8B84B,#C8922A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;font-weight:700;text-shadow:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)) drop-shadow(0 2px 10px rgba(200,146,42,.3))}
 .hero h1 span.hero-white{background:none;-webkit-background-clip:unset;background-clip:unset;-webkit-text-fill-color:#fff!important;color:#fff!important;filter:none;text-shadow:0 1px 6px rgba(0,0,0,.25)}
-.hero p{opacity:1;font-size:clamp(14px,2vw,18px);margin-bottom:32px;text-align:center;font-weight:500;font-family:'Sarabun','Noto Sans Thai',sans-serif;letter-spacing:.6px;line-height:1.8;color:#F5C842;text-shadow:0 1px 16px rgba(0,0,0,.32),0 2px 32px rgba(0,0,0,.18);-webkit-text-stroke:0.3px rgba(0,0,0,0.35);paint-order:stroke fill}
+.hero p{opacity:1;font-size:clamp(14px,2vw,18px);margin-bottom:32px;text-align:center;font-weight:600;font-family:'Sarabun','Noto Sans Thai',sans-serif;letter-spacing:.6px;line-height:1.8;color:#FFF5CC;text-shadow:0 1px 6px rgba(0,0,0,.6),0 2px 14px rgba(0,0,0,.35)}
+@media(max-width:768px){
+  .hero h1{font-size:clamp(26px,7vw,38px);text-shadow:0 1px 5px rgba(0,0,0,.65),0 2px 10px rgba(0,0,0,.4)}
+  .hero h1 span{filter:drop-shadow(0 1px 3px rgba(0,0,0,.55))}
+  .hero h1 span.hero-white{text-shadow:0 1px 5px rgba(0,0,0,.65)}
+  .hero p{font-size:14px;font-weight:700;color:#FFF8DC;text-shadow:0 1px 5px rgba(0,0,0,.7),0 2px 8px rgba(0,0,0,.45);letter-spacing:.3px}
+  .hero-badge{background:rgba(5,15,35,0.78)!important;border-color:rgba(232,184,75,.85)!important;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+}
 
 .page-hero{
   color:#fff;
@@ -2419,14 +2426,14 @@ footer::after{
 /* ===== PAGINATION ===== */
 .pagination{padding:24px 0 8px;border-top:1px solid var(--bd)}
 .pg-info{font-size:12px;color:var(--tx2);text-align:center;margin-bottom:12px}
-.pg-controls{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
-.pg-btn{padding:7px 11px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx);transition:.15s;min-width:36px;text-align:center;display:inline-flex;align-items:center;gap:4px;line-height:1}
+.pg-controls{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.pg-btn{padding:7px 11px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx);transition:.15s;min-width:36px;text-align:center;display:inline-flex;align-items:center;gap:4px;line-height:1;flex-shrink:0}
 .pg-btn:hover:not([disabled]){background:var(--p);color:#fff;border-color:var(--p)}
 .pg-btn.active{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 2px 8px rgba(124,111,205,.35)}
 .pg-btn[disabled],.pg-btn.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 .pg-btn.pg-first,.pg-btn.pg-last{padding:7px 12px;font-size:12px}
 .pg-label{font-size:11px;font-weight:700}
-@media(max-width:600px){.pg-label{display:none}.pg-btn{padding:7px 9px;font-size:12px;min-width:32px}}
+@media(max-width:600px){.pg-label{display:none}.pg-btn{padding:6px 8px;font-size:12px;min-width:30px}.pg-btn.pg-first,.pg-btn.pg-last{padding:6px 8px}}
 .pg-ellipsis{padding:7px 4px;color:var(--gr);font-size:14px;font-weight:700;cursor:default;user-select:none}
 .listings-search-bar{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:16px}
 
@@ -5762,19 +5769,29 @@ function renderListingsPagination(totalPages) {
 
 function buildPageRange(cur, total) {
   if(total <= 1) return [];
+  // ── Mobile: show max 5 page numbers ──────────────────────────────
+  const isMobile = window.innerWidth <= 600;
+  if(isMobile) {
+    if(total <= 5) return Array.from({length:total}, (_,i)=>i+1);
+    // Sliding window of 5 centred on current page
+    let start = Math.max(1, cur - 2);
+    let end   = start + 4;
+    if(end > total) { end = total; start = Math.max(1, end - 4); }
+    const pages = [];
+    if(start > 1) pages.push(1, '...');
+    for(let i=start; i<=end; i++) pages.push(i);
+    if(end < total) pages.push('...', total);
+    return pages;
+  }
+  // ── Desktop: professional with decade anchors ─────────────────────
   if(total <= 7) return Array.from({length:total}, (_,i)=>i+1);
-  // Professional: always show first, last, ±2 around current, with ellipsis groups
-  // Also show decade jumps (10, 20, 30...) if total > 10
   const set = new Set();
   set.add(1); set.add(total);
-  // Pages around current
   for(let i=Math.max(2,cur-2); i<=Math.min(total-1,cur+2); i++) set.add(i);
-  // Decade anchors only if total > 15
   if(total > 15) {
     for(let d=10; d<total; d+=10) set.add(d);
   }
   const sorted = [...set].sort((a,b)=>a-b);
-  // Insert ellipsis where gap > 1
   const result = [];
   for(let i=0; i<sorted.length; i++){
     if(i>0 && sorted[i]-sorted[i-1]>1) result.push('...');
@@ -6709,12 +6726,12 @@ function openAllModal(type){
     ? `<button onclick="window._allModalParentType='${type}';openAllModal('all')" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-list"></i> ${ui('modal.viewall')}</button>`
     : (window._allModalParentType ? `<button onclick="var _pt=window._allModalParentType;window._allModalParentType=null;openAllModal(_pt)" style="padding:7px 14px;background:var(--lt);color:var(--p);border:1.5px solid var(--bd);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="fas fa-arrow-left"></i> กลับ</button>` : '');
   const sortHtml=`<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
-    <!-- Single row: view-all (left) + map btn + sort (right) -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+    <!-- Single row: view-all (left) + map btn + sort (right) — all inline -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:nowrap">
       <div style="flex-shrink:0">${_viewAllBtn}</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0">
-        <button onclick="openGmapPopup()" style="padding:7px 14px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(200,146,42,.35);transition:.2s;flex-shrink:0" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ${ui('modal.map.btn')}</button>
-        <select class="sort-select" onchange="modalSortChange(this,'${type}')" style="min-width:120px">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto">
+        <button onclick="openGmapPopup()" style="padding:6px 10px;background:linear-gradient(135deg,#C8922A,#e6a830);color:#1A1A2E;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(200,146,42,.3);flex-shrink:0" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"><i class="fas fa-map-marked-alt"></i> ${ui('modal.map.btn')}</button>
+        <select class="sort-select" onchange="modalSortChange(this,'${type}')" style="min-width:80px;max-width:110px;font-size:12px;padding:6px 6px">
           <option value="default">${ui('modal.sort.rec')}</option>
           <option value="price_asc">${ui('modal.sort.asc')}</option>
           <option value="price_desc">${ui('modal.sort.desc')}</option>

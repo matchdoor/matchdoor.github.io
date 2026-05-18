@@ -2603,14 +2603,7 @@ footer::after{
     <div class="dd-panel" id="dd-srv">
      <div class="dd-sec">
       <div class="dd-sec-title" data-srvdd-sec>บริการซ่อมแซม & ดูแลบ้าน</div>
-      <div class="dd-grid">
-       <div class="dd-item" data-srvdd-item="ac" onclick="openSrvFromDD('ac')"><i class="fas fa-wind" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="ac">ล้างแอร์</span></div>
-       <div class="dd-item" data-srvdd-item="maid" onclick="openSrvFromDD('maid')"><i class="fas fa-broom" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="maid">แม่บ้าน</span></div>
-       <div class="dd-item" data-srvdd-item="furn" onclick="openSrvFromDD('furn')"><i class="fas fa-couch" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="furn">ซ่อมเฟอร์นิเจอร์</span></div>
-       <div class="dd-item" data-srvdd-item="plumb" onclick="openSrvFromDD('plumb')"><i class="fas fa-wrench" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="plumb">ระบบประปา</span></div>
-       <div class="dd-item" data-srvdd-item="elec" onclick="openSrvFromDD('elec')"><i class="fas fa-bolt" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="elec">อุปกรณ์ไฟฟ้า</span></div>
-       <div class="dd-item" data-srvdd-item="paint" onclick="openSrvFromDD('paint')"><i class="fas fa-paint-roller" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="paint">ทาสีบ้าน</span></div>
-      </div>
+      <div class="dd-grid" id="dd-srv-grid"><!-- render จาก services array --></div>
      </div>
      <div class="btn-view-fav" onclick="closeAllDD();_silentShowPage('home',true);setTimeout(()=>{openAllModal('services');scrollToEl('osrv-sec');},60)"><i class="fas fa-th-large"></i> <span data-srvdd-viewall>ดูบริการทั้งหมด</span></div>
     </div>
@@ -4381,7 +4374,9 @@ const MOCK = {
     {id:'solar',name:'โซลาร์เซลล์',icon:'fa-solar-panel',short_desc:'ติดตั้งแผงโซลาร์เซลล์',full_desc:'ออกแบบและติดตั้งระบบโซลาร์เซลล์สำหรับบ้านและอาคาร ประหยัดค่าไฟระยะยาว',price:'ประเมินตามขนาด',duration:'1-2 วัน'},
     {id:'move',name:'ขนย้ายสิ่งของ',icon:'fa-truck',short_desc:'บริการรถขนของ',full_desc:'บริการขนย้ายสิ่งของ เฟอร์นิเจอร์ ทั้งในกรุงเทพฯ และต่างจังหวัด พร้อมทีมงานมืออาชีพ',price:'1,200 บาท',duration:'ครึ่งวัน'},
     {id:'internet',name:'ติดตั้ง Wi-Fi',icon:'fa-wifi',short_desc:'วางระบบเน็ตทั้งบ้าน',full_desc:'ติดตั้งและวางระบบเครือข่าย Wi-Fi ทั้งบ้านและอาคาร สัญญาณแรงทุกมุม',price:'800 บาท',duration:'1-2 ชั่วโมง'},
-    {id:'pool',name:'ดูแลสระว่ายน้ำ',icon:'fa-swimming-pool',short_desc:'ทำความสะอาดสระว่ายน้ำ',full_desc:'บริการทำความสะอาดสระว่ายน้ำ ตรวจสอบระบบกรองน้ำ ปรับสมดุลสารเคมี รายสัปดาห์/รายเดือน',price:'1,800 บาท/ครั้ง',duration:'2-3 ชั่วโมง'}
+    {id:'pool',name:'ดูแลสระว่ายน้ำ',icon:'fa-swimming-pool',short_desc:'ทำความสะอาดสระว่ายน้ำ',full_desc:'บริการทำความสะอาดสระว่ายน้ำ ตรวจสอบระบบกรองน้ำ ปรับสมดุลสารเคมี รายสัปดาห์/รายเดือน',price:'1,800 บาท/ครั้ง',duration:'2-3 ชั่วโมง'},
+    {id:'photo',name:'ถ่ายภาพอสังหาฯ',icon:'fa-camera',short_desc:'ถ่ายภาพมืออาชีพเพื่อลงประกาศ',full_desc:'บริการถ่ายภาพอสังหาริมทรัพย์โดยช่างภาพมืออาชีพ ทั้งภายในและภายนอก พร้อมตกแต่งภาพคุณภาพสูง เพื่อดึงดูดผู้ซื้อและผู้เช่า',price:'2,000 บาท/ครั้ง',duration:'ครึ่งวัน–1 วัน'},
+    {id:'legal',name:'บริการด้านกฎหมาย',icon:'fa-file-contract',short_desc:'ที่ปรึกษากฎหมายอสังหาริมทรัพย์',full_desc:'บริการที่ปรึกษากฎหมายด้านอสังหาริมทรัพย์ ตรวจสอบสัญญา โอนกรรมสิทธิ์ ที่ดิน นิติกรรม และเอกสารสำคัญทุกประเภท โดยทีมทนายความมืออาชีพ',price:'1,500 บาท/ชั่วโมง',duration:'แล้วแต่งาน'}
   ],
   blogs: [
     {title:'5 ทำเลทองที่น่าลงทุนปี 2568',cat:'การลงทุน',date:'15 พ.ค. 2568',icon:'🏆',color:'linear-gradient(135deg,#667eea,#764ba2)',content:'<p>ในปี 2568 ตลาดอสังหาริมทรัพย์ไทยมีแนวโน้มเติบโต...</p>',photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800','https://images.unsplash.com/photo-1448630360428-65456885c650?w=800']},
@@ -6719,7 +6714,7 @@ function openAllModal(type){
   }
   else if(type==='services'){
     title=ui('modal.srv.title');
-    const html=`<div class="osrv-grid">${services.map(s=>`<div class="osrv-card" onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon}"></i></div><div class="osrv-name">${ui('srv.'+s.id+'.name')||s.name}</div><div class="osrv-desc">${ui('srv.'+s.id+'.desc')||s.short_desc}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`).join('')}</div>`;
+    const html=`<div class="osrv-grid">${services.map(s=>srvCard(s)).join('')}</div>`;
     t.textContent=title; b.innerHTML=html; _openModal('all-modal'); b.scrollTop=0; return;
   }
   else if(type==='blog'){
@@ -6818,17 +6813,36 @@ function modalSortChange(sel, type) {
   if(window._modalRenderPage) window._modalRenderPage(sorted, 1);
 }
 
+function srvName(s){ return s.name||''; }
+function srvDesc(s){ return s.short_desc||s.description||''; }
+function srvPrice(s){ return s.price||''; }
+function srvDur(s){ return s.duration||s.dur||''; }
+function srvCard(s, extraStyle){
+  const style = extraStyle ? ` style="${extraStyle}"` : '';
+  return `<div class="osrv-card"${style} onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon||'fa-tools'}"></i></div><div class="osrv-name">${srvName(s)}</div><div class="osrv-desc">${srvDesc(s)}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`;
+}
+function renderSrvDropdown(){
+  // render nav dropdown จาก services array โดยตรง — ไม่ต้อง hardcode HTML อีกต่อไป
+  const grid = $('dd-srv-grid');
+  if(!grid || !services.length) return;
+  // แสดงสูงสุด 8 items ใน dropdown เพื่อไม่ให้ล้น
+  const preview = services.slice(0, 8);
+  grid.innerHTML = preview.map(s =>
+    `<div class="dd-item" data-srvdd-item="${s.id}" onclick="openSrvFromDD('${s.id}')"><i class="fas ${s.icon||'fa-tools'}" style="width:16px;text-align:center"></i>&nbsp;&nbsp;<span data-srvdd-label="${s.id}">${srvName(s)}</span></div>`
+  ).join('');
+}
 function renderServices(){
   const showSrvs = services;
   const trackEl = $('osrv-track');
   if(trackEl){
-    trackEl.innerHTML = showSrvs.map(s=>`<div class="osrv-card" style="flex-shrink:0;width:175px;scroll-snap-align:start" onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon}"></i></div><div class="osrv-name">${ui('srv.'+s.id+'.name')||s.name}</div><div class="osrv-desc">${ui('srv.'+s.id+'.desc')||s.short_desc}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`).join('');
+    trackEl.innerHTML = showSrvs.map(s=>srvCard(s,'flex-shrink:0;width:175px;scroll-snap-align:start')).join('');
     setTimeout(() => initHGallerySwipe('osrv-track-wrap'), 100);
   }
-  // keep osrv-grid if exists for compatibility
-  if($('osrv-grid')) $('osrv-grid').innerHTML = services.map(s=>`<div class="osrv-card" onclick="showSrvDetail('${s.id}')"><div class="osrv-icon"><i class="fas ${s.icon}"></i></div><div class="osrv-name">${ui('srv.'+s.id+'.name')||s.name}</div><div class="osrv-desc">${ui('srv.'+s.id+'.desc')||s.short_desc}</div><div class="osrv-btns" onclick="event.stopPropagation()"><a class="obtn obtn-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> Line</a><a class="obtn obtn-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> โทร</a></div></div>`).join('');
+  if($('osrv-grid')) $('osrv-grid').innerHTML = services.map(s=>srvCard(s)).join('');
+  // อัพเดต nav dropdown ทุกครั้งที่ services เปลี่ยน
+  renderSrvDropdown();
 }
-function showSrvDetail(id){ const s=services.find(x=>String(x.id)===String(id)); if(!s)return; $('srv-title2').textContent=s.name; $('srv-body').innerHTML=`<div style="text-align:center;margin-bottom:16px"><i class="fas ${s.icon}" style="font-size:52px;color:var(--p)"></i></div><p style="margin-bottom:12px;color:var(--tx2)">${s.full_desc}</p><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('srv.detail.price')}:</strong> ${ui('srv.'+s.id+'.price')||s.price}</div><div><strong>${ui('srv.detail.dur')}:</strong> ${ui('srv.'+s.id+'.dur')||s.duration}</div></div><div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> ${ui('srv.detail.chat')}</a><a class="btn-cta cta-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; _openModal('srv-modal'); }
+function showSrvDetail(id){ const s=services.find(x=>String(x.id)===String(id)); if(!s)return; $('srv-title2').textContent=srvName(s); $('srv-body').innerHTML=`<div style="text-align:center;margin-bottom:16px"><i class="fas ${s.icon||'fa-tools'}" style="font-size:52px;color:var(--p)"></i></div><p style="margin-bottom:12px;color:var(--tx2)">${s.full_desc||srvDesc(s)}</p><div style="background:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px"><div style="margin-bottom:6px"><strong>${ui('srv.detail.price')}:</strong> ${srvPrice(s)}</div><div><strong>${ui('srv.detail.dur')}:</strong> ${srvDur(s)}</div></div><div class="cta-row"><a class="btn-cta cta-ln" href="${lineUrl(C.LINE)}" target="_blank"><i class="fab fa-line"></i> ${ui('srv.detail.chat')}</a><a class="btn-cta cta-tel" href="tel:${C.PHONE}"><i class="fas fa-mobile-alt"></i> ${ui('cta.call')}</a></div>`; _openModal('srv-modal'); }
 function showSrvDetailNav(id){ _silentShowPage('home',true); setTimeout(()=>{ showSrvDetail(id); scrollToEl('osrv-sec'); },60); }
 function openSrvFromDD(id){
   closeAllDD();
@@ -9345,6 +9359,8 @@ const UI_TEXT = {
     'srv.move.name':'ขนย้ายสิ่งของ','srv.move.desc':'บริการรถขนของ',
     'srv.internet.name':'ติดตั้ง Wi-Fi','srv.internet.desc':'วางระบบเน็ตทั้งบ้าน',
     'srv.pool.name':'ดูแลสระว่ายน้ำ','srv.pool.desc':'ทำความสะอาดสระว่ายน้ำ',
+    'srv.photo.name':'ถ่ายภาพอสังหาฯ','srv.photo.desc':'ถ่ายภาพมืออาชีพเพื่อลงประกาศ',
+    'srv.legal.name':'บริการด้านกฎหมาย','srv.legal.desc':'ที่ปรึกษากฎหมายอสังหาริมทรัพย์',
     /* srv detail price/dur per service id */
     'srv.ac.price':'เริ่มต้น 800 บาท/เครื่อง','srv.ac.dur':'1–2 ชั่วโมง',
     'srv.maid.price':'เริ่มต้น 1,500 บาท/ครั้ง','srv.maid.dur':'4–8 ชั่วโมง',
@@ -9361,6 +9377,8 @@ const UI_TEXT = {
     'srv.move.price':'เริ่มต้น 2,000 บาท','srv.move.dur':'แล้วแต่งาน',
     'srv.internet.price':'เริ่มต้น 1,500 บาท','srv.internet.dur':'2–4 ชั่วโมง',
     'srv.pool.price':'เริ่มต้น 2,500 บาท','srv.pool.dur':'2–4 ชั่วโมง',
+    'srv.photo.price':'เริ่มต้น 2,000 บาท','srv.photo.dur':'ครึ่งวัน–1 วัน',
+    'srv.legal.price':'เริ่มต้น 1,500 บาท/ชั่วโมง','srv.legal.dur':'แล้วแต่งาน',
     /* listings page */
     'ls.back':'กลับ','ls.title':'ประกาศทั้งหมด','ls.map.btn':'ค้นหาด้วยแผนที่',
     'ls.map.close':'ปิด','ls.map.title':'แผนที่อสังหาริมทรัพย์','ls.map.hint':'กดที่ปักหมุดในแผนที่เพื่อกรองข้อมูล',
@@ -9547,6 +9565,8 @@ const UI_TEXT = {
     'srv.move.name':'Moving Service','srv.move.desc':'Furniture & goods moving',
     'srv.internet.name':'Wi-Fi Install','srv.internet.desc':'Home network setup',
     'srv.pool.name':'Pool Maintenance','srv.pool.desc':'Pool cleaning service',
+    'srv.photo.name':'Property Photography','srv.photo.desc':'Pro photos for listings',
+    'srv.legal.name':'Legal Services','srv.legal.desc':'Real estate legal advice',
     /* listings page */
     'ls.back':'Back','ls.title':'All Listings','ls.map.btn':'Search by Map',
     'ls.map.close':'Close','ls.map.title':'Property Map','ls.map.hint':'Click a pin on the map to filter results',
@@ -9733,6 +9753,8 @@ const UI_TEXT = {
     'srv.move.name':'搬家服务','srv.move.desc':'家具物品搬运',
     'srv.internet.name':'Wi-Fi安装','srv.internet.desc':'家庭网络布置',
     'srv.pool.name':'泳池维护','srv.pool.desc':'泳池清洁服务',
+    'srv.photo.name':'房产摄影','srv.photo.desc':'专业拍摄房产照片',
+    'srv.legal.name':'法律服务','srv.legal.desc':'房产法律顾问',
     /* listings page */
     'ls.back':'返回','ls.title':'所有房源','ls.map.btn':'地图搜索',
     'ls.map.close':'关闭','ls.map.title':'房产地图','ls.map.hint':'点击地图上的图钉以筛选结果',
@@ -9919,6 +9941,8 @@ const UI_TEXT = {
     'srv.move.name':'引っ越し','srv.move.desc':'家具・荷物搬送',
     'srv.internet.name':'Wi-Fi設置','srv.internet.desc':'ホームネット構築',
     'srv.pool.name':'プール管理','srv.pool.desc':'プール清掃サービス',
+    'srv.photo.name':'不動産写真撮影','srv.photo.desc':'物件プロ撮影サービス',
+    'srv.legal.name':'法務サービス','srv.legal.desc':'不動産法律アドバイス',
     /* listings page */
     'ls.back':'戻る','ls.title':'物件一覧','ls.map.btn':'地図で検索',
     'ls.map.close':'閉じる','ls.map.title':'不動産マップ','ls.map.hint':'地図のピンをクリックして絞り込む',
@@ -10041,14 +10065,8 @@ function applyLang(){
     const rrl=[['dd.rent.all','dd.price.unlim'],['dd.rent.10k','dd.rent.save'],['dd.rent.50k','dd.price.pop'],['dd.rent.50k','dd.price.prem'],['dd.rent.50kp','dd.rent.lux']];
     rentRows.forEach((row,i)=>{ if(!rrl[i])return; const spans=row.querySelectorAll('span'); if(spans[0]){const ico=spans[0].querySelector('i');spans[0].textContent=ui(rrl[i][0]);if(ico)spans[0].insertBefore(ico,spans[0].firstChild);} if(spans[1]&&rrl[i][1])spans[1].textContent=ui(rrl[i][1]); });
   }
-  // Service dropdown
-  _setQSel('#dd-srv [data-srvdd-sec]', ui('dd.srv.sec'));
-  // Update each service item label by its id key
-  const srvItemMap = {ac:'dd.srv.ac',maid:'dd.srv.maid',furn:'dd.srv.furn',plumb:'dd.srv.plumb',elec:'dd.srv.elec',paint:'dd.srv.paint'};
-  Object.entries(srvItemMap).forEach(([id,key])=>{
-    const lbl=document.querySelector(`[data-srvdd-label="${id}"]`);
-    if(lbl) lbl.textContent=ui(key);
-  });
+  // Service dropdown — render จาก services array (ไม่ใช้ hardcode map อีกต่อไป)
+  renderSrvDropdown();
   const srvViewAllSpan=document.querySelector('[data-srvdd-viewall]');
   if(srvViewAllSpan)srvViewAllSpan.textContent=ui('dd.srv.viewall');
   const srvViewAllBtn=document.querySelector('#dd-srv .btn-view-fav');
